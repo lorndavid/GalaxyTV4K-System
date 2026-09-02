@@ -11,16 +11,90 @@
     --border-color: #E2E8F0;
     --text-main: #0F172A;
     --text-muted: #64748B;
+
+    /* Theme 1: Royal Blue Default */
+    --color-primary: #2563EB;
+    --color-primary-hover: #1D4ED8;
+    --color-primary-soft: #EFF6FF;
+    --color-primary-foreground: #FFFFFF;
+
+    /* Default Fonts */
+    --font-english: 'Inter', system-ui, -apple-system, sans-serif;
+    --font-khmer: 'Koh Santepheap', 'Suwannaphum', 'Noto Sans Khmer', sans-serif;
+
+    /* Design Tokens */
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 20px;
+    --radius-full: 9999px;
+  }
+
+  /* Theme 1 — Royal Blue */
+  [data-color-theme="royal-blue"] {
+    --color-primary: #2563EB;
+    --color-primary-hover: #1D4ED8;
+    --color-primary-soft: #EFF6FF;
+    --color-primary-foreground: #FFFFFF;
+  }
+
+  /* Theme 2 — Indigo */
+  [data-color-theme="indigo"] {
+    --color-primary: #4F46E5;
+    --color-primary-hover: #4338CA;
+    --color-primary-soft: #EEF2FF;
+    --color-primary-foreground: #FFFFFF;
+  }
+
+  /* Theme 3 — Emerald */
+  [data-color-theme="emerald"] {
+    --color-primary: #059669;
+    --color-primary-hover: #047857;
+    --color-primary-soft: #ECFDF5;
+    --color-primary-foreground: #FFFFFF;
+  }
+
+  /* Theme 4 — Violet */
+  [data-color-theme="violet"] {
+    --color-primary: #7C3AED;
+    --color-primary-hover: #6D28D9;
+    --color-primary-soft: #F5F3FF;
+    --color-primary-foreground: #FFFFFF;
+  }
+
+  /* Theme 5 — Rose */
+  [data-color-theme="rose"] {
+    --color-primary: #E11D48;
+    --color-primary-hover: #BE123C;
+    --color-primary-soft: #FFF1F2;
+    --color-primary-foreground: #FFFFFF;
   }
 
   .dark {
     color-scheme: dark;
-    --bg-main: #0B0F19;
-    --bg-surface: #131C2E;
-    --bg-elevated: #1A263D;
+    --bg-main: #0B1120;
+    --bg-surface: #111827;
+    --bg-elevated: #172033;
     --border-color: #263449;
     --text-main: #F8FAFC;
     --text-muted: #94A3B8;
+  }
+
+  /* Dark mode soft tinted backgrounds */
+  .dark[data-color-theme="royal-blue"], .dark [data-color-theme="royal-blue"] {
+    --color-primary-soft: rgba(37, 99, 235, 0.18);
+  }
+  .dark[data-color-theme="indigo"], .dark [data-color-theme="indigo"] {
+    --color-primary-soft: rgba(79, 70, 229, 0.18);
+  }
+  .dark[data-color-theme="emerald"], .dark [data-color-theme="emerald"] {
+    --color-primary-soft: rgba(5, 150, 105, 0.18);
+  }
+  .dark[data-color-theme="violet"], .dark [data-color-theme="violet"] {
+    --color-primary-soft: rgba(124, 58, 237, 0.18);
+  }
+  .dark[data-color-theme="rose"], .dark [data-color-theme="rose"] {
+    --color-primary-soft: rgba(225, 29, 72, 0.18);
   }
 
   html {
@@ -30,19 +104,20 @@
   body {
     background-color: var(--bg-main);
     color: var(--text-main);
-    font-family: 'Inter', 'Koh Santepheap', 'Suwannaphum', system-ui, -apple-system, sans-serif;
+    font-family: var(--font-english, 'Inter'), var(--font-khmer, 'Koh Santepheap'), system-ui, -apple-system, sans-serif;
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
 
   :lang(km) {
+    font-family: var(--font-khmer, 'Koh Santepheap'), var(--font-english, 'Inter'), system-ui, sans-serif;
     line-height: 1.65;
   }
 
   /* Accessible focus indicators */
   :focus-visible {
-    outline: 2px solid #2563EB;
+    outline: 2px solid var(--color-primary, #2563EB);
     outline-offset: 2px;
   }
 

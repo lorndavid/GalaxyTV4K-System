@@ -12,6 +12,9 @@ import { ScanPage } from './pages/ScanPage';
 import { LeaveRequestPage } from './pages/LeaveRequestPage';
 import { OutRequestPage } from './pages/OutRequestPage';
 import { ProfilePage } from './pages/ProfilePage';
+import { SettingsPage } from './pages/SettingsPage';
+import { AppearancePage } from './pages/AppearancePage';
+import { TypographyPage } from './pages/TypographyPage';
 import { LocationPrivacyPage } from './pages/LocationPrivacyPage';
 
 const queryClient = new QueryClient({
@@ -46,6 +49,9 @@ export const App: React.FC = () => {
                   <Route path="out" element={<OutRequestPage />} />
                   <Route path="out/new" element={<OutRequestPage />} />
                   <Route path="profile" element={<ProfilePage />} />
+                  <Route path="settings" element={<SettingsPage />} />
+                  <Route path="settings/appearance" element={<AppearancePage />} />
+                  <Route path="settings/typography" element={<TypographyPage />} />
                   <Route path="location-privacy" element={<LocationPrivacyPage />} />
                 </Route>
 
