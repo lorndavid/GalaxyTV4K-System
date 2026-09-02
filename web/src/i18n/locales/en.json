@@ -1,0 +1,56 @@
+{
+  "common": {
+    "home": "Home",
+    "attendance": "Attendance",
+    "leave": "Leave",
+    "out": "Out Permission",
+    "profile": "Profile",
+    "locationPrivacy": "Location & Privacy",
+    "signOut": "Sign Out",
+    "cancel": "Cancel",
+    "submit": "Submit Request",
+    "loading": "Loading...",
+    "language": "Language",
+    "theme": "Theme"
+  },
+  "home": {
+    "greeting": "Good morning",
+    "todayShift": "Today's Shift",
+    "notCheckedIn": "Not Checked In",
+    "checkedInAt": "Checked In at",
+    "shiftCompleted": "Shift Completed",
+    "scanToPunch": "SCAN QR TO CHECK IN",
+    "scanToCheckOut": "SCAN QR TO CHECK OUT",
+    "timeWorked": "Time Worked Today",
+    "selfService": "Self-Service Portals",
+    "applyLeave": "Apply Leave",
+    "applyLeaveDesc": "Time off requests",
+    "outPermission": "Out Permission",
+    "outPermissionDesc": "Temporary departure during shift",
+    "locationSharing": "Location Sharing"
+  },
+  "auth": {
+    "welcome": "Galaxy TV4K Attendance Portal",
+    "subtitle": "Sign in with your work email to record attendance and access self-service features.",
+    "emailLabel": "Work Email",
+    "passwordLabel": "Password",
+    "signInBtn": "Sign In to Account"
+  },
+  "status": {
+    "PRESENT": "Present",
+    "LATE": "Late",
+    "ABSENT": "Absent",
+    "EARLY_LEAVE": "Early Leave",
+    "ON_LEAVE": "On Leave",
+    "HOLIDAY": "Holiday",
+    "REST_DAY": "Rest Day",
+    "PENDING": "Pending",
+    "APPROVED": "Approved",
+    "REJECTED": "Rejected",
+    "INSIDE_OFFICE": "Inside Office",
+    "OUTSIDE_OFFICE": "Outside Office",
+    "LOCATION_INACTIVE": "Location Inactive",
+    "LOCATION_STALE": "Location Stale",
+    "LOCATION_UNRELIABLE": "Low Accuracy"
+  }
+}

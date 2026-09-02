@@ -1,0 +1,22 @@
+{
+  "name": "system-hr-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Production-Ready Employee Attendance & HR Management System",
+  "scripts": {
+    "dev:backend": "npm --prefix backend run dev",
+    "dev:admin": "npm --prefix admin run dev",
+    "dev:web": "npm --prefix web run dev",
+    "build": "npm --prefix backend run build && npm --prefix admin run build && npm --prefix web run build",
+    "test": "npm --prefix backend run test",
+    "test:unit": "npm --prefix backend run test",
+    "test:integration": "npm --prefix backend run test",
+    "test:e2e": "npm --prefix backend run test",
+    "lint": "npm --prefix backend run lint && npm --prefix admin run lint && npm --prefix web run lint",
+    "db:migrate": "npm --prefix backend run db:migrate",
+    "db:seed": "npm --prefix backend run db:seed"
+  },
+  "keywords": ["attendance", "hr-management", "geofencing", "qr-attendance"],
+  "author": "Antigravity Engineering",
+  "license": "MIT"
+}

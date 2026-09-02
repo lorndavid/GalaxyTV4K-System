@@ -1,0 +1,56 @@
+{
+  "common": {
+    "home": "ទំព័រដើម",
+    "attendance": "វត្តមាន",
+    "leave": "សុំច្បាប់",
+    "out": "ចេញក្រៅ",
+    "profile": "គណនី",
+    "locationPrivacy": "ទីតាំង និងភាពឯកជន",
+    "signOut": "ចាកចេញ",
+    "cancel": "បោះបង់",
+    "submit": "ដាក់សំណើ",
+    "loading": "កំពុងដំណើរការ...",
+    "language": "ភាសា",
+    "theme": "ស្បែកផ្ទៃ"
+  },
+  "home": {
+    "greeting": "អរុណសួស្តី",
+    "todayShift": "វេនការងារថ្ងៃនេះ",
+    "notCheckedIn": "មិនទាន់ស្កេនចូល",
+    "checkedInAt": "បានស្កេនចូលនៅម៉ោង",
+    "shiftCompleted": "បានបញ្ចប់ការងារថ្ងៃនេះ",
+    "scanToPunch": "ស្កេន QR ដើម្បីចូលធ្វើការ",
+    "scanToCheckOut": "ស្កេន QR ដើម្បីចេញពីការងារ",
+    "timeWorked": "ម៉ោងបំពេញការងារសរុប",
+    "selfService": "សេវាកម្មស្វ័យប្រវត្តិ",
+    "applyLeave": "ស្នើសុំច្បាប់ឈប់",
+    "applyLeaveDesc": "សុំច្បាប់ឈប់សម្រាកប្រចាំឆ្នាំ",
+    "outPermission": "សុំអនុញ្ញាតចេញក្រៅ",
+    "outPermissionDesc": "សុំចេញក្រៅបណ្តោះអាសន្ន",
+    "locationSharing": "ការចែករំលែកទីតាំង"
+  },
+  "auth": {
+    "welcome": "ប្រព័ន្ធកត់ត្រាវត្តមាន Galaxy TV4K",
+    "subtitle": "ចូលដោយប្រើអ៊ីមែលការងាររបស់អ្នកដើម្បីកត់ត្រាវត្តមាន និងប្រើប្រាស់សេវាកម្មបុគ្គលិក។",
+    "emailLabel": "អ៊ីមែលការងារ",
+    "passwordLabel": "ពាក្យសម្ងាត់",
+    "signInBtn": "ចូលក្នុងគណនី"
+  },
+  "status": {
+    "PRESENT": "មានវត្តមាន",
+    "LATE": "មកយឺត",
+    "ABSENT": "អវត្តមាន",
+    "EARLY_LEAVE": "ចេញមុនម៉ោង",
+    "ON_LEAVE": "កំពុងឈប់ច្បាប់",
+    "HOLIDAY": "ថ្ងៃបុណ្យ",
+    "REST_DAY": "ថ្ងៃសម្រាក",
+    "PENDING": "កំពុងរង់ចាំ",
+    "APPROVED": "បានអនុម័ត",
+    "REJECTED": "ត្រូវបានបដិសេធ",
+    "INSIDE_OFFICE": "នៅក្នុងការិយាល័យ",
+    "OUTSIDE_OFFICE": "នៅក្រៅការិយាល័យ",
+    "LOCATION_INACTIVE": "មិនបានបើកទីតាំង",
+    "LOCATION_STALE": "ទិន្នន័យចាស់",
+    "LOCATION_UNRELIABLE": "ភាពជាក់លាក់ទាប"
+  }
+}
