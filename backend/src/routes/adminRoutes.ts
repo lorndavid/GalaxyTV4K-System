@@ -23,7 +23,8 @@ router.get('/employees', AdminController.getEmployees);
 router.post('/employees', AdminController.createEmployee);
 router.get('/employees/:id', AdminController.getEmployeeById);
 router.patch('/employees/:id', AdminController.updateEmployee);
-router.post('/employees/:id/reset-password', AdminController.resetEmployeePassword);
+router.put('/employees/:id', AdminController.updateEmployee);
+router.post('/employees/:id/reset-password', AdminController.resetPassword);
 
 // Departments
 router.get('/departments', AdminController.getDepartments);

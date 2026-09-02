@@ -31,6 +31,28 @@
     "language": "Language",
     "theme": "Theme"
   },
+  "employees": {
+    "title": "Employee Directory",
+    "subtitle": "Manage staff profiles, specializations, schedules, and account access",
+    "addEmployee": "Add Employee",
+    "editEmployee": "Edit Employee",
+    "khmerName": "Khmer Name",
+    "latinName": "Latin Name",
+    "gender": "Gender",
+    "skill": "Skill / Specialization",
+    "studyDay": "Study Days / Shift",
+    "phone": "Phone Number",
+    "position": "Role / Position",
+    "department": "Department",
+    "schedule": "Schedule",
+    "code": "Employee Code",
+    "email": "Email Address",
+    "password": "Initial Password",
+    "male": "Male",
+    "female": "Female",
+    "other": "Other",
+    "resetPassword": "Reset Password"
+  },
   "auth": {
     "adminPortal": "Admin Portal",
     "welcomeBack": "Welcome back! Enter your credentials to manage attendance and HR operations.",

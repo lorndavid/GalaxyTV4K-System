@@ -5,9 +5,14 @@ import { apiClient } from '../api/client';
 export interface EmployeeProfile {
   id: string;
   employeeCode: string;
-  firstName: string;
-  lastName: string;
+  firstName?: string;
+  lastName?: string;
   displayName: string;
+  khmerName?: string;
+  latinName?: string;
+  gender?: string;
+  skill?: string;
+  studyDay?: string;
   email: string;
   phone?: string;
   position: string;

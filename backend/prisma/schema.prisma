@@ -122,14 +122,19 @@ model User {
 model Employee {
   id                      String              @id @default(uuid())
   employeeCode            String              @unique
-  firstName               String
-  lastName                String
+  firstName               String              @default("")
+  lastName                String              @default("")
   displayName             String
+  khmerName               String?
+  latinName               String?
+  gender                  String?
+  skill                   String?
+  studyDay                String?
   email                   String              @unique
   phone                   String?
   profilePhoto            String?
-  position                String
-  hireDate                DateTime
+  position                String              @default("Staff")
+  hireDate                DateTime            @default(now())
   status                  EmployeeStatus      @default(ACTIVE)
   department              Department?         @relation(fields: [departmentId], references: [id], onDelete: SetNull)
   departmentId            String?
