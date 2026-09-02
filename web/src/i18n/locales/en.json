@@ -188,5 +188,20 @@
     "LOCATION_STALE": "Location Stale",
     "LOCATION_UNRELIABLE": "Low Accuracy",
     "NOT_RECORDED": "Not Recorded"
+  },
+  "pwa": {
+    "title": "New update available",
+    "subtitle": "A new version of the app is ready. Update now for the latest features and improvements.",
+    "updateNow": "Update now",
+    "later": "Later",
+    "updating": "Updating application...",
+    "downloading": "Downloading update...",
+    "installing": "Installing update...",
+    "activating": "Finishing activation...",
+    "complete": "App updated! Refreshing...",
+    "failed": "Update couldn't be completed.",
+    "checkUpdates": "Check for updates",
+    "checking": "Checking for updates...",
+    "upToDate": "You are using the latest version."
   }
 }

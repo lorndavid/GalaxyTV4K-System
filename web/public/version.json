@@ -1,0 +1,10 @@
+{
+  "version": "1.1.0",
+  "build": "20260903.01",
+  "releaseDate": "2026-09-03",
+  "releaseNotes": [
+    "Production PWA auto-update notification system",
+    "Universal camera QR scanner with automatic fallback",
+    "Redesigned Employee Profile & Settings with 5 color themes"
+  ]
+}

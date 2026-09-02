@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
 import { usePreferences } from '../contexts/PreferencesContext';
+import { usePwaUpdate } from '../contexts/PwaUpdateContext';
+import { useToast } from '../components/ui/Toast';
 import { SettingsSection } from '../components/settings/SettingsSection';
 import { SettingsRow } from '../components/settings/SettingsRow';
 import { ConfirmationModal } from '../components/settings/ConfirmationModal';
@@ -21,12 +23,23 @@ import {
   ChevronLeft,
   FileText,
   Lock,
+  RefreshCw,
 } from 'lucide-react';
 
 export const SettingsPage: React.FC = () => {
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
   const { logout } = useAuth();
+  const { showToast } = useToast();
+  const {
+    currentVersion,
+    updateAvailable,
+    updateStage,
+    checkForPwaUpdate,
+    performUpdate,
+  } = usePwaUpdate();
+
+  const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
   const {
     theme,
     currentColor,
@@ -63,6 +76,18 @@ export const SettingsPage: React.FC = () => {
       navigate('/login');
     } finally {
       setIsLoggingOut(false);
+    }
+  };
+
+  const handleCheckUpdates = async () => {
+    setIsCheckingUpdate(true);
+    try {
+      const hasUpdate = await checkForPwaUpdate();
+      if (!hasUpdate) {
+        showToast(t('pwa.upToDate', 'You are using the latest version.'));
+      }
+    } finally {
+      setIsCheckingUpdate(false);
     }
   };
 
@@ -202,8 +227,41 @@ export const SettingsPage: React.FC = () => {
           icon={Info}
           title={t('profile.appVersion', 'App Version')}
           description="Galaxy TV4K HR PWA"
-          value="v1.0.0 (Production)"
+          value={`v${currentVersion}`}
           showChevron={false}
+        />
+
+        <SettingsRow
+          icon={RefreshCw}
+          title={t('pwa.checkUpdates', 'Check for updates')}
+          description={
+            isCheckingUpdate
+              ? t('pwa.checking', 'Checking for updates...')
+              : updateAvailable
+              ? t('pwa.title', 'New update available')
+              : t('pwa.upToDate', 'You are using the latest version.')
+          }
+          value={
+            updateAvailable ? (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  performUpdate();
+                }}
+                disabled={updateStage === 'DOWNLOADING' || updateStage === 'INSTALLING'}
+                className="px-2.5 py-1 rounded-lg text-[11px] font-semibold text-white transition-opacity active:scale-95"
+                style={{ backgroundColor: 'var(--color-primary, #2563EB)' }}
+              >
+                {t('pwa.updateNow', 'Update now')}
+              </button>
+            ) : isCheckingUpdate ? (
+              <span className="text-[11px] text-slate-400 font-medium">Checking...</span>
+            ) : (
+              'Check'
+            )
+          }
+          onClick={handleCheckUpdates}
         />
 
         <SettingsRow

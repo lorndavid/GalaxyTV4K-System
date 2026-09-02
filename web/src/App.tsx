@@ -16,6 +16,8 @@ import { SettingsPage } from './pages/SettingsPage';
 import { AppearancePage } from './pages/AppearancePage';
 import { TypographyPage } from './pages/TypographyPage';
 import { LocationPrivacyPage } from './pages/LocationPrivacyPage';
+import { PwaUpdateProvider } from './contexts/PwaUpdateContext';
+import { PwaUpdateNotification } from './components/pwa/PwaUpdateNotification';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -34,30 +36,33 @@ export const App: React.FC = () => {
       <ThemeProvider>
         <AuthProvider>
           <ToastProvider>
-            <BrowserRouter>
-              <Routes>
-                <Route path="/login" element={<LoginPage />} />
+            <PwaUpdateProvider>
+              <BrowserRouter>
+                <PwaUpdateNotification />
+                <Routes>
+                  <Route path="/login" element={<LoginPage />} />
 
-                <Route path="/" element={<EmployeeLayout />}>
-                  <Route index element={<HomePage />} />
-                  <Route path="home" element={<HomePage />} />
-                  <Route path="attendance" element={<AttendanceCalendarPage />} />
-                  <Route path="attendance/scan" element={<ScanPage />} />
-                  <Route path="scan" element={<ScanPage />} />
-                  <Route path="leave" element={<LeaveRequestPage />} />
-                  <Route path="leave/new" element={<LeaveRequestPage />} />
-                  <Route path="out" element={<OutRequestPage />} />
-                  <Route path="out/new" element={<OutRequestPage />} />
-                  <Route path="profile" element={<ProfilePage />} />
-                  <Route path="settings" element={<SettingsPage />} />
-                  <Route path="settings/appearance" element={<AppearancePage />} />
-                  <Route path="settings/typography" element={<TypographyPage />} />
-                  <Route path="location-privacy" element={<LocationPrivacyPage />} />
-                </Route>
+                  <Route path="/" element={<EmployeeLayout />}>
+                    <Route index element={<HomePage />} />
+                    <Route path="home" element={<HomePage />} />
+                    <Route path="attendance" element={<AttendanceCalendarPage />} />
+                    <Route path="attendance/scan" element={<ScanPage />} />
+                    <Route path="scan" element={<ScanPage />} />
+                    <Route path="leave" element={<LeaveRequestPage />} />
+                    <Route path="leave/new" element={<LeaveRequestPage />} />
+                    <Route path="out" element={<OutRequestPage />} />
+                    <Route path="out/new" element={<OutRequestPage />} />
+                    <Route path="profile" element={<ProfilePage />} />
+                    <Route path="settings" element={<SettingsPage />} />
+                    <Route path="settings/appearance" element={<AppearancePage />} />
+                    <Route path="settings/typography" element={<TypographyPage />} />
+                    <Route path="location-privacy" element={<LocationPrivacyPage />} />
+                  </Route>
 
-                <Route path="*" element={<Navigate to="/" replace />} />
-              </Routes>
-            </BrowserRouter>
+                  <Route path="*" element={<Navigate to="/" replace />} />
+                </Routes>
+              </BrowserRouter>
+            </PwaUpdateProvider>
           </ToastProvider>
         </AuthProvider>
       </ThemeProvider>

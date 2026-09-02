@@ -31,6 +31,25 @@ server {
         proxy_cache_bypass $http_upgrade;
     }
 
+    # PWA Service Worker, Manifest, and Version Metadata - Never cache
+    location ~* (sw\.js|registerSW\.js|manifest\.webmanifest|version\.json)$ {
+        add_header Cache-Control "no-cache, no-store, must-revalidate";
+        add_header Pragma "no-cache";
+        add_header Expires "0";
+    }
+
+    # HTML App Shell - Always revalidate
+    location ~* \.html$ {
+        add_header Cache-Control "no-cache, no-store, must-revalidate";
+        add_header Pragma "no-cache";
+        add_header Expires "0";
+    }
+
+    # Hashed Static Assets - 1 year immutable cache
+    location /assets/ {
+        add_header Cache-Control "public, max-age=31536000, immutable";
+    }
+
     location / {
         try_files $uri $uri/ /index.html;
     }
