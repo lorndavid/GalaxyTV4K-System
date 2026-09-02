@@ -1,5 +1,5 @@
-import React from 'react';
-import { useQuery } from '@tanstack/react-query';
+import React, { useState, useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import apiClient from '../api/client';
@@ -9,6 +9,7 @@ import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
 import { Skeleton } from '../components/ui/Skeleton';
 import { EmptyState } from '../components/ui/EmptyState';
+import { useToast } from '../components/ui/Toast';
 import {
   Users,
   CheckCircle2,
@@ -18,6 +19,7 @@ import {
   QrCode,
   ArrowUpRight,
   TrendingUp,
+  Radio,
 } from 'lucide-react';
 
 interface DashboardMetrics {
@@ -47,8 +49,11 @@ interface DashboardMetrics {
 }
 
 export const DashboardPage: React.FC = () => {
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
   const { t, i18n } = useTranslation();
   const currentLang = i18n.language || 'km';
+  const [isLiveConnected, setIsLiveConnected] = useState<boolean>(false);
 
   const { data, isLoading } = useQuery<DashboardMetrics>({
     queryKey: ['adminDashboard'],
@@ -56,8 +61,49 @@ export const DashboardPage: React.FC = () => {
       const res = await apiClient.get('/admin/dashboard');
       return res.data.data;
     },
-    refetchInterval: 10000,
+    refetchInterval: 15000,
   });
+
+  // Real-time SSE Live Attendance Stream Subscription
+  useEffect(() => {
+    const token = localStorage.getItem('system_hr_token');
+    let eventSource: EventSource | null = null;
+
+    try {
+      eventSource = new EventSource(
+        `/api/admin/attendance/stream${token ? `?token=${encodeURIComponent(token)}` : ''}`
+      );
+
+      eventSource.onopen = () => {
+        setIsLiveConnected(true);
+      };
+
+      eventSource.onmessage = (e) => {
+        try {
+          const payload = JSON.parse(e.data);
+          if (payload.type === 'ATTENDANCE_RECORDED') {
+            // Instantly invalidate queries so live table updates without reload
+            queryClient.invalidateQueries({ queryKey: ['adminDashboard'] });
+            queryClient.invalidateQueries({ queryKey: ['adminAttendance'] });
+
+            const empName = payload.attendance?.employeeName || 'Employee';
+            const actionText = payload.action === 'CHECK_IN' ? 'checked in' : 'checked out';
+            showToast(`${empName} ${actionText} in real time!`);
+          }
+        } catch {}
+      };
+
+      eventSource.onerror = () => {
+        setIsLiveConnected(false);
+      };
+    } catch {}
+
+    return () => {
+      if (eventSource) {
+        eventSource.close();
+      }
+    };
+  }, [queryClient, showToast]);
 
   const currentDateFormatted = new Intl.DateTimeFormat(currentLang === 'km' ? 'km-KH' : 'en-US', {
     weekday: 'long',
@@ -81,9 +127,17 @@ export const DashboardPage: React.FC = () => {
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">
-            {t('common.dashboard')}
-          </h1>
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">
+              {t('common.dashboard')}
+            </h1>
+            {isLiveConnected && (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
+                Live
+              </span>
+            )}
+          </div>
           <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5">
             {currentDateFormatted}
           </p>

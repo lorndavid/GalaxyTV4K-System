@@ -72,12 +72,12 @@ export const BottomNav: React.FC = () => {
                   isActive ? 'ring-2 ring-brand-500 ring-offset-2 scale-105 shadow-brand-500/40 shadow-xl' : ''
                 }`
               }
-              aria-label="Open Camera QR Scanner"
+              aria-label="Scan attendance QR code"
             >
               <QrCode className="w-7 h-7 stroke-[2.2px]" />
             </NavLink>
             <span className="text-[10px] font-semibold text-slate-700 dark:text-slate-300 mt-0.5">
-              QR Scan
+              {t('common.qrScan', 'QR Scan')}
             </span>
           </div>
 

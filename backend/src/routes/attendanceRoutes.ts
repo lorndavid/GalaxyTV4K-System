@@ -6,6 +6,9 @@ const router = Router();
 
 router.use(authenticate);
 
+// Live attendance real-time stream
+router.get('/stream', AttendanceController.stream);
+
 // Employee scan endpoint (supports /scan and /record)
 router.post('/scan', requireEmployee, AttendanceController.scan);
 router.post('/record', requireEmployee, AttendanceController.scan);

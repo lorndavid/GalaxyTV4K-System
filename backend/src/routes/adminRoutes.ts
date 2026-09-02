@@ -9,11 +9,15 @@ import { ScheduleController } from '../controllers/scheduleController.js';
 import { HolidayController } from '../controllers/holidayController.js';
 import { AuditController } from '../controllers/auditController.js';
 import { TelegramController } from '../controllers/telegramController.js';
+import { AttendanceController } from '../controllers/attendanceController.js';
 import { authenticate, requireAdmin } from '../middlewares/auth.js';
 
 const router = Router();
 
 router.use(authenticate, requireAdmin);
+
+// Live Attendance Stream
+router.get('/attendance/stream', AttendanceController.stream);
 
 // Dashboard
 router.get('/dashboard', AdminController.getDashboard);
@@ -51,15 +55,16 @@ router.get('/settings', SettingsController.getSettings);
 router.patch('/settings', SettingsController.updateSettings);
 router.put('/settings', SettingsController.updateSettings);
 
-// QR Management
-router.get(['/qr/active', '/qr/current'], QrController.getCurrent);
-router.get('/qr/list', QrController.list);
-router.post('/qr/create', QrController.create);
-router.post('/qr/generate', QrController.generate);
-router.post('/qr/regenerate', QrController.regenerate);
-router.post('/qr/revoke', QrController.revoke);
-router.patch('/qr/:id/deactivate', QrController.deactivate);
-router.delete('/qr/:id', QrController.delete);
+// QR Management (supports /qr and /attendance-qr aliases)
+router.get(['/qr/active', '/qr/current', '/attendance-qr/active'], QrController.getCurrent);
+router.get(['/qr/list', '/attendance-qr'], QrController.list);
+router.post(['/qr/create', '/attendance-qr'], QrController.create);
+router.post(['/qr/generate', '/attendance-qr/generate'], QrController.generate);
+router.post(['/qr/regenerate', '/attendance-qr/regenerate'], QrController.regenerate);
+router.post(['/qr/revoke', '/attendance-qr/revoke'], QrController.revoke);
+router.post(['/qr/:id/deactivate', '/attendance-qr/:id/deactivate'], QrController.deactivate);
+router.patch(['/qr/:id/deactivate', '/attendance-qr/:id/deactivate'], QrController.deactivate);
+router.delete(['/qr/:id', '/attendance-qr/:id'], QrController.delete);
 
 // Reports
 router.get('/reports/summary', ReportController.getAttendanceSummary);

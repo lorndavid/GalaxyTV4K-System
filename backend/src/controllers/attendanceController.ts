@@ -231,4 +231,11 @@ export class AttendanceController {
       );
     }
   }
+
+  /**
+   * Real-time Server-Sent Events (SSE) Live Attendance Stream
+   */
+  static stream(_req: AuthenticatedRequest, res: Response) {
+    AttendanceService.registerAttendanceSSEClient(res);
+  }
 }

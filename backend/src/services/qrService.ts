@@ -79,6 +79,12 @@ export class QrService {
       const newSession = await tx.qrSession.create({
         data: {
           tokenHash,
+          name,
+          date,
+          validFrom,
+          validUntil,
+          officeName,
+          description,
           type,
           expiresAt,
           status,
@@ -220,17 +226,38 @@ export class QrService {
   /**
    * Lists QR sessions with filters.
    */
-  static async listQrSessions(filters: { status?: QrSessionStatus; date?: string; search?: string }) {
+  static async listQrSessions(filters: { status?: string; date?: string; search?: string }) {
     const where: any = {};
-    if (filters.status) where.status = filters.status;
+    if (filters.status && filters.status !== 'ALL') {
+      where.status = filters.status;
+    }
+    if (filters.date) {
+      where.date = filters.date;
+    }
+    if (filters.search) {
+      where.OR = [
+        { name: { contains: filters.search, mode: 'insensitive' } },
+        { officeName: { contains: filters.search, mode: 'insensitive' } },
+      ];
+    }
 
     const sessions = await prisma.qrSession.findMany({
       where,
       orderBy: { createdAt: 'desc' },
-      take: 50,
+      take: 100,
     });
 
-    return sessions;
+    const now = new Date();
+    return sessions.map((session) => {
+      let dynamicStatus = session.status;
+      if (session.status === QrSessionStatus.ACTIVE && session.expiresAt < now) {
+        dynamicStatus = QrSessionStatus.EXPIRED;
+      }
+      return {
+        ...session,
+        status: dynamicStatus,
+      };
+    });
   }
 
   /**

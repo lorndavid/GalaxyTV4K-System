@@ -72,10 +72,12 @@ enum QrSessionType {
 }
 
 enum QrSessionStatus {
+  SCHEDULED
   ACTIVE
   EXPIRED
   REVOKED
   USED
+  INACTIVE
 }
 
 enum LeaveType {
@@ -270,6 +272,12 @@ model LocationEvent {
 model QrSession {
   id          String          @id @default(uuid())
   tokenHash   String          @unique
+  name        String          @default("Main Office Attendance")
+  date        String?         // YYYY-MM-DD in company timezone
+  validFrom   String?         // Format "HH:mm" (e.g. 07:00)
+  validUntil  String?         // Format "HH:mm" (e.g. 18:00)
+  officeName  String?         @default("Main Office")
+  description String?
   type        QrSessionType   @default(ANY)
   expiresAt   DateTime
   revokedAt   DateTime?
@@ -283,6 +291,7 @@ model QrSession {
   @@index([tokenHash])
   @@index([status])
   @@index([expiresAt])
+  @@index([date])
 }
 
 model LeaveBalance {
