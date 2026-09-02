@@ -1,0 +1,85 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: system_hr_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ChangeThisStrongDbPassword2026}
+      POSTGRES_DB: ${POSTGRES_DB:-hr_attendance_db}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-hr_attendance_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "5"
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: ../docker/backend.Dockerfile
+    container_name: system_hr_backend
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PORT: 4000
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-ChangeThisStrongDbPassword2026}@postgres:5432/${POSTGRES_DB:-hr_attendance_db}?schema=public
+      JWT_SECRET: ${JWT_SECRET:-please_generate_random_64_character_secret_key_here}
+      JWT_EXPIRES_IN: 7d
+      CORS_ORIGINS: ${CORS_ORIGINS:-https://galaxytv.online,https://www.galaxytv.online,https://admin.galaxytv.online,https://api.galaxytv.online,http://localhost:5173,http://localhost:5174}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_ADMIN_CHAT_ID: ${TELEGRAM_ADMIN_CHAT_ID:-}
+    ports:
+      - "127.0.0.1:4000:4000"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "5"
+
+  admin:
+    build:
+      context: ./admin
+      dockerfile: ../docker/admin.Dockerfile
+    container_name: system_hr_admin
+    restart: always
+    depends_on:
+      - backend
+    ports:
+      - "127.0.0.1:5173:80"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  web:
+    build:
+      context: ./web
+      dockerfile: ../docker/web.Dockerfile
+    container_name: system_hr_web
+    restart: always
+    depends_on:
+      - backend
+    ports:
+      - "127.0.0.1:5174:80"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  postgres_data:
+    driver: local

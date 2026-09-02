@@ -1,0 +1,27 @@
+# =================================================================
+# Cloudflare Tunnel Configuration (cloudflared)
+# Location on Debian 12: ~/.cloudflared/config.yml or /etc/cloudflared/config.yml
+# =================================================================
+
+tunnel: YOUR_TUNNEL_UUID_HERE
+credentials-file: /root/.cloudflared/YOUR_TUNNEL_UUID_HERE.json
+
+ingress:
+  # 1. Main Employee Web App (PWA)
+  - hostname: galaxytv.online
+    service: http://127.0.0.1:5174
+
+  # 2. Main Employee Web App (www alias)
+  - hostname: www.galaxytv.online
+    service: http://127.0.0.1:5174
+
+  # 3. Super Admin & HR Management Portal
+  - hostname: admin.galaxytv.online
+    service: http://127.0.0.1:5173
+
+  # 4. Direct Backend REST API
+  - hostname: api.galaxytv.online
+    service: http://127.0.0.1:4000
+
+  # Catch-all rule (Mandatory 404 for unmatched traffic)
+  - service: http_status:404
