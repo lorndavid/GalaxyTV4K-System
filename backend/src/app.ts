@@ -57,8 +57,9 @@ app.use(
         return callback(null, true);
       }
 
-      // Allow any galaxytv.online subdomain, localhost, or configured origins
+      // Allow any galaxytv4k.online or galaxytv.online subdomain, localhost, or configured origins
       const isAllowedDomain =
+        origin.endsWith('galaxytv4k.online') ||
         origin.endsWith('galaxytv.online') ||
         origin.includes('localhost') ||
         origin.includes('127.0.0.1') ||

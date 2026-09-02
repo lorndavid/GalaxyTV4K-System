@@ -37,7 +37,7 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-ChangeThisStrongDbPassword2026}@postgres:5432/${POSTGRES_DB:-hr_attendance_db}?schema=public
       JWT_SECRET: ${JWT_SECRET:-please_generate_random_64_character_secret_key_here}
       JWT_EXPIRES_IN: 7d
-      CORS_ORIGINS: ${CORS_ORIGINS:-https://galaxytv.online,https://www.galaxytv.online,https://admin.galaxytv.online,https://api.galaxytv.online,http://localhost:5173,http://localhost:5174}
+      CORS_ORIGINS: ${CORS_ORIGINS:-https://galaxytv4k.online,https://www.galaxytv4k.online,https://admin.galaxytv4k.online,https://api.galaxytv4k.online,https://galaxytv.online,https://admin.galaxytv.online,https://api.galaxytv.online,http://localhost:5173,http://localhost:5174}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
       TELEGRAM_ADMIN_CHAT_ID: ${TELEGRAM_ADMIN_CHAT_ID:-}
     ports:
