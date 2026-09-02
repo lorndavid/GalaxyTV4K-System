@@ -19,11 +19,10 @@ import {
   SwitchCamera,
   UploadCloud,
   Smartphone,
-  Sparkles,
-  Zap,
+  Play,
 } from 'lucide-react';
 
-type ScanState = 'SCANNING' | 'VERIFYING' | 'SUCCESS' | 'ERROR' | 'PERMISSION_DENIED';
+type ScanState = 'SCANNING' | 'VERIFYING' | 'SUCCESS' | 'ERROR' | 'PERMISSION_DENIED' | 'NEEDS_GESTURE';
 
 export const ScanPage: React.FC = () => {
   const navigate = useNavigate();
@@ -42,6 +41,7 @@ export const ScanPage: React.FC = () => {
   const [successRecord, setSuccessRecord] = useState<any>(null);
   const [facingMode, setFacingMode] = useState<'environment' | 'user'>('environment');
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
+  const [isCameraActive, setIsCameraActive] = useState<boolean>(false);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -76,7 +76,7 @@ export const ScanPage: React.FC = () => {
     };
   }, []);
 
-  // 2. Camera Stream Management
+  // 2. Camera Stream Cleanup
   const stopCameraStream = useCallback(() => {
     if (animationFrameRef.current) {
       cancelAnimationFrame(animationFrameRef.current);
@@ -93,64 +93,22 @@ export const ScanPage: React.FC = () => {
     if (videoRef.current) {
       videoRef.current.srcObject = null;
     }
+    setIsCameraActive(false);
   }, []);
 
-  const startCamera = useCallback(async (currentFacing: 'environment' | 'user') => {
-    stopCameraStream();
-    setState('SCANNING');
-    setErrorMessage('');
-    setIsProcessing(false);
-
-    try {
-      const constraints: MediaStreamConstraints = {
-        audio: false,
-        video: {
-          facingMode: { ideal: currentFacing },
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-        },
-      };
-
-      let stream: MediaStream;
-      try {
-        stream = await navigator.mediaDevices.getUserMedia(constraints);
-      } catch (firstErr) {
-        // Fallback to basic video constraint without facingMode restriction (for webcams / desktop)
-        stream = await navigator.mediaDevices.getUserMedia({
-          audio: false,
-          video: true,
-        });
-      }
-
-      streamRef.current = stream;
-
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        videoRef.current.setAttribute('playsinline', 'true');
-        videoRef.current.setAttribute('webkit-playsinline', 'true');
-        videoRef.current.muted = true;
-        await videoRef.current.play();
-        startScanLoop();
-      }
-    } catch (err: any) {
-      console.error('Camera initialization failed:', err);
-      if (err.name === 'NotAllowedError' || String(err).includes('Permission')) {
-        setState('PERMISSION_DENIED');
-        setErrorMessage('Camera access was denied. Please allow camera permissions in Safari / Chrome settings.');
-      } else {
-        setState('ERROR');
-        setErrorMessage(err.message || 'Unable to access camera on this device.');
-      }
-    }
-  }, [stopCameraStream]);
-
-  // 3. Scan Loop with Native BarcodeDetector + jsQR fallback
-  const startScanLoop = () => {
+  // 3. Scan Loop
+  const startScanLoop = useCallback(() => {
     const scanFrame = async () => {
       const video = videoRef.current;
       const canvas = canvasRef.current;
 
-      if (!video || !canvas || video.readyState !== video.HAVE_ENOUGH_DATA || isProcessing) {
+      if (!video || !canvas || isProcessing) {
+        animationFrameRef.current = requestAnimationFrame(scanFrame);
+        return;
+      }
+
+      // Check readyState and video dimensions to avoid iOS/Android crashes
+      if (video.readyState < 2 || video.videoWidth === 0 || video.videoHeight === 0) {
         animationFrameRef.current = requestAnimationFrame(scanFrame);
         return;
       }
@@ -158,47 +116,44 @@ export const ScanPage: React.FC = () => {
       const width = video.videoWidth;
       const height = video.videoHeight;
 
-      if (width === 0 || height === 0) {
-        animationFrameRef.current = requestAnimationFrame(scanFrame);
-        return;
-      }
-
       canvas.width = width;
       canvas.height = height;
       const ctx = canvas.getContext('2d', { willReadFrequently: true });
 
       if (ctx) {
-        ctx.drawImage(video, 0, 0, width, height);
+        try {
+          ctx.drawImage(video, 0, 0, width, height);
 
-        let decodedData: string | null = null;
+          let decodedData: string | null = null;
 
-        // Try Native BarcodeDetector (iOS 17+, Chrome Android)
-        if ('BarcodeDetector' in window) {
-          try {
-            const barcodeDetector = new (window as any).BarcodeDetector({ formats: ['qr_code'] });
-            const barcodes = await barcodeDetector.detect(canvas);
-            if (barcodes && barcodes.length > 0) {
-              decodedData = barcodes[0].rawValue;
+          // Native BarcodeDetector (Chrome Android + iOS Safari 17+)
+          if ('BarcodeDetector' in window) {
+            try {
+              const barcodeDetector = new (window as any).BarcodeDetector({ formats: ['qr_code'] });
+              const barcodes = await barcodeDetector.detect(canvas);
+              if (barcodes && barcodes.length > 0) {
+                decodedData = barcodes[0].rawValue;
+              }
+            } catch {}
+          }
+
+          // Fallback jsQR
+          if (!decodedData) {
+            const imageData = ctx.getImageData(0, 0, width, height);
+            const code = jsQR(imageData.data, imageData.width, imageData.height, {
+              inversionAttempts: 'attemptBoth',
+            });
+            if (code && code.data) {
+              decodedData = code.data;
             }
-          } catch {
-            // Fall through to jsQR
           }
-        }
 
-        // Fallback to jsQR
-        if (!decodedData) {
-          const imageData = ctx.getImageData(0, 0, width, height);
-          const code = jsQR(imageData.data, imageData.width, imageData.height, {
-            inversionAttempts: 'attemptBoth',
-          });
-          if (code && code.data) {
-            decodedData = code.data;
+          if (decodedData && decodedData.trim().length > 0) {
+            onQrDetected(decodedData.trim());
+            return;
           }
-        }
-
-        if (decodedData && decodedData.trim().length > 0) {
-          onQrDetected(decodedData.trim());
-          return; // Stop scan loop
+        } catch (e) {
+          // Frame read exception safeguard
         }
       }
 
@@ -206,9 +161,87 @@ export const ScanPage: React.FC = () => {
     };
 
     animationFrameRef.current = requestAnimationFrame(scanFrame);
-  };
+  }, [isProcessing]);
 
-  // 4. Handle QR Detection
+  // 4. Robust Camera Acquisition (Works on Android & iOS Safari)
+  const startCamera = useCallback(async (currentFacing: 'environment' | 'user') => {
+    stopCameraStream();
+    setState('SCANNING');
+    setErrorMessage('');
+    setIsProcessing(false);
+
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      setState('ERROR');
+      setErrorMessage('Camera is not supported on this browser. Please use Chrome or Safari.');
+      return;
+    }
+
+    let stream: MediaStream | null = null;
+
+    // Strategy 1: Ideal facingMode
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        audio: false,
+        video: { facingMode: { ideal: currentFacing } },
+      });
+    } catch (e1) {
+      // Strategy 2: Exact facingMode fallback
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          audio: false,
+          video: { facingMode: currentFacing },
+        });
+      } catch (e2) {
+        // Strategy 3: Universal video fallback
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({
+            audio: false,
+            video: true,
+          });
+        } catch (e3: any) {
+          console.error('All camera strategies failed:', e3);
+          if (e3.name === 'NotAllowedError' || String(e3).includes('Permission')) {
+            setState('PERMISSION_DENIED');
+            setErrorMessage('Camera access was denied. Please allow camera access in your browser or phone settings.');
+          } else {
+            setState('NEEDS_GESTURE');
+            setErrorMessage('Tap the button below to grant permission and activate the camera.');
+          }
+          return;
+        }
+      }
+    }
+
+    if (!stream) {
+      setState('NEEDS_GESTURE');
+      return;
+    }
+
+    streamRef.current = stream;
+
+    const video = videoRef.current;
+    if (video) {
+      video.muted = true;
+      (video as any).playsInline = true;
+      (video as any).webkitPlaysInline = true;
+      video.setAttribute('playsinline', 'true');
+      video.setAttribute('webkit-playsinline', 'true');
+      video.setAttribute('muted', 'true');
+      video.setAttribute('autoplay', 'true');
+      video.srcObject = stream;
+
+      try {
+        await video.play();
+        setIsCameraActive(true);
+        startScanLoop();
+      } catch (playErr: any) {
+        console.warn('Autoplay blocked by browser policy:', playErr);
+        setState('NEEDS_GESTURE');
+      }
+    }
+  }, [stopCameraStream, startScanLoop]);
+
+  // 5. Handle QR Detection
   const onQrDetected = async (decodedText: string) => {
     setIsProcessing(true);
 
@@ -254,13 +287,13 @@ export const ScanPage: React.FC = () => {
     } catch (err: any) {
       const errorMsg =
         err?.response?.data?.error?.message ||
-        'Attendance verification failed. Please ensure you are scanning an active Galaxy TV4K QR code inside the office.';
+        'Attendance verification failed. Please scan an active Galaxy TV4K QR code inside the office.';
       setErrorMessage(errorMsg);
       setState('ERROR');
     }
   };
 
-  // 5. Lifecycle hook
+  // 6. Lifecycle: Mount & Cleanup
   useEffect(() => {
     startCamera(facingMode);
     return () => {
@@ -268,13 +301,13 @@ export const ScanPage: React.FC = () => {
     };
   }, [facingMode, startCamera, stopCameraStream]);
 
-  // 6. Switch Camera
+  // 7. Toggle Front/Rear Camera
   const toggleFacingMode = () => {
     const nextMode = facingMode === 'environment' ? 'user' : 'environment';
     setFacingMode(nextMode);
   };
 
-  // 7. Image File Upload Fallback
+  // 8. Photo Upload Fallback
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -306,7 +339,6 @@ export const ScanPage: React.FC = () => {
 
   return (
     <div className="fixed inset-0 z-50 bg-black text-white flex flex-col justify-between overflow-hidden select-none font-sans">
-      {/* Hidden processing canvas */}
       <canvas ref={canvasRef} className="hidden" />
       <input
         type="file"
@@ -349,10 +381,15 @@ export const ScanPage: React.FC = () => {
         </button>
       </header>
 
-      {/* 2. Main Viewport */}
+      {/* 2. Main Camera Viewport */}
       <main className="flex-1 flex flex-col items-center justify-center p-4 relative z-10">
-        {/* Camera Video Surface */}
-        <div className={`relative w-72 h-72 sm:w-80 sm:h-80 rounded-3xl overflow-hidden bg-black/90 border-2 border-brand-500/80 shadow-2xl flex items-center justify-center ${state === 'SUCCESS' || state === 'ERROR' || state === 'PERMISSION_DENIED' ? 'hidden' : 'block'}`}>
+        <div
+          className={`relative w-72 h-72 sm:w-80 sm:h-80 rounded-3xl overflow-hidden bg-black/90 border-2 border-brand-500/80 shadow-2xl flex items-center justify-center ${
+            state === 'SUCCESS' || state === 'ERROR' || state === 'PERMISSION_DENIED' || state === 'NEEDS_GESTURE'
+              ? 'hidden'
+              : 'block'
+          }`}
+        >
           <video
             ref={videoRef}
             playsInline
@@ -361,13 +398,11 @@ export const ScanPage: React.FC = () => {
             className="w-full h-full object-cover"
           />
 
-          {/* Target HUD Viewfinder */}
+          {/* Viewfinder Target HUD */}
           {state === 'SCANNING' && (
             <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center p-4">
               <div className="relative w-56 h-56 border-2 border-brand-400/90 rounded-2xl shadow-[0_0_15px_rgba(59,130,246,0.5)]">
-                {/* Laser scan animation line */}
                 <div className="absolute left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-cyan-400 to-transparent shadow-[0_0_12px_#38bdf8] animate-scan-laser" />
-                {/* Target Corners */}
                 <div className="absolute -top-1 -left-1 w-4 h-4 border-t-2 border-l-2 border-brand-400" />
                 <div className="absolute -top-1 -right-1 w-4 h-4 border-t-2 border-r-2 border-brand-400" />
                 <div className="absolute -bottom-1 -left-1 w-4 h-4 border-b-2 border-l-2 border-brand-400" />
@@ -377,8 +412,34 @@ export const ScanPage: React.FC = () => {
           )}
         </div>
 
-        {/* State 1: Scanning Prompt */}
-        {state === 'SCANNING' && (
+        {/* State: Needs User Gesture (iOS / Android permissions) */}
+        {state === 'NEEDS_GESTURE' && (
+          <div className="bg-slate-900/95 backdrop-blur-xl border border-brand-500/40 p-6 rounded-3xl max-w-xs w-full text-center space-y-4 shadow-2xl animate-fade-in">
+            <div className="w-14 h-14 rounded-2xl bg-brand-500/20 border border-brand-500/40 text-brand-400 flex items-center justify-center mx-auto">
+              <Camera className="w-7 h-7" />
+            </div>
+
+            <div className="space-y-1">
+              <h3 className="text-base font-bold text-white">Camera Ready</h3>
+              <p className="text-xs text-slate-300 leading-relaxed">
+                Tap below to activate the camera on your device.
+              </p>
+            </div>
+
+            <Button
+              variant="primary"
+              size="lg"
+              className="w-full font-bold bg-brand-600 hover:bg-brand-700 h-12 text-sm"
+              icon={Play}
+              onClick={() => startCamera(facingMode)}
+            >
+              Start Camera (បើកកាមេរ៉ា)
+            </Button>
+          </div>
+        )}
+
+        {/* State: Scanning Prompt */}
+        {state === 'SCANNING' && isCameraActive && (
           <div className="text-center space-y-1 mt-4 max-w-xs animate-fade-in">
             <p className="text-xs font-bold text-white">
               Align Galaxy TV4K QR code inside the viewfinder
@@ -389,7 +450,7 @@ export const ScanPage: React.FC = () => {
           </div>
         )}
 
-        {/* State 2: Verifying */}
+        {/* State: Verifying */}
         {state === 'VERIFYING' && (
           <div className="bg-slate-900/95 backdrop-blur-xl border border-slate-700 p-6 rounded-3xl max-w-xs w-full text-center space-y-4 shadow-2xl animate-scale-in">
             <RefreshCw className="w-10 h-10 text-brand-400 animate-spin mx-auto" />
@@ -400,7 +461,7 @@ export const ScanPage: React.FC = () => {
           </div>
         )}
 
-        {/* State 3: Success Confirmation Card */}
+        {/* State: Success Confirmation Card */}
         {state === 'SUCCESS' && (
           <div className="bg-slate-900/95 backdrop-blur-xl border border-emerald-500/40 p-6 rounded-3xl max-w-xs w-full text-center space-y-5 shadow-2xl animate-slide-up">
             <div className="w-16 h-16 rounded-full bg-emerald-500/20 border-2 border-emerald-500/60 flex items-center justify-center text-emerald-400 mx-auto">
@@ -448,7 +509,7 @@ export const ScanPage: React.FC = () => {
           </div>
         )}
 
-        {/* State 4: Error & Permission Prompts */}
+        {/* State: Error & Permission Prompts */}
         {(state === 'ERROR' || state === 'PERMISSION_DENIED') && (
           <div className="bg-slate-900/95 backdrop-blur-xl border border-rose-500/40 p-6 rounded-3xl max-w-xs w-full text-center space-y-4 shadow-2xl animate-slide-up">
             <div className="w-14 h-14 rounded-2xl bg-rose-500/20 border border-rose-500/40 text-rose-400 flex items-center justify-center mx-auto">
