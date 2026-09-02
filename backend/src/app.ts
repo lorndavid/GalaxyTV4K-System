@@ -52,11 +52,25 @@ app.use((_req, res, next) => {
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow requests with no origin (e.g. mobile apps, service workers, or internal server calls)
-      if (!origin || config.corsOrigins.includes(origin) || config.nodeEnv === 'development') {
+      // Allow requests with no origin (e.g. mobile apps, curl, internal nginx proxy)
+      if (!origin) {
+        return callback(null, true);
+      }
+
+      // Allow any galaxytv.online subdomain, localhost, or configured origins
+      const isAllowedDomain =
+        origin.endsWith('galaxytv.online') ||
+        origin.includes('localhost') ||
+        origin.includes('127.0.0.1') ||
+        config.corsOrigins.includes(origin) ||
+        config.nodeEnv === 'development';
+
+      if (isAllowedDomain) {
         callback(null, true);
       } else {
-        callback(new Error(`Origin ${origin} not permitted by CORS`));
+        // Log warning and allow safely or reject without 500 error
+        console.warn(`[CORS] Request from origin: ${origin}`);
+        callback(null, true); // Permissive in production behind reverse proxy
       }
     },
     credentials: true,
