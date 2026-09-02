@@ -24,15 +24,20 @@
   }
 
   html {
-    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    font-feature-settings: "tnum"; /* Tabular numbers without slashed zero */
   }
 
   body {
     background-color: var(--bg-main);
     color: var(--text-main);
-    font-family: 'Koh Santepheap', 'Inter', 'Suwannaphum', system-ui, -apple-system, sans-serif;
+    font-family: 'Inter', 'Koh Santepheap', 'Suwannaphum', system-ui, -apple-system, sans-serif;
+    line-height: 1.5;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+  }
+
+  :lang(km) {
+    line-height: 1.65;
   }
 
   /* Accessible focus indicators */

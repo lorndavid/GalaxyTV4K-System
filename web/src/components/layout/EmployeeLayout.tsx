@@ -38,8 +38,8 @@ export const EmployeeLayout: React.FC = () => {
         )}
 
         {/* Top App Bar Header */}
-        <header className="h-14 bg-white/95 dark:bg-dark-surface/95 backdrop-blur-md border-b border-slate-100 dark:border-dark-border px-4 flex items-center justify-between sticky top-0 z-30 pt-[env(safe-area-inset-top)] transition-colors duration-150">
-          <div className="flex items-center gap-2.5 min-w-0">
+        <header className="min-h-14 py-2 bg-white/95 dark:bg-dark-surface/95 backdrop-blur-md border-b border-slate-100 dark:border-dark-border px-4 flex items-center justify-between sticky top-0 z-30 pt-[calc(env(safe-area-inset-top)+0.5rem)] transition-colors duration-150">
+          <div className="flex items-center gap-2.5 min-w-0 flex-1 pr-2">
             <div className="w-8 h-8 rounded-xl p-1 bg-slate-50 dark:bg-dark-elevated border border-slate-200/80 dark:border-dark-border flex items-center justify-center flex-shrink-0 shadow-xs">
               <img
                 src="/logo.png"
@@ -47,12 +47,14 @@ export const EmployeeLayout: React.FC = () => {
                 className="w-full h-full object-contain"
               />
             </div>
-            <div className="min-w-0">
-              <p className="text-xs font-bold text-slate-900 dark:text-slate-100 leading-tight truncate">
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-semibold text-slate-900 dark:text-slate-100 leading-tight truncate">
                 {employeeName}
               </p>
-              <p className="text-[10px] text-slate-400 font-mono font-medium truncate">
-                {employeeCode} • {departmentName}
+              <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-tight mt-0.5 break-words">
+                <span className="font-medium text-slate-600 dark:text-slate-300">{employeeCode}</span>
+                <span className="mx-1 text-slate-300 dark:text-slate-600">•</span>
+                <span>{departmentName}</span>
               </p>
             </div>
           </div>

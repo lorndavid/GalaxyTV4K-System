@@ -1,124 +1,156 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import apiClient from '../api/client';
+import { queryKeys } from '../lib/queryKeys';
 import { Card } from '../components/ui/Card';
-import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { Modal } from '../components/common/Modal';
 import { Skeleton } from '../components/ui/Skeleton';
 import { EmptyState } from '../components/ui/EmptyState';
 import {
-  Calendar,
-  Clock,
-  MapPin,
   ChevronLeft,
   ChevronRight,
+  Clock,
+  MapPin,
   ShieldCheck,
+  Calendar as CalendarIcon,
   CheckCircle2,
-  Clock3,
-  AlertCircle,
-  Hourglass,
+  AlertTriangle,
+  XCircle,
+  CalendarOff,
 } from 'lucide-react';
 
-interface AttendanceEntry {
+interface AttendanceRecord {
   id: string;
   date: string;
-  checkInAt: string | null;
-  checkOutAt: string | null;
+  checkInAt?: string | null;
+  checkOutAt?: string | null;
   status: string;
-  lateMinutes: number;
-  earlyLeaveMinutes: number;
-  workedMinutes: number;
-  checkInDistanceMeters?: number;
-  notes?: string;
+  lateMinutes?: number;
+  workedMinutes?: number;
+  checkInAccuracy?: number;
+  checkOutAccuracy?: number;
+  checkInLatitude?: number;
+  checkInLongitude?: number;
 }
 
 export const AttendanceCalendarPage: React.FC = () => {
-  const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [selectedEntry, setSelectedEntry] = useState<AttendanceEntry | null>(null);
+  const { t, i18n } = useTranslation();
+  const [currentDate, setCurrentDate] = useState(() => new Date());
+  const [selectedEntry, setSelectedEntry] = useState<AttendanceRecord | null>(null);
 
-  const year = currentMonth.getFullYear();
-  const month = currentMonth.getMonth() + 1;
+  const year = currentDate.getFullYear();
+  const month = currentDate.getMonth() + 1;
 
-  const { data: records, isLoading } = useQuery<AttendanceEntry[]>({
-    queryKey: ['myAttendance', year, month],
-    queryFn: async () => {
-      const res = await apiClient.get(`/attendance/my-history?year=${year}&month=${month}`);
-      const data = res.data.data;
-      return Array.isArray(data) ? data : data?.records || [];
-    },
-  });
-
-  const nextMonth = () => {
-    setCurrentMonth(new Date(year, month, 1));
-  };
-
-  const prevMonth = () => {
-    setCurrentMonth(new Date(year, month - 2, 1));
-  };
-
-  const monthLabel = currentMonth.toLocaleDateString('en-US', {
+  const currentLang = i18n.language || 'km';
+  const monthLabel = new Intl.DateTimeFormat(currentLang === 'km' ? 'km-KH' : 'en-US', {
     month: 'long',
     year: 'numeric',
+  }).format(currentDate);
+
+  const { data, isLoading } = useQuery<{ records: AttendanceRecord[] }>({
+    queryKey: queryKeys.attendance.history(year, month),
+    queryFn: async () => {
+      const res = await apiClient.get(`/attendance/my-history?year=${year}&month=${month}`);
+      return res.data.data;
+    },
+    staleTime: 60000,
   });
 
-  // Calculate summary counters
-  const presentCount = records?.filter((r) => r.status === 'PRESENT').length || 0;
-  const lateCount = records?.filter((r) => r.status === 'LATE').length || 0;
-  const absentCount = records?.filter((r) => r.status === 'ABSENT').length || 0;
-  const leaveCount = records?.filter((r) => r.status === 'ON_LEAVE').length || 0;
+  const records = data?.records || [];
+
+  const prevMonth = () => {
+    setCurrentDate(new Date(year, month - 2, 1));
+  };
+
+  const nextMonth = () => {
+    setCurrentDate(new Date(year, month, 1));
+  };
+
+  // KPI Calculations
+  const presentCount = records.filter((r) => r.status === 'PRESENT').length;
+  const lateCount = records.filter((r) => r.status === 'LATE').length;
+  const absentCount = records.filter((r) => r.status === 'ABSENT').length;
+  const leaveCount = records.filter((r) => r.status === 'ON_LEAVE').length;
 
   return (
-    <div className="space-y-4">
-      {/* Month Navigator Header */}
+    <div className="space-y-4 pb-4 animate-fade-in">
+      {/* Month Selector Bar */}
       <div className="flex items-center justify-between pt-1">
-        <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">Attendance Logs</h1>
+        <div>
+          <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">
+            {t('attendance.title', 'Attendance Logs')}
+          </h1>
+          <p className="text-xs text-slate-500 dark:text-slate-400 font-normal mt-0.5">
+            {t('attendance.subtitle', 'Monthly timesheet and work hours')}
+          </p>
+        </div>
 
-        <div className="flex items-center gap-1 bg-white dark:bg-dark-elevated border border-slate-200 dark:border-dark-border rounded-xl p-1 shadow-xs">
+        <div className="flex items-center bg-white dark:bg-dark-surface border border-slate-200/70 dark:border-dark-border rounded-xl p-1 shadow-xs">
           <button
             onClick={prevMonth}
-            className="p-1.5 text-slate-500 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-dark-surface rounded-lg transition-colors"
+            className="p-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-dark-elevated rounded-lg transition-colors"
             aria-label="Previous Month"
           >
-            <ChevronLeft className="w-4 h-4" />
+            <ChevronLeft className="w-4 h-4 stroke-[2]" />
           </button>
-          <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 px-2 min-w-[110px] text-center font-mono">
+          <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 px-2 min-w-[110px] text-center">
             {monthLabel}
           </span>
           <button
             onClick={nextMonth}
-            className="p-1.5 text-slate-500 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-dark-surface rounded-lg transition-colors"
+            className="p-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-dark-elevated rounded-lg transition-colors"
             aria-label="Next Month"
           >
-            <ChevronRight className="w-4 h-4" />
+            <ChevronRight className="w-4 h-4 stroke-[2]" />
           </button>
         </div>
       </div>
 
-      {/* Monthly KPI Summary */}
+      {/* Monthly KPI Summary Cards (Clean digits, no slashed zeros, consistent status colors) */}
       <div className="grid grid-cols-4 gap-2 text-center">
-        <Card padding="sm" className="space-y-0.5 border border-slate-200/80 dark:border-dark-border">
-          <span className="text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400 font-semibold block">Present</span>
-          <span className="text-base font-bold text-success-600 dark:text-success-400 font-mono">{presentCount}</span>
+        <Card padding="sm" className="space-y-1 p-3 border border-slate-100 dark:border-dark-border">
+          <span className="text-[11px] text-slate-500 dark:text-slate-400 font-normal block truncate">
+            {t('attendance.present', 'Present')}
+          </span>
+          <span className="text-lg font-bold text-emerald-600 dark:text-emerald-400 tabular-nums block">
+            {presentCount}
+          </span>
         </Card>
-        <Card padding="sm" className="space-y-0.5 border border-slate-200/80 dark:border-dark-border">
-          <span className="text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400 font-semibold block">Late</span>
-          <span className="text-base font-bold text-warning-600 dark:text-warning-400 font-mono">{lateCount}</span>
+
+        <Card padding="sm" className="space-y-1 p-3 border border-slate-100 dark:border-dark-border">
+          <span className="text-[11px] text-slate-500 dark:text-slate-400 font-normal block truncate">
+            {t('attendance.late', 'Late')}
+          </span>
+          <span className="text-lg font-bold text-amber-600 dark:text-amber-400 tabular-nums block">
+            {lateCount}
+          </span>
         </Card>
-        <Card padding="sm" className="space-y-0.5 border border-slate-200/80 dark:border-dark-border">
-          <span className="text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400 font-semibold block">Absent</span>
-          <span className="text-base font-bold text-danger-600 dark:text-danger-400 font-mono">{absentCount}</span>
+
+        <Card padding="sm" className="space-y-1 p-3 border border-slate-100 dark:border-dark-border">
+          <span className="text-[11px] text-slate-500 dark:text-slate-400 font-normal block truncate">
+            {t('attendance.absent', 'Absent')}
+          </span>
+          <span className="text-lg font-bold text-rose-600 dark:text-rose-400 tabular-nums block">
+            {absentCount}
+          </span>
         </Card>
-        <Card padding="sm" className="space-y-0.5 border border-slate-200/80 dark:border-dark-border">
-          <span className="text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400 font-semibold block">Leave</span>
-          <span className="text-base font-bold text-brand-600 dark:text-brand-400 font-mono">{leaveCount}</span>
+
+        <Card padding="sm" className="space-y-1 p-3 border border-slate-100 dark:border-dark-border">
+          <span className="text-[11px] text-slate-500 dark:text-slate-400 font-normal block truncate">
+            {t('attendance.leave', 'Leave')}
+          </span>
+          <span className="text-lg font-bold text-brand-600 dark:text-brand-400 tabular-nums block">
+            {leaveCount}
+          </span>
         </Card>
       </div>
 
-      {/* Attendance History List */}
-      <div className="space-y-2">
-        <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-          Daily Records
+      {/* Daily Attendance Records */}
+      <div className="space-y-2 pt-1">
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 px-0.5">
+          {t('attendance.dailyRecords', 'Daily Records')}
         </h2>
 
         {isLoading ? (
@@ -128,16 +160,18 @@ export const AttendanceCalendarPage: React.FC = () => {
             ))}
           </div>
         ) : !records || records.length === 0 ? (
-          <EmptyState
-            icon={Calendar}
-            title="No Attendance Logs"
-            description="No punches or records found for this selected month."
-          />
+          <Card className="py-8 border border-slate-100 dark:border-dark-border">
+            <EmptyState
+              icon={CalendarIcon}
+              title={t('attendance.noRecords', 'No Attendance Logs')}
+              description={t('attendance.noRecordsDesc', 'No punch records found for this selected month.')}
+            />
+          </Card>
         ) : (
           <div className="space-y-2">
             {records.map((entry) => {
               const dateObj = new Date(entry.date);
-              const formattedDate = dateObj.toLocaleDateString('en-US', {
+              const formattedDate = dateObj.toLocaleDateString(currentLang === 'km' ? 'km-KH' : 'en-US', {
                 weekday: 'short',
                 month: 'short',
                 day: 'numeric',
@@ -147,37 +181,52 @@ export const AttendanceCalendarPage: React.FC = () => {
                 <Card
                   key={entry.id || entry.date}
                   padding="sm"
-                  className="hover:border-slate-300 dark:hover:border-slate-600 cursor-pointer transition-colors border border-slate-200/90 dark:border-dark-border"
+                  className="p-3.5 hover:border-slate-300 dark:hover:border-slate-700 cursor-pointer transition-all border border-slate-100 dark:border-dark-border"
                   onClick={() => setSelectedEntry(entry)}
                 >
                   <div className="flex items-center justify-between gap-2">
-                    <div className="space-y-0.5">
+                    <div className="space-y-1">
                       <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-slate-900 dark:text-slate-100">
+                        <span className="text-xs font-semibold text-slate-800 dark:text-slate-200">
                           {formattedDate}
                         </span>
                         <Badge status={entry.status} size="sm" />
                       </div>
-                      <div className="flex items-center gap-3 text-[11px] text-slate-500 dark:text-slate-400 font-mono">
+
+                      <div className="flex items-center gap-3 text-[11px] text-slate-500 dark:text-slate-400 font-normal">
                         <span>
-                          In: {entry.checkInAt ? new Date(entry.checkInAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}
+                          {t('attendance.checkIn', 'In')}:{' '}
+                          <strong className="font-semibold text-slate-700 dark:text-slate-300 tabular-nums">
+                            {entry.checkInAt
+                              ? new Date(entry.checkInAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                              : '—'}
+                          </strong>
                         </span>
                         <span>•</span>
                         <span>
-                          Out: {entry.checkOutAt ? new Date(entry.checkOutAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}
+                          {t('attendance.checkOut', 'Out')}:{' '}
+                          <strong className="font-semibold text-slate-700 dark:text-slate-300 tabular-nums">
+                            {entry.checkOutAt
+                              ? new Date(entry.checkOutAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                              : '—'}
+                          </strong>
                         </span>
                       </div>
                     </div>
 
                     <div className="text-right">
-                      <span className="text-xs font-mono font-bold text-slate-900 dark:text-slate-100 block">
-                        {Math.floor((entry.workedMinutes || 0) / 60)}h {(entry.workedMinutes || 0) % 60}m
-                      </span>
-                      {entry.lateMinutes > 0 && (
-                        <span className="text-[10px] text-warning-600 dark:text-warning-400 block font-semibold">
-                          +{entry.lateMinutes}m late
+                      {entry.workedMinutes ? (
+                        <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 tabular-nums block">
+                          {Math.floor(entry.workedMinutes / 60)}h {entry.workedMinutes % 60}m
                         </span>
+                      ) : (
+                        <span className="text-xs text-slate-400 font-normal block">—</span>
                       )}
+                      {entry.lateMinutes ? (
+                        <span className="text-[10px] font-medium text-amber-600 dark:text-amber-400 block">
+                          +{entry.lateMinutes}m {t('home.lateLabel', 'Late')}
+                        </span>
+                      ) : null}
                     </div>
                   </div>
                 </Card>
@@ -187,84 +236,73 @@ export const AttendanceCalendarPage: React.FC = () => {
         )}
       </div>
 
-      {/* Record Details Modal */}
+      {/* Record Detail Modal */}
       {selectedEntry && (
         <Modal
           isOpen={!!selectedEntry}
           onClose={() => setSelectedEntry(null)}
           title="Attendance Punch Details"
         >
-          <div className="space-y-4 text-xs">
+          <div className="space-y-4 text-xs font-sans">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-dark-border">
               <div>
-                <p className="text-[11px] text-slate-400">Date</p>
-                <p className="text-sm font-bold text-slate-900 dark:text-slate-100">
-                  {new Date(selectedEntry.date).toLocaleDateString('en-US', {
+                <h4 className="font-semibold text-slate-900 dark:text-slate-100 text-sm">
+                  {new Date(selectedEntry.date).toLocaleDateString(currentLang === 'km' ? 'km-KH' : 'en-US', {
                     weekday: 'long',
-                    year: 'numeric',
                     month: 'long',
                     day: 'numeric',
+                    year: 'numeric',
                   })}
-                </p>
+                </h4>
+                <p className="text-[11px] text-slate-400 font-normal mt-0.5">Cryptographic Punch Record</p>
               </div>
               <Badge status={selectedEntry.status} size="md" />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              <div className="p-3 bg-slate-50 dark:bg-dark-elevated rounded-xl border border-slate-100 dark:border-dark-border">
-                <span className="text-slate-400 block mb-0.5">Punch In</span>
-                <span className="font-mono font-bold text-slate-900 dark:text-slate-100 text-sm">
+              <div className="bg-slate-50 dark:bg-dark-elevated p-3 rounded-xl border border-slate-100 dark:border-dark-border">
+                <span className="text-[10px] text-slate-400 block font-normal mb-0.5">Check-In Time</span>
+                <span className="text-sm font-semibold text-slate-900 dark:text-slate-100 tabular-nums">
                   {selectedEntry.checkInAt
                     ? new Date(selectedEntry.checkInAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                    : 'Not recorded'}
+                    : '—'}
                 </span>
               </div>
 
-              <div className="p-3 bg-slate-50 dark:bg-dark-elevated rounded-xl border border-slate-100 dark:border-dark-border">
-                <span className="text-slate-400 block mb-0.5">Punch Out</span>
-                <span className="font-mono font-bold text-slate-900 dark:text-slate-100 text-sm">
+              <div className="bg-slate-50 dark:bg-dark-elevated p-3 rounded-xl border border-slate-100 dark:border-dark-border">
+                <span className="text-[10px] text-slate-400 block font-normal mb-0.5">Check-Out Time</span>
+                <span className="text-sm font-semibold text-slate-900 dark:text-slate-100 tabular-nums">
                   {selectedEntry.checkOutAt
                     ? new Date(selectedEntry.checkOutAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                    : 'Not recorded'}
+                    : '—'}
                 </span>
               </div>
             </div>
 
-            <div className="space-y-2 pt-1 border-t border-slate-100 dark:border-dark-border">
+            <div className="bg-slate-50 dark:bg-dark-elevated p-3.5 rounded-xl border border-slate-100 dark:border-dark-border space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-slate-400">Total Worked:</span>
-                <span className="font-mono font-bold text-slate-900 dark:text-slate-100">
-                  {Math.floor((selectedEntry.workedMinutes || 0) / 60)}h {(selectedEntry.workedMinutes || 0) % 60}m
+                <span className="text-slate-500 font-normal">Total Worked Time</span>
+                <span className="font-semibold text-slate-800 dark:text-slate-200 tabular-nums">
+                  {selectedEntry.workedMinutes
+                    ? `${Math.floor(selectedEntry.workedMinutes / 60)}h ${selectedEntry.workedMinutes % 60}m`
+                    : '—'}
                 </span>
               </div>
 
-              {selectedEntry.lateMinutes > 0 && (
-                <div className="flex items-center justify-between text-warning-600 dark:text-warning-400">
-                  <span>Late Arrival:</span>
-                  <span className="font-mono font-bold">+{selectedEntry.lateMinutes} minutes</span>
-                </div>
-              )}
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500 font-normal">Late Duration</span>
+                <span className="font-semibold text-slate-800 dark:text-slate-200 tabular-nums">
+                  {selectedEntry.lateMinutes ? `${selectedEntry.lateMinutes} mins` : '0 mins (On Time)'}
+                </span>
+              </div>
 
-              {selectedEntry.checkInDistanceMeters !== undefined && (
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-400">Location Accuracy:</span>
-                  <span className="font-semibold text-success-600 dark:text-success-400 flex items-center gap-1">
-                    <ShieldCheck className="w-3.5 h-3.5" />
-                    Verified ({Math.round(selectedEntry.checkInDistanceMeters)}m from HQ)
-                  </span>
-                </div>
-              )}
-            </div>
-
-            <div className="pt-2">
-              <Button
-                variant="secondary"
-                size="md"
-                className="w-full"
-                onClick={() => setSelectedEntry(null)}
-              >
-                Close
-              </Button>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500 font-normal">GPS Verification</span>
+                <span className="inline-flex items-center gap-1 font-medium text-emerald-600 dark:text-emerald-400">
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  Verified Inside Perimeter
+                </span>
+              </div>
             </div>
           </div>
         </Modal>

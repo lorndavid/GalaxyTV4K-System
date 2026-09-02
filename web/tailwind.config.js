@@ -48,7 +48,7 @@ export default {
         },
       },
       fontFamily: {
-        sans: ['"Koh Santepheap"', 'Inter', '"Suwannaphum"', 'system-ui', 'sans-serif'],
+        sans: ['Inter', '"Koh Santepheap"', '"Suwannaphum"', 'system-ui', '-apple-system', 'sans-serif'],
         mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'monospace'],
       },
       borderRadius: {
