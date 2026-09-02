@@ -250,6 +250,15 @@ export const HomePage: React.FC = () => {
             </div>
           </div>
         )}
+
+        {/* Prominent Instant Scan QR Punch Action */}
+        <Link
+          to="/scan"
+          className="w-full mt-2 py-3.5 px-4 bg-gradient-to-r from-brand-600 to-blue-600 hover:from-brand-700 hover:to-blue-700 text-white rounded-2xl font-bold text-sm flex items-center justify-center gap-2.5 shadow-md shadow-brand-500/20 active:scale-[0.98] transition-all"
+        >
+          <Clock3 className="w-5 h-5" />
+          <span>ស្កេនវត្តមាន (Scan Attendance QR)</span>
+        </Link>
       </Card>
 
       {/* 3. Monthly Metrics & Performance KPI Grid */}
