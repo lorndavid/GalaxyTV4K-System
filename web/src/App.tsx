@@ -40,6 +40,7 @@ export const App: React.FC = () => {
                   <Route path="home" element={<HomePage />} />
                   <Route path="attendance" element={<AttendanceCalendarPage />} />
                   <Route path="attendance/scan" element={<ScanPage />} />
+                  <Route path="scan" element={<ScanPage />} />
                   <Route path="leave" element={<LeaveRequestPage />} />
                   <Route path="leave/new" element={<LeaveRequestPage />} />
                   <Route path="out" element={<OutRequestPage />} />
