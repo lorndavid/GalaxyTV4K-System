@@ -331,126 +331,70 @@ export async function seedOfficialEmployees(prisma: PrismaClient) {
     }
   }
 
-  // 5. Clean up old employee records that are not part of the official list
-  const officialEmails = OFFICIAL_EMPLOYEES.map((e) => e.email.toLowerCase());
-  const officialCodes = OFFICIAL_EMPLOYEES.map((e) => e.code);
-
-  const employeesToDelete = await prisma.employee.findMany({
-    where: {
-      NOT: {
-        OR: [
-          { email: { in: officialEmails } },
-          { employeeCode: { in: officialCodes } },
-        ],
-      },
-    },
-    include: { user: true },
+  // 5. Clean up all non-admin user accounts and old employee records
+  const nonAdminUsers = await prisma.user.findMany({
+    where: { role: { not: UserRole.ADMIN } },
+    select: { id: true },
   });
+  const nonAdminUserIds = nonAdminUsers.map((u) => u.id);
 
-  for (const oldEmp of employeesToDelete) {
-    if (oldEmp.user && oldEmp.user.role !== UserRole.ADMIN) {
-      await prisma.session.deleteMany({ where: { userId: oldEmp.user.id } });
-      await prisma.user.delete({ where: { id: oldEmp.user.id } });
-    }
-    await prisma.attendance.deleteMany({ where: { employeeId: oldEmp.id } });
-    await prisma.leaveBalance.deleteMany({ where: { employeeId: oldEmp.id } });
-    await prisma.leaveRequest.deleteMany({ where: { employeeId: oldEmp.id } });
-    await prisma.outRequest.deleteMany({ where: { employeeId: oldEmp.id } });
-    await prisma.employeeLocation.deleteMany({ where: { employeeId: oldEmp.id } });
-    await prisma.locationEvent.deleteMany({ where: { employeeId: oldEmp.id } });
-    await prisma.employee.delete({ where: { id: oldEmp.id } });
+  if (nonAdminUserIds.length > 0) {
+    await prisma.session.deleteMany({
+      where: { userId: { in: nonAdminUserIds } },
+    });
+    await prisma.user.deleteMany({
+      where: { id: { in: nonAdminUserIds } },
+    });
   }
 
-  console.log(`✓ Removed ${employeesToDelete.length} obsolete employee records`);
+  await prisma.attendance.deleteMany({});
+  await prisma.leaveBalance.deleteMany({});
+  await prisma.leaveRequest.deleteMany({});
+  await prisma.outRequest.deleteMany({});
+  await prisma.employeeLocation.deleteMany({});
+  await prisma.locationEvent.deleteMany({});
+  await prisma.employee.deleteMany({});
+  console.log('✓ Cleaned up previous employee records.');
 
-  // 6. Insert or Update all 20 official employees
+  // 6. Insert all 20 official employees
   const currentYear = new Date().getFullYear();
-  let createdCount = 0;
-  let updatedCount = 0;
 
   for (const empData of OFFICIAL_EMPLOYEES) {
     const deptId = deptMap.get(empData.departmentName);
 
-    // Check if employee exists by code or email
-    const existingEmployee = await prisma.employee.findFirst({
-      where: {
-        OR: [{ email: empData.email.toLowerCase() }, { employeeCode: empData.code }],
+    const employee = await prisma.employee.create({
+      data: {
+        employeeCode: empData.code,
+        displayName: empData.latinName,
+        khmerName: empData.khmerName,
+        latinName: empData.latinName,
+        gender: empData.gender,
+        skill: empData.skill,
+        studyDay: empData.studyDay,
+        email: empData.email.toLowerCase(),
+        phone: empData.phone,
+        position: empData.position,
+        departmentId: deptId || null,
+        scheduleId: defaultSchedule?.id || null,
+        status: EmployeeStatus.ACTIVE,
       },
     });
 
-    let employeeId: string;
-
-    if (existingEmployee) {
-      const updated = await prisma.employee.update({
-        where: { id: existingEmployee.id },
-        data: {
-          employeeCode: empData.code,
-          displayName: empData.latinName,
-          khmerName: empData.khmerName,
-          latinName: empData.latinName,
-          gender: empData.gender,
-          skill: empData.skill,
-          studyDay: empData.studyDay,
-          email: empData.email.toLowerCase(),
-          phone: empData.phone,
-          position: empData.position,
-          departmentId: deptId || null,
-          scheduleId: defaultSchedule?.id || null,
-          status: EmployeeStatus.ACTIVE,
-        },
-      });
-      employeeId = updated.id;
-      updatedCount++;
-    } else {
-      const created = await prisma.employee.create({
-        data: {
-          employeeCode: empData.code,
-          displayName: empData.latinName,
-          khmerName: empData.khmerName,
-          latinName: empData.latinName,
-          gender: empData.gender,
-          skill: empData.skill,
-          studyDay: empData.studyDay,
-          email: empData.email.toLowerCase(),
-          phone: empData.phone,
-          position: empData.position,
-          departmentId: deptId || null,
-          scheduleId: defaultSchedule?.id || null,
-          status: EmployeeStatus.ACTIVE,
-        },
-      });
-      employeeId = created.id;
-      createdCount++;
-    }
-
-    // Upsert User login account
-    await prisma.user.upsert({
-      where: { email: empData.email.toLowerCase() },
-      update: {
-        passwordHash: employeePasswordHash,
-        status: UserStatus.ACTIVE,
-        employeeId: employeeId,
-      },
-      create: {
+    // Create User login account
+    await prisma.user.create({
+      data: {
         email: empData.email.toLowerCase(),
         passwordHash: employeePasswordHash,
         role: UserRole.EMPLOYEE,
         status: UserStatus.ACTIVE,
-        employeeId: employeeId,
+        employeeId: employee.id,
       },
     });
 
-    // Ensure Leave Balance
-    await prisma.leaveBalance.upsert({
-      where: {
-        employeeId_year: {
-          employeeId: employeeId,
-          year: currentYear,
-        },
-      },
-      update: {},
-      create: {
-        employeeId: employeeId,
+    // Create Leave Balance
+    await prisma.leaveBalance.create({
+      data: {
+        employeeId: employee.id,
         year: currentYear,
         annualTotal: 15.0,
         sickTotal: 10.0,
@@ -460,13 +404,11 @@ export async function seedOfficialEmployees(prisma: PrismaClient) {
   }
 
   console.log(
-    `✅ Official Employees Processed: ${createdCount} created, ${updatedCount} updated. Total: ${OFFICIAL_EMPLOYEES.length}`
+    `✅ All ${OFFICIAL_EMPLOYEES.length} official employees inserted successfully with email lastname@galaxytv4k.com and password galaxytv@@`
   );
 
   return {
     total: OFFICIAL_EMPLOYEES.length,
-    created: createdCount,
-    updated: updatedCount,
-    deleted: employeesToDelete.length,
+    success: true,
   };
 }

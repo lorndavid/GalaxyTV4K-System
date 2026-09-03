@@ -56,7 +56,12 @@
     "deleteSuccess": "Employee and related records deleted successfully.",
     "deleteFailed": "Failed to delete employee.",
     "deleteConfirmTitle": "Delete Employee Record?",
-    "deleteConfirmDesc": "Are you sure you want to permanently delete this employee? All related attendance logs, leave balances, and login credentials will be removed from the database. This action cannot be undone."
+    "deleteConfirmDesc": "Are you sure you want to permanently delete this employee? All related attendance logs, leave balances, and login credentials will be removed from the database. This action cannot be undone.",
+    "importOfficial": "Import All 20 Staff",
+    "importConfirmTitle": "Import 20 Official Employees?",
+    "importNoticeHeader": "Full 20 Staff Roster Synchronization",
+    "importNoticeDesc": "This will import all 20 official employees with their exact Khmer names, Latin names, phone numbers, skills, study shifts, and department assignments. User login credentials will be generated with email (lastname@galaxytv4k.com) and default password (galaxytv@@).",
+    "confirmImport": "Import Now"
   },
   "auth": {
     "adminPortal": "Admin Portal",

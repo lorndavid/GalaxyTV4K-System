@@ -25,6 +25,7 @@ import {
   Briefcase,
   UserCheck,
   Trash2,
+  Sparkles,
 } from 'lucide-react';
 
 interface Employee {
@@ -61,6 +62,7 @@ export const EmployeesPage: React.FC = () => {
   const [isResetPwdModalOpen, setIsResetPwdModalOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
   const [employeeToDelete, setEmployeeToDelete] = useState<Employee | null>(null);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [newPassword, setNewPassword] = useState('');
   const [resetSuccessMsg, setResetSuccessMsg] = useState('');
 
@@ -171,6 +173,23 @@ export const EmployeesPage: React.FC = () => {
     },
   });
 
+  const importOfficialMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiClient.post('/admin/employees/seed-official');
+      return res.data.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['employees'] });
+      queryClient.invalidateQueries({ queryKey: ['departments'] });
+      queryClient.invalidateQueries({ queryKey: ['adminDashboard'] });
+      setIsImportModalOpen(false);
+      showToast('✓ Successfully imported all 20 official employees with galaxytv@@ passwords!');
+    },
+    onError: (err: any) => {
+      showToast(err?.response?.data?.error?.message || 'Failed to import employees.', 'error');
+    },
+  });
+
   const resetForm = () => {
     setFormData({
       khmerName: '',
@@ -245,17 +264,29 @@ export const EmployeesPage: React.FC = () => {
           </p>
         </div>
 
-        <Button
-          variant="primary"
-          icon={UserPlus}
-          size="md"
-          onClick={() => {
-            resetForm();
-            setIsAddModalOpen(true);
-          }}
-        >
-          {t('employees.addEmployee', 'Add Employee')}
-        </Button>
+        <div className="flex items-center gap-2.5">
+          <Button
+            variant="secondary"
+            icon={Sparkles}
+            size="md"
+            className="border-brand-300 dark:border-brand-800 text-brand-700 dark:text-brand-300 bg-brand-50/70 dark:bg-brand-950/40 hover:bg-brand-100 dark:hover:bg-brand-900/50 font-semibold"
+            onClick={() => setIsImportModalOpen(true)}
+          >
+            {t('employees.importOfficial', 'Import All 20 Staff (នាំចូលបុគ្គលិកទាំងអស់)')}
+          </Button>
+
+          <Button
+            variant="primary"
+            icon={UserPlus}
+            size="md"
+            onClick={() => {
+              resetForm();
+              setIsAddModalOpen(true);
+            }}
+          >
+            {t('employees.addEmployee', 'Add Employee')}
+          </Button>
+        </div>
       </div>
 
       {/* Search & Filter Controls */}
@@ -928,6 +959,53 @@ export const EmployeesPage: React.FC = () => {
                 onClick={() => deleteMutation.mutate(employeeToDelete.id)}
               >
                 {t('common.delete', 'Delete Permanently')}
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* MODAL: IMPORT OFFICIAL EMPLOYEES CONFIRMATION */}
+      {isImportModalOpen && (
+        <Modal
+          isOpen={isImportModalOpen}
+          onClose={() => setIsImportModalOpen(false)}
+          title={t('employees.importConfirmTitle', 'Import 20 Official Employees?')}
+        >
+          <div className="space-y-4 text-xs">
+            <div className="p-4 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/50 text-blue-900 dark:text-blue-100 flex items-start gap-3">
+              <div className="w-9 h-9 rounded-xl bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <Sparkles className="w-5 h-5" />
+              </div>
+              <div className="space-y-1">
+                <p className="font-bold text-sm">
+                  {t('employees.importNoticeHeader', 'Full 20 Staff Roster Synchronization')}
+                </p>
+                <p className="text-xs text-blue-700 dark:text-blue-300 leading-relaxed">
+                  {t(
+                    'employees.importNoticeDesc',
+                    'This will import all 20 official employees with their exact Khmer names, Latin names, phone numbers, skills, study shifts, and department assignments. User login credentials will be generated with email (lastname@galaxytv4k.com) and default password (galaxytv@@).'
+                  )}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-dark-border">
+              <Button
+                variant="secondary"
+                size="md"
+                onClick={() => setIsImportModalOpen(false)}
+              >
+                {t('common.cancel', 'Cancel')}
+              </Button>
+              <Button
+                variant="primary"
+                size="md"
+                icon={Sparkles}
+                isLoading={importOfficialMutation.isPending}
+                onClick={() => importOfficialMutation.mutate()}
+              >
+                {t('employees.confirmImport', 'Import Now (នាំចូលឥឡូវនេះ)')}
               </Button>
             </div>
           </div>
