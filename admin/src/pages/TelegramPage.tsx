@@ -633,7 +633,7 @@ export const TelegramPage: React.FC = () => {
                 </div>
 
                 <div className="p-3 rounded-xl bg-brand-50/50 dark:bg-brand-950/30 border border-brand-200 dark:border-brand-900/40 text-center">
-                  <span className="text-[11px] text-brand-700 dark:text-brand-400 block">មានវេនរៀនថ្ងៃនេះ</span>
+                  <span className="text-[11px] text-brand-700 dark:text-brand-400 block">វេនរៀនថ្ងៃនេះ</span>
                   <span className="text-lg font-bold text-brand-700 dark:text-brand-300">
                     {previewData?.studentCount || 0} នាក់
                   </span>

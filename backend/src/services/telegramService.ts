@@ -340,40 +340,30 @@ export class TelegramService {
       const isStudying = this.checkIsStudyDay(emp.studyDay, dayIndex);
       const isOnLeave = leaveEmployeeSet.has(emp.id);
 
-      // Work day logic: Mon-Fri are default company work days; weekends for media/live/production or rostered
-      const isWeekend = dayIndex === 0 || dayIndex === 6;
-      const isWeekendOperation =
-        emp.department?.name?.includes('Live') ||
-        emp.department?.name?.includes('Design') ||
-        emp.position?.includes('Live');
-
-      let isWorking = !isOnLeave && (!isWeekend || isWeekendOperation || isStudying);
-
-      if (isOnLeave) onLeaveCount++;
-      if (isStudying) studentCount++;
-      if (isWorking && !isOnLeave) workingCount++;
-
       let statusKhmer = 'បំពេញការងារ';
       if (isOnLeave) {
         statusKhmer = 'ច្បាប់ឈប់សម្រាក';
-      } else if (isStudying && isWorking) {
-        statusKhmer = 'បំពេញការងារ និង មានវេនរៀន';
+        onLeaveCount++;
       } else if (isStudying) {
-        statusKhmer = 'មានវេនរៀន';
-      } else if (isWeekend && !isWeekendOperation) {
-        statusKhmer = 'ថ្ងៃសម្រាកប្រចាំសប្តាហ៍';
+        // As requested: If employee has study today -> strictly "វេនរៀន" (no "បំពេញការងារ")
+        statusKhmer = 'វេនរៀន';
+        studentCount++;
+      } else {
+        // If employee does not have study today -> strictly "បំពេញការងារ"
+        statusKhmer = 'បំពេញការងារ';
+        workingCount++;
       }
 
       const numKh = index + 1;
       const khmerName = emp.khmerName || emp.displayName;
-      const latinName = emp.latinName || emp.displayName;
       const deptName = emp.department?.name || 'ទូទៅ';
       const position = emp.position || 'បុគ្គលិក';
       const skill = emp.skill || 'ទូទៅ';
       const studyDay = emp.studyDay || 'គ្មាន';
 
+      // As requested: Only Khmer name, NO English name and NO employee ID/code
       employeeLines.push(
-        `${numKh}. <b>${khmerName}</b> (${latinName}) - <code>${emp.employeeCode}</code>\n` +
+        `${numKh}. <b>${khmerName}</b>\n` +
         `   ផ្នែកការងារ: ${deptName}\n` +
         `   តួនាទី: ${position}\n` +
         `   ជំនាញ: ${skill}\n` +
@@ -391,7 +381,7 @@ export class TelegramService {
       `<b>សេចក្តីសង្ខេបប្រចាំថ្ងៃ:</b>`,
       `- ចំនួនបុគ្គលិកសរុប: ${this.toKhmerDigits(employees.length)} នាក់`,
       `- ចំនួនបុគ្គលិកបំពេញការងារថ្ងៃនេះ: ${this.toKhmerDigits(workingCount)} នាក់`,
-      `- ចំនួនបុគ្គលិកមានវេនរៀនថ្ងៃនេះ: ${this.toKhmerDigits(studentCount)} នាក់`,
+      `- ចំនួនបុគ្គលិកវេនរៀនថ្ងៃនេះ: ${this.toKhmerDigits(studentCount)} នាក់`,
       `- ចំនួនបុគ្គលិកសុំច្បាប់ថ្ងៃនេះ: ${this.toKhmerDigits(onLeaveCount)} នាក់`,
       `--------------------------------------------------`,
       `<b>បញ្ជីឈ្មោះបុគ្គលិកទាំង ${this.toKhmerDigits(employees.length)} រូប:</b>`,

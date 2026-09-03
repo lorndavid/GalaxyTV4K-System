@@ -80,8 +80,13 @@ describe('TelegramService & Security Tests', () => {
       expect(emojiRegex.test(msg)).toBe(false);
       expect(msg).toContain('កាលវិភាគការងារ និងការសិក្សារបស់បុគ្គលិកប្រចាំថ្ងៃ');
       expect(msg).toContain('Galaxy TV 4K');
-      expect(msg).toContain('1.');
-      expect(msg).toContain('ហួយ ប៊ុនធឿន');
+      expect(msg).toContain('1. <b>ហួយ ប៊ុនធឿន</b>');
+      // Verify English name and employee ID are strictly removed
+      expect(msg).not.toContain('HUOY BUNTHOEUN');
+      expect(msg).not.toContain('EMP-001');
+      expect(msg).not.toContain('EMP-');
+      // Verify status is either វេនរៀន or បំពេញការងារ
+      expect(msg).toMatch(/ស្ថានភាពថ្ងៃនេះ: <b>(វេនរៀន|បំពេញការងារ)<\/b>/);
     });
   });
 });
