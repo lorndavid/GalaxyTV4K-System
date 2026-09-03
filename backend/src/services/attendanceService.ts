@@ -375,14 +375,56 @@ export class AttendanceService {
       }
 
       // ==========================================
-      // Branch 2: CHECK-OUT FLOW
+      // Branch 2: CHECK-OUT FLOW (OR IDEMPOTENT RE-SCAN)
       // ==========================================
+      // Guard A: If already completed both check-in and check-out today
       if (existingAttendance.checkInAt && existingAttendance.checkOutAt) {
+        const checkOutDiffMs = now.getTime() - new Date(existingAttendance.checkOutAt).getTime();
+        if (checkOutDiffMs < 60 * 1000) {
+          return {
+            action: 'CHECK_OUT',
+            attendance: existingAttendance,
+            message: `Check-out already confirmed for today at ${currentTimeStr}.`,
+            details: {
+              distanceFromOfficeMeters: geo.distanceMeters,
+              accuracyMeters: accuracy,
+              status: existingAttendance.status,
+              lateMinutes: existingAttendance.lateMinutes,
+              earlyLeaveMinutes: existingAttendance.earlyLeaveMinutes,
+              workedMinutes: existingAttendance.workedMinutes,
+            },
+          };
+        }
         throw {
           code: 'ALREADY_CHECKED_OUT',
           message: 'You have already checked out for today.',
           status: 400,
         };
+      }
+
+      // Guard B: If check-in occurred within the last 60 seconds and QR is not explicitly CHECK_OUT,
+      // treat as an idempotent confirmation of the check-in (prevents accidental 0-minute checkouts on double tap)
+      if (
+        existingAttendance.checkInAt &&
+        !existingAttendance.checkOutAt &&
+        qrSession.type !== QrSessionType.CHECK_OUT
+      ) {
+        const checkInDiffMs = now.getTime() - new Date(existingAttendance.checkInAt).getTime();
+        if (checkInDiffMs < 60 * 1000) {
+          return {
+            action: 'CHECK_IN',
+            attendance: existingAttendance,
+            message: `Check-in already confirmed at ${currentTimeStr}. Have a great day!`,
+            details: {
+              distanceFromOfficeMeters: geo.distanceMeters,
+              accuracyMeters: accuracy,
+              status: existingAttendance.status,
+              lateMinutes: existingAttendance.lateMinutes,
+              earlyLeaveMinutes: 0,
+              workedMinutes: 0,
+            },
+          };
+        }
       }
 
       if (!existingAttendance.checkInAt) {

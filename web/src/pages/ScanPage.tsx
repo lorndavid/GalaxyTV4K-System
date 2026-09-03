@@ -23,6 +23,8 @@ import {
   Clock,
   Building,
   Navigation,
+  Check,
+  Calendar,
 } from 'lucide-react';
 
 export type CameraState =
@@ -31,7 +33,6 @@ export type CameraState =
   | 'PERMISSION_DENIED'
   | 'CAMERA_UNAVAILABLE'
   | 'SCANNING'
-  | 'QR_DETECTED'
   | 'VALIDATING'
   | 'SUCCESS'
   | 'ERROR';
@@ -44,30 +45,41 @@ export const ScanPage: React.FC = () => {
 
   const [state, setState] = useState<CameraState>('INITIALIZING');
   const [errorMessage, setErrorMessage] = useState<string>('');
-  const [locationStatus, setLocationStatus] = useState<string>('Acquiring high-accuracy GPS...');
-  const [geoCoords, setGeoCoords] = useState<{
-    latitude: number;
-    longitude: number;
-    accuracy: number;
-  } | null>(null);
+  const [locationStatus, setLocationStatus] = useState<string>('Acquiring GPS...');
+  const [isGpsReady, setIsGpsReady] = useState<boolean>(false);
   const [successRecord, setSuccessRecord] = useState<any>(null);
   const [facingMode, setFacingMode] = useState<'environment' | 'user'>('environment');
-  const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [isCameraActive, setIsCameraActive] = useState<boolean>(false);
   const [hasTorch, setHasTorch] = useState<boolean>(false);
   const [isTorchOn, setIsTorchOn] = useState<boolean>(false);
+  const [countdown, setCountdown] = useState<number>(3);
 
+  // Hardware & scanning refs
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const animationFrameRef = useRef<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const isProcessingRef = useRef<boolean>(false);
 
-  // 1. Geolocation Acquisition with High Accuracy
+  // Locks to prevent ANY duplicate scanning or parallel requests
+  const isProcessingRef = useRef<boolean>(false);
+  const scanCompletedRef = useRef<boolean>(false);
+
+  // Real-time GPS coordinate ref (always fresh, zero stale closure)
+  const geoCoordsRef = useRef<{
+    latitude: number;
+    longitude: number;
+    accuracy: number;
+  } | null>(null);
+  const geoWatchIdRef = useRef<number | null>(null);
+  const countdownTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // 1. Continuous High-Accuracy Geolocation Acquisition
   useEffect(() => {
     let isMounted = true;
+
     if (navigator.geolocation) {
+      // Immediate single acquisition
       navigator.geolocation.getCurrentPosition(
         (pos) => {
           if (!isMounted) return;
@@ -76,7 +88,8 @@ export const ScanPage: React.FC = () => {
             longitude: pos.coords.longitude,
             accuracy: pos.coords.accuracy,
           };
-          setGeoCoords(coords);
+          geoCoordsRef.current = coords;
+          setIsGpsReady(true);
           setLocationStatus(
             t('attendance.gpsVerified', `GPS Verified (±${Math.round(pos.coords.accuracy)}m)`)
           );
@@ -85,11 +98,37 @@ export const ScanPage: React.FC = () => {
           if (!isMounted) return;
           setLocationStatus(t('attendance.gpsReady', 'GPS ready'));
         },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
+      );
+
+      // Continuous watch to keep coordinates fresh without latency
+      geoWatchIdRef.current = navigator.geolocation.watchPosition(
+        (pos) => {
+          if (!isMounted) return;
+          const coords = {
+            latitude: pos.coords.latitude,
+            longitude: pos.coords.longitude,
+            accuracy: pos.coords.accuracy,
+          };
+          geoCoordsRef.current = coords;
+          setIsGpsReady(true);
+          setLocationStatus(
+            t('attendance.gpsVerified', `GPS Verified (±${Math.round(pos.coords.accuracy)}m)`)
+          );
+        },
+        () => {},
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 5000 }
       );
     }
+
     return () => {
       isMounted = false;
+      if (geoWatchIdRef.current !== null) {
+        navigator.geolocation.clearWatch(geoWatchIdRef.current);
+      }
+      if (countdownTimerRef.current) {
+        clearInterval(countdownTimerRef.current);
+      }
     };
   }, [t]);
 
@@ -115,16 +154,145 @@ export const ScanPage: React.FC = () => {
     setHasTorch(false);
   }, []);
 
-  // 3. Scan Loop with Debounce / Processing Lock
+  // 3. Process Attendance Scan (Single execution per scan)
+  const processAttendanceScan = useCallback(
+    async (decodedText: string) => {
+      // 1. Immediately turn off camera tracks and animation to prevent background work
+      stopCameraStream();
+      setState('VALIDATING');
+
+      // Subtle haptic feedback
+      if ('vibrate' in navigator) {
+        try {
+          navigator.vibrate([40, 25, 40]);
+        } catch {}
+      }
+
+      try {
+        let qrToken = decodedText;
+        try {
+          const parsed = JSON.parse(decodedText);
+          if (parsed.t) qrToken = parsed.t;
+          if (parsed.token) qrToken = parsed.token;
+        } catch {}
+
+        // Retrieve GPS coordinates from continuous ref
+        let coords = geoCoordsRef.current;
+
+        // Fast 1.5s fallback if coords are not ready yet
+        if (!coords) {
+          coords = await new Promise((resolve) => {
+            if (navigator.geolocation) {
+              navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                  resolve({
+                    latitude: pos.coords.latitude,
+                    longitude: pos.coords.longitude,
+                    accuracy: pos.coords.accuracy,
+                  });
+                },
+                () => resolve(null),
+                { enableHighAccuracy: true, timeout: 1500 }
+              );
+            } else {
+              resolve(null);
+            }
+          });
+        }
+
+        if (!coords) {
+          throw {
+            response: {
+              data: {
+                error: {
+                  message: t(
+                    'attendance.gpsUnavailable',
+                    "We couldn't determine your location. Please turn on GPS/Location and try again."
+                  ),
+                },
+              },
+            },
+          };
+        }
+
+        const payload = {
+          token: qrToken,
+          qrToken,
+          latitude: coords.latitude,
+          longitude: coords.longitude,
+          accuracy: coords.accuracy || 10,
+          deviceInfo: {
+            userAgent: navigator.userAgent,
+            platform: navigator.platform,
+          },
+        };
+
+        const res = await apiClient.post('/attendance/scan', payload);
+        const record = res.data.data;
+        setSuccessRecord(record);
+        setState('SUCCESS');
+
+        // Stronger success haptic
+        if ('vibrate' in navigator) {
+          try {
+            navigator.vibrate([50, 40, 90]);
+          } catch {}
+        }
+
+        // Seamless query cache invalidation without page reload
+        queryClient.invalidateQueries({ queryKey: queryKeys.attendance.today });
+        queryClient.invalidateQueries({ queryKey: ['attendance'] });
+        queryClient.invalidateQueries({ queryKey: ['myHistorySummary'] });
+
+        showToast(
+          t('attendance.recordSuccessToast', '✓ Attendance recorded successfully')
+        );
+
+        // Auto-redirect countdown to return home smoothly in 3s
+        setCountdown(3);
+        countdownTimerRef.current = setInterval(() => {
+          setCountdown((prev) => {
+            if (prev <= 1) {
+              if (countdownTimerRef.current) clearInterval(countdownTimerRef.current);
+              navigate('/');
+              return 0;
+            }
+            return prev - 1;
+          });
+        }, 1000);
+      } catch (err: any) {
+        const errCode = err?.response?.data?.error?.code;
+        const errorMsg =
+          err?.response?.data?.error?.message ||
+          t(
+            'attendance.scanFailed',
+            'Unable to record attendance right now. Please scan an active office QR code inside the office.'
+          );
+
+        setErrorMessage(errorMsg);
+        setState('ERROR');
+
+        // Allow retry after error
+        isProcessingRef.current = false;
+        scanCompletedRef.current = false;
+      }
+    },
+    [stopCameraStream, t, queryClient, showToast, navigate]
+  );
+
+  // 4. Scan Frame Loop with Hardware Decoupling
   const startScanLoop = useCallback(() => {
     const scanFrame = async () => {
+      // If already processed or completed, terminate scan loop immediately
+      if (isProcessingRef.current || scanCompletedRef.current) {
+        return;
+      }
+
       const video = videoRef.current;
       const canvas = canvasRef.current;
 
-      if (!video || !canvas || isProcessingRef.current) {
-        if (!isProcessingRef.current) {
-          animationFrameRef.current = requestAnimationFrame(scanFrame);
-        }
+      if (!video || !canvas) {
+        animationFrameRef.current = requestAnimationFrame(scanFrame);
         return;
       }
 
@@ -152,13 +320,13 @@ export const ScanPage: React.FC = () => {
             try {
               const barcodeDetector = new (window as any).BarcodeDetector({ formats: ['qr_code'] });
               const barcodes = await barcodeDetector.detect(canvas);
-              if (barcodes && barcodes.length > 0) {
+              if (barcodes && barcodes.length > 0 && barcodes[0]?.rawValue) {
                 decodedData = barcodes[0].rawValue;
               }
             } catch {}
           }
 
-          // Fallback jsQR
+          // Robust fallback with jsQR
           if (!decodedData) {
             const imageData = ctx.getImageData(0, 0, width, height);
             const code = jsQR(imageData.data, imageData.width, imageData.height, {
@@ -170,31 +338,35 @@ export const ScanPage: React.FC = () => {
           }
 
           if (decodedData && decodedData.trim().length > 0) {
-            // Immediate processing lock to prevent multiple submissions
-            isProcessingRef.current = true;
-            setIsProcessing(true);
-            onQrDetected(decodedData.trim());
-            return;
+            // Immediate lock - absolutely prevents any duplicate scan
+            if (!scanCompletedRef.current && !isProcessingRef.current) {
+              scanCompletedRef.current = true;
+              isProcessingRef.current = true;
+              processAttendanceScan(decodedData.trim());
+              return;
+            }
           }
-        } catch (e) {
+        } catch {
           // Frame read exception safeguard
         }
       }
 
-      animationFrameRef.current = requestAnimationFrame(scanFrame);
+      if (!isProcessingRef.current && !scanCompletedRef.current) {
+        animationFrameRef.current = requestAnimationFrame(scanFrame);
+      }
     };
 
     animationFrameRef.current = requestAnimationFrame(scanFrame);
-  }, []);
+  }, [processAttendanceScan]);
 
-  // 4. Camera Acquisition (Android & iOS Safari)
+  // 5. Camera Initializer (Android & iOS Safari)
   const startCamera = useCallback(
     async (currentFacing: 'environment' | 'user') => {
       stopCameraStream();
       setState('REQUESTING_PERMISSION');
       setErrorMessage('');
       isProcessingRef.current = false;
-      setIsProcessing(false);
+      scanCompletedRef.current = false;
 
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         setState('CAMERA_UNAVAILABLE');
@@ -214,20 +386,19 @@ export const ScanPage: React.FC = () => {
           audio: false,
           video: { facingMode: { ideal: currentFacing } },
         });
-      } catch (e1) {
+      } catch {
         try {
           stream = await navigator.mediaDevices.getUserMedia({
             audio: false,
             video: { facingMode: currentFacing },
           });
-        } catch (e2) {
+        } catch {
           try {
             stream = await navigator.mediaDevices.getUserMedia({
               audio: false,
               video: true,
             });
           } catch (e3: any) {
-            console.error('All camera strategies failed:', e3);
             if (e3.name === 'NotAllowedError' || String(e3).includes('Permission')) {
               setState('PERMISSION_DENIED');
               setErrorMessage(
@@ -282,8 +453,7 @@ export const ScanPage: React.FC = () => {
           setIsCameraActive(true);
           setState('SCANNING');
           startScanLoop();
-        } catch (playErr: any) {
-          console.warn('Autoplay blocked by browser policy:', playErr);
+        } catch {
           setState('CAMERA_UNAVAILABLE');
         }
       }
@@ -291,7 +461,7 @@ export const ScanPage: React.FC = () => {
     [stopCameraStream, startScanLoop, t]
   );
 
-  // 5. Flashlight / Torch Toggle
+  // 6. Flashlight / Torch Toggle
   const toggleTorch = async () => {
     const track = streamRef.current?.getVideoTracks()[0];
     if (track) {
@@ -307,113 +477,13 @@ export const ScanPage: React.FC = () => {
     }
   };
 
-  // 6. Handle QR Detection
-  const onQrDetected = async (decodedText: string) => {
-    setState('QR_DETECTED');
-
-    if ('vibrate' in navigator) {
-      try {
-        navigator.vibrate([60, 30, 60]);
-      } catch {}
-    }
-
-    stopCameraStream();
-    setState('VALIDATING');
-
-    try {
-      let qrToken = decodedText;
-      try {
-        const parsed = JSON.parse(decodedText);
-        if (parsed.t) qrToken = parsed.t;
-        if (parsed.token) qrToken = parsed.token;
-      } catch {}
-
-      // Check GPS availability
-      let lat = geoCoords?.latitude;
-      let lng = geoCoords?.longitude;
-      let acc = geoCoords?.accuracy;
-
-      if (!lat || !lng) {
-        // One fast synchronous attempt
-        await new Promise<void>((resolve) => {
-          if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(
-              (pos) => {
-                lat = pos.coords.latitude;
-                lng = pos.coords.longitude;
-                acc = pos.coords.accuracy;
-                resolve();
-              },
-              () => resolve(),
-              { enableHighAccuracy: true, timeout: 3500 }
-            );
-          } else {
-            resolve();
-          }
-        });
-      }
-
-      if (lat === undefined || lng === undefined) {
-        throw {
-          response: {
-            data: {
-              error: {
-                message: t(
-                  'attendance.gpsUnavailable',
-                  "We couldn't determine your location. Please turn on GPS/Location and try again."
-                ),
-              },
-            },
-          },
-        };
-      }
-
-      const payload = {
-        token: qrToken,
-        qrToken,
-        latitude: lat,
-        longitude: lng,
-        accuracy: acc || 10,
-        deviceInfo: {
-          userAgent: navigator.userAgent,
-          platform: navigator.platform,
-        },
-      };
-
-      const res = await apiClient.post('/attendance/scan', payload);
-      const record = res.data.data;
-      setSuccessRecord(record);
-      setState('SUCCESS');
-
-      // Seamless query cache invalidation without page reload
-      queryClient.invalidateQueries({ queryKey: queryKeys.attendance.today });
-      queryClient.invalidateQueries({ queryKey: ['attendance'] });
-      queryClient.invalidateQueries({ queryKey: ['myHistorySummary'] });
-
-      showToast(
-        t('attendance.recordSuccessToast', '✓ Attendance recorded successfully')
-      );
-    } catch (err: any) {
-      const errorMsg =
-        err?.response?.data?.error?.message ||
-        t(
-          'attendance.scanFailed',
-          'Unable to record attendance right now. Please scan an active office QR code inside the office.'
-        );
-      setErrorMessage(errorMsg);
-      setState('ERROR');
-      isProcessingRef.current = false;
-      setIsProcessing(false);
-    }
-  };
-
-  // 7. Lifecycle: Mount & Cleanup
+  // 7. Lifecycle: Mount & Cleanup (Only triggered by explicit facingMode changes)
   useEffect(() => {
     startCamera(facingMode);
     return () => {
       stopCameraStream();
     };
-  }, [facingMode, startCamera, stopCameraStream]);
+  }, [facingMode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 8. Toggle Front/Rear Camera
   const toggleFacingMode = () => {
@@ -440,8 +510,8 @@ export const ScanPage: React.FC = () => {
           const code = jsQR(imageData.data, imageData.width, imageData.height);
           if (code && code.data) {
             isProcessingRef.current = true;
-            setIsProcessing(true);
-            onQrDetected(code.data);
+            scanCompletedRef.current = true;
+            processAttendanceScan(code.data.trim());
           } else {
             setState('ERROR');
             setErrorMessage(
@@ -458,8 +528,18 @@ export const ScanPage: React.FC = () => {
     reader.readAsDataURL(file);
   };
 
+  // Reset scanner to try again without page reload
+  const handleRetry = () => {
+    if (countdownTimerRef.current) {
+      clearInterval(countdownTimerRef.current);
+    }
+    isProcessingRef.current = false;
+    scanCompletedRef.current = false;
+    startCamera(facingMode);
+  };
+
   return (
-    <div className="fixed inset-0 z-50 bg-black text-white flex flex-col justify-between overflow-hidden select-none font-sans">
+    <div className="fixed inset-0 z-50 bg-slate-950 text-white flex flex-col justify-between overflow-hidden select-none font-sans">
       <canvas ref={canvasRef} className="hidden" />
       <input
         type="file"
@@ -469,51 +549,58 @@ export const ScanPage: React.FC = () => {
         onChange={handleFileUpload}
       />
 
-      {/* 1. Header HUD: ← Scan Attendance */}
-      <header className="relative z-20 flex items-center justify-between p-4 pt-[calc(env(safe-area-inset-top)+0.75rem)] bg-gradient-to-b from-black/90 via-black/50 to-transparent">
+      {/* 1. Top HUD Bar */}
+      <header className="relative z-30 flex items-center justify-between px-4 py-3 pt-[calc(env(safe-area-inset-top)+0.75rem)] bg-gradient-to-b from-slate-950 via-slate-950/80 to-transparent">
         <button
           onClick={() => {
             stopCameraStream();
             navigate(-1);
           }}
-          className="min-h-[44px] min-w-[44px] rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white hover:bg-white/30 transition-all active:scale-95"
+          className="min-h-[44px] min-w-[44px] rounded-full bg-white/10 hover:bg-white/20 active:scale-95 backdrop-blur-xl border border-white/10 flex items-center justify-center text-white transition-all shadow-md"
           aria-label="Back"
         >
           <ArrowLeft className="w-5 h-5" />
         </button>
 
-        <div className="text-center">
-          <h1 className="text-sm font-bold tracking-tight text-white">
+        <div className="flex flex-col items-center">
+          <h1 className="text-sm font-bold tracking-tight text-white flex items-center gap-1.5">
             {t('attendance.scanAttendance', 'Scan Attendance')}
           </h1>
-          <p className="text-[10px] text-slate-300 font-medium flex items-center justify-center gap-1 mt-0.5">
-            <MapPin className="w-2.5 h-2.5 text-emerald-400" />
-            <span>{locationStatus}</span>
-          </p>
+          <div className="flex items-center gap-1.5 mt-0.5">
+            <span
+              className={`w-2 h-2 rounded-full ${
+                isGpsReady ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400 animate-ping'
+              }`}
+            />
+            <span className="text-[11px] text-slate-300 font-medium tracking-tight">
+              {locationStatus}
+            </span>
+          </div>
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Flashlight toggle where supported */}
+          {/* Flashlight toggle */}
           {hasTorch && (
             <button
               type="button"
               onClick={toggleTorch}
-              className={`min-h-[44px] min-w-[44px] rounded-full backdrop-blur-md flex items-center justify-center transition-all active:scale-95 ${
+              className={`min-h-[44px] min-w-[44px] rounded-full backdrop-blur-xl border flex items-center justify-center transition-all active:scale-95 shadow-md ${
                 isTorchOn
-                  ? 'bg-amber-400 text-slate-900 shadow-lg shadow-amber-400/50'
-                  : 'bg-white/20 text-white hover:bg-white/30'
+                  ? 'bg-amber-400 border-amber-300 text-slate-950 shadow-amber-400/50'
+                  : 'bg-white/10 border-white/10 text-white hover:bg-white/20'
               }`}
               title={isTorchOn ? 'Turn Flashlight Off' : 'Turn Flashlight On'}
               aria-label="Toggle Flashlight"
             >
-              {isTorchOn ? <Zap className="w-4 h-4" /> : <ZapOff className="w-4 h-4" />}
+              {isTorchOn ? <Zap className="w-4 h-4 fill-current" /> : <ZapOff className="w-4 h-4" />}
             </button>
           )}
 
+          {/* Switch Camera */}
           <button
             type="button"
             onClick={toggleFacingMode}
-            className="min-h-[44px] min-w-[44px] rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-white hover:bg-white/30 transition-all active:scale-95"
+            className="min-h-[44px] min-w-[44px] rounded-full bg-white/10 hover:bg-white/20 active:scale-95 backdrop-blur-xl border border-white/10 flex items-center justify-center text-white transition-all shadow-md"
             title="Switch Camera"
             aria-label="Switch Camera"
           >
@@ -522,129 +609,111 @@ export const ScanPage: React.FC = () => {
         </div>
       </header>
 
-      {/* 2. Main Camera Viewport */}
-      <main className="flex-1 flex flex-col items-center justify-center p-4 relative z-10">
-        <div
-          className={`relative w-72 h-72 sm:w-80 sm:h-80 rounded-3xl overflow-hidden bg-black/90 border-2 border-brand-500/80 shadow-2xl flex items-center justify-center ${
-            state === 'SUCCESS' ||
-            state === 'ERROR' ||
-            state === 'PERMISSION_DENIED' ||
-            state === 'CAMERA_UNAVAILABLE'
-              ? 'hidden'
-              : 'block'
-          }`}
-        >
-          <video
-            ref={videoRef}
-            playsInline
-            autoPlay
-            muted
-            className="w-full h-full object-cover"
-          />
+      {/* 2. Main Viewport Area */}
+      <main className="flex-1 flex flex-col items-center justify-center px-4 relative z-10">
+        {/* CAMERA SCANNER VIEWPORT */}
+        {state === 'SCANNING' && (
+          <div className="flex flex-col items-center justify-center space-y-4 animate-fade-in w-full max-w-sm">
+            <div className="relative w-72 h-72 sm:w-80 sm:h-80 rounded-3xl overflow-hidden bg-black border border-cyan-500/30 shadow-[0_0_40px_rgba(6,182,212,0.15)] flex items-center justify-center">
+              <video
+                ref={videoRef}
+                playsInline
+                autoPlay
+                muted
+                className="w-full h-full object-cover"
+              />
 
-          {/* Clean Scanning Frame Target with Laser Animation */}
-          {state === 'SCANNING' && (
-            <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center p-4">
-              <div className="relative w-56 h-56 border-2 border-brand-400/90 rounded-2xl shadow-[0_0_15px_rgba(59,130,246,0.5)]">
-                <div className="absolute left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-cyan-400 to-transparent shadow-[0_0_12px_#38bdf8] animate-scan-laser" />
-                <div className="absolute -top-1 -left-1 w-4 h-4 border-t-2 border-l-2 border-brand-400" />
-                <div className="absolute -top-1 -right-1 w-4 h-4 border-t-2 border-r-2 border-brand-400" />
-                <div className="absolute -bottom-1 -left-1 w-4 h-4 border-b-2 border-l-2 border-brand-400" />
-                <div className="absolute -bottom-1 -right-1 w-4 h-4 border-b-2 border-r-2 border-brand-400" />
+              {/* Laser scan target frame */}
+              <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center p-6">
+                <div className="relative w-60 h-60 border-2 border-cyan-400/60 rounded-2xl shadow-[0_0_20px_rgba(6,182,212,0.3)]">
+                  {/* Scanning laser line */}
+                  <div className="absolute left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-cyan-400 to-transparent shadow-[0_0_12px_#22d3ee] animate-scan-laser" />
+
+                  {/* Corner accents */}
+                  <div className="absolute -top-1 -left-1 w-5 h-5 border-t-3 border-l-3 border-cyan-400 rounded-tl" />
+                  <div className="absolute -top-1 -right-1 w-5 h-5 border-t-3 border-r-3 border-cyan-400 rounded-tr" />
+                  <div className="absolute -bottom-1 -left-1 w-5 h-5 border-b-3 border-l-3 border-cyan-400 rounded-bl" />
+                  <div className="absolute -bottom-1 -right-1 w-5 h-5 border-b-3 border-r-3 border-cyan-400 rounded-br" />
+                </div>
               </div>
             </div>
-          )}
-        </div>
 
-        {/* State: Camera Unavailable / Permissions */}
-        {(state === 'CAMERA_UNAVAILABLE' || state === 'REQUESTING_PERMISSION') && (
-          <div className="bg-slate-900/95 backdrop-blur-xl border border-brand-500/40 p-6 rounded-3xl max-w-xs w-full text-center space-y-4 shadow-2xl animate-fade-in">
-            <div className="w-14 h-14 rounded-2xl bg-brand-500/20 border border-brand-500/40 text-brand-400 flex items-center justify-center mx-auto">
-              <Camera className="w-7 h-7" />
-            </div>
-
-            <div className="space-y-1">
-              <h3 className="text-base font-bold text-white">
-                {state === 'REQUESTING_PERMISSION' ? 'Requesting Permission...' : 'Camera Access'}
-              </h3>
-              <p className="text-xs text-slate-300 leading-relaxed">
-                {errorMessage || 'Tap below to activate camera permissions.'}
+            {/* Instruction Prompt */}
+            <div className="text-center space-y-1">
+              <p className="text-sm font-semibold text-white tracking-wide">
+                {t('attendance.scanInstruction', 'Scan the attendance QR code')}
               </p>
-            </div>
-
-            <Button
-              variant="primary"
-              size="lg"
-              className="w-full font-bold bg-brand-600 hover:bg-brand-700 h-12 text-sm"
-              onClick={() => startCamera(facingMode)}
-            >
-              {t('attendance.startCamera', 'Start Camera (បើកកាមេរ៉ា)')}
-            </Button>
-          </div>
-        )}
-
-        {/* State: Scanning Instruction Prompt */}
-        {state === 'SCANNING' && isCameraActive && (
-          <div className="text-center space-y-1 mt-4 max-w-xs animate-fade-in">
-            <p className="text-xs font-bold text-white">
-              {t('attendance.scanInstruction', 'Scan the attendance QR code')}
-            </p>
-            <p className="text-[11px] text-slate-400">
-              {t('attendance.autoDetected', 'Align inside frame • Scans automatically')}
-            </p>
-          </div>
-        )}
-
-        {/* State: Validating */}
-        {(state === 'VALIDATING' || state === 'QR_DETECTED') && (
-          <div className="bg-slate-900/95 backdrop-blur-xl border border-slate-700 p-6 rounded-3xl max-w-xs w-full text-center space-y-4 shadow-2xl animate-scale-in">
-            <RefreshCw className="w-10 h-10 text-brand-400 animate-spin mx-auto" />
-            <div className="space-y-1">
-              <h3 className="text-base font-bold text-white">
-                {t('attendance.validating', 'Recording Attendance...')}
-              </h3>
               <p className="text-xs text-slate-400">
-                {t('attendance.verifyingPerimeter', 'Validating server time & GPS geofence')}
+                {t('attendance.autoDetected', 'Align inside frame • Scans automatically')}
               </p>
             </div>
           </div>
         )}
 
-        {/* State: Success Screen */}
+        {/* VALIDATING STATE (Fast, smooth transition with neon radar ring) */}
+        {state === 'VALIDATING' && (
+          <div className="bg-slate-900/90 backdrop-blur-2xl border border-cyan-500/40 p-8 rounded-3xl max-w-xs w-full text-center space-y-5 shadow-[0_20px_50px_rgba(6,182,212,0.25)] animate-slide-up">
+            <div className="relative w-20 h-20 mx-auto flex items-center justify-center">
+              <span className="absolute inset-0 rounded-full border-2 border-cyan-400/30 animate-ping" />
+              <div className="w-16 h-16 rounded-full bg-cyan-500/10 border-2 border-cyan-400 flex items-center justify-center shadow-[0_0_20px_rgba(6,182,212,0.4)]">
+                <RefreshCw className="w-8 h-8 text-cyan-400 animate-spin" />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <h3 className="text-lg font-bold text-white tracking-tight">
+                {t('attendance.validating', 'Verifying Attendance...')}
+              </h3>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                {t('attendance.verifyingPerimeter', 'Checking office geofence & server time')}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* SUCCESS STATE (Stunning Glassmorphic Transformation) */}
         {state === 'SUCCESS' && (
-          <div className="bg-slate-900/95 backdrop-blur-xl border border-emerald-500/40 p-6 rounded-3xl max-w-xs w-full text-center space-y-5 shadow-2xl animate-slide-up">
-            <div className="w-16 h-16 rounded-full bg-emerald-500/20 border-2 border-emerald-500/60 flex items-center justify-center text-emerald-400 mx-auto shadow-[0_0_20px_rgba(16,185,129,0.3)]">
-              <CheckCircle2 className="w-9 h-9" />
+          <div className="bg-slate-900/95 backdrop-blur-2xl border border-emerald-500/40 p-6 sm:p-7 rounded-3xl max-w-sm w-full text-center space-y-5 shadow-[0_25px_60px_rgba(16,185,129,0.25)] animate-slide-up">
+            {/* Animated Emerald Checkmark */}
+            <div className="relative w-20 h-20 mx-auto flex items-center justify-center">
+              <span className="absolute inset-0 rounded-full bg-emerald-500/20 animate-ping opacity-60" />
+              <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-emerald-600 to-teal-500 border-2 border-emerald-400 flex items-center justify-center text-white shadow-[0_0_25px_rgba(16,185,129,0.5)]">
+                <Check className="w-9 h-9 stroke-[3]" />
+              </div>
             </div>
 
             <div className="space-y-1">
-              <h3 className="text-lg font-bold text-white">
-                {t('attendance.recordedTitle', 'Attendance Recorded')}
+              <h3 className="text-xl font-extrabold text-white tracking-tight">
+                {t('attendance.attendanceConfirmed', 'Attendance Confirmed!')}
               </h3>
-              <p className="text-xs text-slate-400">
-                {new Date().toLocaleDateString('en-US', {
-                  weekday: 'long',
-                  month: 'short',
-                  day: 'numeric',
-                })}
+              <p className="text-xs text-slate-400 flex items-center justify-center gap-1">
+                <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                <span>
+                  {new Date().toLocaleDateString('en-US', {
+                    weekday: 'long',
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric',
+                  })}
+                </span>
               </p>
             </div>
 
             {/* Attendance Details Card */}
-            <div className="bg-slate-800/80 p-3.5 rounded-2xl border border-slate-700 text-xs space-y-2.5 text-left">
-              <div className="flex items-center justify-between">
-                <span className="text-slate-400 flex items-center gap-1.5">
-                  <Clock className="w-3.5 h-3.5 text-slate-400" />
-                  Time:
+            <div className="bg-slate-950/70 p-4 rounded-2xl border border-slate-800 text-xs space-y-3 text-left shadow-inner">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-800/80">
+                <span className="text-slate-400 flex items-center gap-2 font-medium">
+                  <Clock className="w-4 h-4 text-emerald-400" />
+                  Recorded Time:
                 </span>
-                <span className="font-mono font-bold text-white text-sm">
+                <span className="font-mono font-bold text-white text-base">
                   {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </span>
               </div>
 
               <div className="flex items-center justify-between">
-                <span className="text-slate-400 flex items-center gap-1.5">
-                  <Building className="w-3.5 h-3.5 text-slate-400" />
+                <span className="text-slate-400 flex items-center gap-2 font-medium">
+                  <Building className="w-4 h-4 text-slate-400" />
                   Office:
                 </span>
                 <span className="font-semibold text-slate-200">
@@ -653,18 +722,18 @@ export const ScanPage: React.FC = () => {
               </div>
 
               <div className="flex items-center justify-between">
-                <span className="text-slate-400 flex items-center gap-1.5">
-                  <Navigation className="w-3.5 h-3.5 text-emerald-400" />
-                  Location:
+                <span className="text-slate-400 flex items-center gap-2 font-medium">
+                  <Navigation className="w-4 h-4 text-emerald-400" />
+                  Geofence:
                 </span>
-                <span className="inline-flex items-center gap-1 font-semibold text-emerald-400">
-                  <ShieldCheck className="w-3.5 h-3.5" />
-                  Inside Office
+                <span className="inline-flex items-center gap-1.5 font-bold text-emerald-400">
+                  <ShieldCheck className="w-4 h-4" />
+                  {t('attendance.insideOffice', 'Inside Office')}
                 </span>
               </div>
 
-              <div className="flex items-center justify-between pt-1 border-t border-slate-700/60">
-                <span className="text-slate-400">Status:</span>
+              <div className="flex items-center justify-between pt-2 border-t border-slate-800/80">
+                <span className="text-slate-400 font-medium">Punch Status:</span>
                 <Badge
                   status={
                     successRecord?.details?.status ||
@@ -676,42 +745,52 @@ export const ScanPage: React.FC = () => {
               </div>
             </div>
 
-            <Button
-              variant="primary"
-              size="lg"
-              className="w-full h-12 font-bold bg-emerald-600 hover:bg-emerald-700 active:scale-95"
-              onClick={() => {
-                stopCameraStream();
-                navigate('/');
-              }}
-            >
-              {t('common.done', 'Done & Return Home')}
-            </Button>
+            {/* Action buttons & Countdown */}
+            <div className="space-y-2 pt-1">
+              <Button
+                variant="primary"
+                size="lg"
+                className="w-full h-12 font-bold bg-emerald-600 hover:bg-emerald-500 active:scale-95 shadow-lg shadow-emerald-600/30 text-sm transition-all"
+                onClick={() => {
+                  stopCameraStream();
+                  navigate('/');
+                }}
+              >
+                {t('common.done', 'Done & Return Home')}
+              </Button>
+
+              <p className="text-[11px] text-slate-400 animate-pulse font-mono">
+                {t('attendance.redirectingHome', {
+                  defaultValue: `Returning to home in ${countdown}s...`,
+                  seconds: countdown,
+                })}
+              </p>
+            </div>
           </div>
         )}
 
-        {/* State: Error & Permission Prompts */}
-        {(state === 'ERROR' || state === 'PERMISSION_DENIED') && (
-          <div className="bg-slate-900/95 backdrop-blur-xl border border-rose-500/40 p-6 rounded-3xl max-w-xs w-full text-center space-y-4 shadow-2xl animate-slide-up">
-            <div className="w-14 h-14 rounded-2xl bg-rose-500/20 border border-rose-500/40 text-rose-400 flex items-center justify-center mx-auto">
-              <AlertCircle className="w-7 h-7" />
+        {/* ERROR / NOTICE STATE */}
+        {state === 'ERROR' && (
+          <div className="bg-slate-900/95 backdrop-blur-2xl border border-rose-500/40 p-6 sm:p-7 rounded-3xl max-w-xs w-full text-center space-y-5 shadow-[0_25px_60px_rgba(244,63,94,0.25)] animate-slide-up">
+            <div className="w-16 h-16 rounded-full bg-rose-500/10 border-2 border-rose-500/40 flex items-center justify-center text-rose-400 mx-auto shadow-[0_0_20px_rgba(244,63,94,0.3)]">
+              <AlertCircle className="w-8 h-8" />
             </div>
 
-            <div className="space-y-1">
-              <h3 className="text-base font-bold text-white">
-                {state === 'PERMISSION_DENIED'
-                  ? t('attendance.permissionDeniedTitle', 'Camera Access Required')
-                  : t('attendance.scanFailedTitle', 'Attendance Rejected')}
+            <div className="space-y-1.5">
+              <h3 className="text-base font-bold text-white tracking-tight">
+                {t('attendance.scanFailedTitle', 'Attendance Notice')}
               </h3>
-              <p className="text-xs text-slate-300 leading-relaxed">{errorMessage}</p>
+              <p className="text-xs text-slate-300 leading-relaxed font-medium">
+                {errorMessage}
+              </p>
             </div>
 
-            <div className="space-y-2 pt-2">
+            <div className="space-y-2 pt-1">
               <Button
                 variant="primary"
                 size="md"
-                className="w-full"
-                onClick={() => startCamera(facingMode)}
+                className="w-full h-11 font-semibold bg-brand-600 hover:bg-brand-500"
+                onClick={handleRetry}
               >
                 {t('common.retry', 'Try Again')}
               </Button>
@@ -719,7 +798,7 @@ export const ScanPage: React.FC = () => {
               <Button
                 variant="secondary"
                 size="md"
-                className="w-full bg-slate-800 text-slate-200 border-slate-700 hover:bg-slate-700"
+                className="w-full h-11 bg-slate-800/80 text-slate-200 border-slate-700 hover:bg-slate-700"
                 icon={UploadCloud}
                 onClick={() => fileInputRef.current?.click()}
               >
@@ -728,16 +807,49 @@ export const ScanPage: React.FC = () => {
             </div>
           </div>
         )}
+
+        {/* CAMERA ACCESS / PERMISSION PROMPT */}
+        {(state === 'CAMERA_UNAVAILABLE' ||
+          state === 'REQUESTING_PERMISSION' ||
+          state === 'PERMISSION_DENIED') && (
+          <div className="bg-slate-900/95 backdrop-blur-2xl border border-brand-500/40 p-6 sm:p-7 rounded-3xl max-w-xs w-full text-center space-y-4 shadow-2xl animate-fade-in">
+            <div className="w-16 h-16 rounded-2xl bg-brand-500/20 border border-brand-500/40 text-brand-400 flex items-center justify-center mx-auto shadow-[0_0_20px_rgba(59,130,246,0.3)]">
+              <Camera className="w-8 h-8" />
+            </div>
+
+            <div className="space-y-1.5">
+              <h3 className="text-base font-bold text-white">
+                {state === 'PERMISSION_DENIED'
+                  ? t('attendance.permissionDeniedTitle', 'Camera Access Required')
+                  : state === 'REQUESTING_PERMISSION'
+                  ? 'Requesting Camera...'
+                  : 'Camera Access'}
+              </h3>
+              <p className="text-xs text-slate-300 leading-relaxed">
+                {errorMessage || 'Tap below to activate camera permissions.'}
+              </p>
+            </div>
+
+            <Button
+              variant="primary"
+              size="lg"
+              className="w-full font-bold bg-brand-600 hover:bg-brand-500 h-12 text-sm shadow-lg shadow-brand-600/30"
+              onClick={handleRetry}
+            >
+              {t('attendance.startCamera', 'Start Camera (បើកកាមេរ៉ា)')}
+            </Button>
+          </div>
+        )}
       </main>
 
-      {/* 3. Footer HUD */}
-      <footer className="p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] flex items-center justify-center gap-4 bg-gradient-to-t from-black/90 to-transparent">
+      {/* 3. Bottom Footer HUD */}
+      <footer className="relative z-30 p-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] flex items-center justify-center gap-4 bg-gradient-to-t from-slate-950 via-slate-950/80 to-transparent">
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          className="min-h-[44px] text-xs text-slate-300 hover:text-white flex items-center gap-1.5 py-2 px-4 rounded-full bg-white/10 backdrop-blur-md active:scale-95 transition-all"
+          className="min-h-[44px] text-xs font-medium text-slate-300 hover:text-white flex items-center gap-2 py-2 px-5 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-xl border border-white/10 active:scale-95 transition-all shadow-md"
         >
-          <UploadCloud className="w-4 h-4" />
+          <UploadCloud className="w-4 h-4 text-brand-400" />
           <span>{t('attendance.uploadPhoto', 'Upload Photo')}</span>
         </button>
       </footer>

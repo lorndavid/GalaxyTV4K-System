@@ -71,11 +71,15 @@
     "scanInstruction": "Scan the attendance QR code",
     "autoDetected": "Align inside frame • Scans automatically",
     "recordedTitle": "Attendance Recorded",
+    "attendanceConfirmed": "Attendance Confirmed!",
+    "redirectingHome": "Returning to home in {{seconds}}s...",
+    "viewAttendanceHistory": "View Attendance History",
+    "insideOffice": "Inside Office",
     "gpsVerified": "GPS Verified",
     "gpsReady": "GPS ready",
     "startCamera": "Start Camera (បើកកាមេរ៉ា)",
-    "validating": "Recording Attendance...",
-    "verifyingPerimeter": "Validating server time & GPS geofence",
+    "validating": "Verifying Attendance...",
+    "verifyingPerimeter": "Checking office geofence & server time",
     "recordSuccessToast": "✓ Attendance recorded successfully",
     "scanFailed": "Unable to record attendance right now.",
     "uploadQrPhoto": "Upload QR Photo",
@@ -86,7 +90,7 @@
     "gpsUnavailable": "We couldn't determine your location. Please turn on GPS/Location and try again.",
     "qrNotFoundInPhoto": "Could not find a valid QR code in the uploaded image.",
     "permissionDeniedTitle": "Camera Access Required",
-    "scanFailedTitle": "Attendance Rejected"
+    "scanFailedTitle": "Attendance Notice"
   },
   "leave": {
     "title": "Leave Management",
