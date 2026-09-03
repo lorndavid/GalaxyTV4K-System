@@ -144,32 +144,50 @@ export class TelegramController {
   }
 
   /**
-   * Add or update Telegram Chat ID (Admin)
+   * Add or update Telegram Chat ID (Admin) - Supports Personal, Group, and Channel
    */
   public static async addChat(req: Request, res: Response): Promise<void> {
     try {
-      const { chatId, label } = req.body;
+      const { chatId, label, chatType } = req.body;
 
-      if (!chatId || !label) {
-        res.status(400).json({ success: false, error: { message: 'Chat ID and Label are required.' } });
+      if (!chatId) {
+        res.status(400).json({ success: false, error: { message: 'Chat ID is required.' } });
         return;
       }
 
+      const strId = String(chatId).trim();
+      const strLabel = (label ? String(label).trim() : '') || `Chat ${strId}`;
+
+      // Auto-detect chat type if not provided
+      let determinedType = (chatType ? String(chatType).toUpperCase() : '') as 'PERSONAL' | 'GROUP' | 'CHANNEL';
+      if (!['PERSONAL', 'GROUP', 'CHANNEL'].includes(determinedType)) {
+        if (strId.startsWith('-100')) {
+          determinedType = 'CHANNEL';
+        } else if (strId.startsWith('-')) {
+          determinedType = 'GROUP';
+        } else {
+          determinedType = 'PERSONAL';
+        }
+      }
+
       const chat = await prisma.telegramChat.upsert({
-        where: { chatId: String(chatId).trim() },
+        where: { chatId: strId },
         create: {
-          chatId: String(chatId).trim(),
-          label: String(label).trim(),
+          chatId: strId,
+          label: strLabel,
+          chatType: determinedType,
           enabled: true,
         },
         update: {
-          label: String(label).trim(),
+          label: strLabel,
+          chatType: determinedType,
           enabled: true,
         },
       });
 
       res.status(200).json({ success: true, data: chat });
     } catch (err: any) {
+      console.error('[TelegramController] addChat error:', err);
       res.status(500).json({ success: false, error: { message: 'Failed to add Telegram Chat.' } });
     }
   }

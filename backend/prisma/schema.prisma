@@ -402,6 +402,7 @@ model TelegramChat {
   id        String   @id @default(uuid())
   chatId    String   @unique
   label     String
+  chatType  String   @default("GROUP") // PERSONAL | GROUP | CHANNEL
   enabled   Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

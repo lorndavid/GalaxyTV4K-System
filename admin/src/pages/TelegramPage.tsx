@@ -31,6 +31,7 @@ interface TelegramChat {
   id: string;
   chatId: string;
   label: string;
+  chatType?: 'PERSONAL' | 'GROUP' | 'CHANNEL';
   enabled: boolean;
   createdAt: string;
 }
@@ -67,7 +68,11 @@ export const TelegramPage: React.FC = () => {
   const [isAddChatOpen, setIsAddChatOpen] = useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
-  const [newChat, setNewChat] = useState({ chatId: '', label: '' });
+  const [newChat, setNewChat] = useState<{
+    chatId: string;
+    label: string;
+    chatType: 'PERSONAL' | 'GROUP' | 'CHANNEL';
+  }>({ chatId: '', label: '', chatType: 'GROUP' });
   const [testStatus, setTestStatus] = useState<{
     success?: boolean;
     message?: string;
@@ -130,13 +135,13 @@ export const TelegramPage: React.FC = () => {
 
   // Add Chat Mutation
   const addChatMutation = useMutation({
-    mutationFn: async (payload: { chatId: string; label: string }) => {
+    mutationFn: async (payload: { chatId: string; label: string; chatType?: string }) => {
       return await apiClient.post('/admin/telegram/chats', payload);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['adminTelegramConfig'] });
       setIsAddChatOpen(false);
-      setNewChat({ chatId: '', label: '' });
+      setNewChat({ chatId: '', label: '', chatType: 'GROUP' });
       showToast('Telegram chat added.');
     },
   });
@@ -573,14 +578,27 @@ export const TelegramPage: React.FC = () => {
             <div className="divide-y divide-slate-100 dark:divide-dark-border border border-slate-200 dark:border-dark-border rounded-xl overflow-hidden max-h-72 overflow-y-auto">
               {!data?.chats || data.chats.length === 0 ? (
                 <div className="p-6 text-center text-xs text-slate-400">
-                  No Chat IDs configured. Add a group or personal chat ID to receive notifications.
+                  No Chat IDs configured. Add a personal, group, or channel ID to authorize access.
                 </div>
               ) : (
                 data.chats.map((c) => (
                   <div key={c.id} className="p-3 flex items-center justify-between gap-2">
-                    <div>
-                      <span className="text-xs font-bold text-slate-900 dark:text-slate-100 block">{c.label}</span>
-                      <span className="font-mono text-[11px] text-slate-500 dark:text-slate-400 block">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">{c.label}</span>
+                        <span
+                          className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
+                            c.chatType === 'PERSONAL'
+                              ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800'
+                              : c.chatType === 'CHANNEL'
+                              ? 'bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800'
+                              : 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+                          }`}
+                        >
+                          {c.chatType === 'PERSONAL' ? 'Personal' : c.chatType === 'CHANNEL' ? 'Channel' : 'Group'}
+                        </span>
+                      </div>
+                      <span className="font-mono text-[11px] text-slate-500 dark:text-slate-400 block mt-0.5">
                         ID: {c.chatId}
                       </span>
                     </div>
@@ -595,6 +613,32 @@ export const TelegramPage: React.FC = () => {
                   </div>
                 ))
               )}
+            </div>
+          </Card>
+
+          {/* Interactive Bot & Whitelist Security Guide Card */}
+          <Card className="p-5 space-y-3 border-slate-200 dark:border-dark-border bg-slate-50/70 dark:bg-dark-elevated/40">
+            <h4 className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+              <ShieldCheck className="w-4 h-4 text-brand-600 dark:text-brand-400" />
+              Private Whitelist & Interactive Bot Menu
+            </h4>
+
+            <div className="space-y-2 text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
+              <p>
+                <strong>សុវត្ថិភាព Whitelist:</strong> មានតែ Personal ID, Group ID ឬ Channel ID ដែលបានបន្ថែមក្នុងបញ្ជីខាងលើនេះប៉ុណ្ណោះ ទើបអាចទទួលសារ និងប្រើប្រាស់ Bot បាន។ អ្នកប្រើប្រាស់ដែលមិនមានក្នុងបញ្ជី នឹងមិនអាចមើលទិន្នន័យបានឡើយ។
+              </p>
+              <div className="pt-1 border-t border-slate-200/80 dark:border-dark-border">
+                <span className="font-semibold text-slate-700 dark:text-slate-300 block mb-1">
+                  ពាក្យបញ្ជា Interactive Bot (/start ឬ /menu):
+                </span>
+                <ul className="list-disc pl-4 space-y-0.5">
+                  <li><strong>របាយការណ៍សង្ខេបប្រចាំថ្ងៃ:</strong> បង្ហាញសរុប និងបុគ្គលិកទាំង ២០ រូប</li>
+                  <li><strong>បុគ្គលិកវេនរៀន:</strong> ច្រោះមើលតែបុគ្គលិកមានវេនរៀនថ្ងៃនេះ</li>
+                  <li><strong>បុគ្គលិកបំពេញការងារ:</strong> ច្រោះមើលតែបុគ្គលិកធ្វើការថ្ងៃនេះ</li>
+                  <li><strong>វត្តមានក្នុង/ក្រៅការិយាល័យ:</strong> ពិនិត្យទីតាំងជាក់ស្តែង Real-time</li>
+                  <li><strong>បុគ្គលិកសុំច្បាប់:</strong> បង្ហាញអ្នកសុំច្បាប់សម្រាកថ្ងៃនេះ</li>
+                </ul>
+              </div>
             </div>
           </Card>
         </div>
@@ -698,7 +742,7 @@ export const TelegramPage: React.FC = () => {
       <Modal
         isOpen={isAddChatOpen}
         onClose={() => setIsAddChatOpen(false)}
-        title="Add Telegram Chat Channel"
+        title="Add Telegram Recipient (Personal, Group, or Channel)"
       >
         <form
           onSubmit={(e) => {
@@ -707,6 +751,53 @@ export const TelegramPage: React.FC = () => {
           }}
           className="space-y-4"
         >
+          {/* Chat Type Segmented Buttons */}
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+              Recipient Type (ប្រភេទអ្នកទទួល) <span className="text-danger-500">*</span>
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                type="button"
+                onClick={() => setNewChat({ ...newChat, chatType: 'PERSONAL' })}
+                className={`py-2 px-2.5 text-xs font-semibold rounded-xl border text-center transition-all ${
+                  newChat.chatType === 'PERSONAL'
+                    ? 'bg-blue-50 dark:bg-blue-950/50 border-blue-500 text-blue-700 dark:text-blue-300 shadow-xs'
+                    : 'bg-white dark:bg-dark-elevated border-slate-200 dark:border-dark-border text-slate-600 dark:text-slate-400 hover:border-slate-300'
+                }`}
+              >
+                Personal
+                <span className="block text-[10px] font-normal opacity-80">គណនីផ្ទាល់ខ្លួន</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setNewChat({ ...newChat, chatType: 'GROUP' })}
+                className={`py-2 px-2.5 text-xs font-semibold rounded-xl border text-center transition-all ${
+                  newChat.chatType === 'GROUP'
+                    ? 'bg-emerald-50 dark:bg-emerald-950/50 border-emerald-500 text-emerald-700 dark:text-emerald-300 shadow-xs'
+                    : 'bg-white dark:bg-dark-elevated border-slate-200 dark:border-dark-border text-slate-600 dark:text-slate-400 hover:border-slate-300'
+                }`}
+              >
+                Group
+                <span className="block text-[10px] font-normal opacity-80">ក្រុមពិភាក្សា</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setNewChat({ ...newChat, chatType: 'CHANNEL' })}
+                className={`py-2 px-2.5 text-xs font-semibold rounded-xl border text-center transition-all ${
+                  newChat.chatType === 'CHANNEL'
+                    ? 'bg-purple-50 dark:bg-purple-950/50 border-purple-500 text-purple-700 dark:text-purple-300 shadow-xs'
+                    : 'bg-white dark:bg-dark-elevated border-slate-200 dark:border-dark-border text-slate-600 dark:text-slate-400 hover:border-slate-300'
+                }`}
+              >
+                Channel
+                <span className="block text-[10px] font-normal opacity-80">ប៉ុស្តិ៍ផ្សព្វផ្សាយ</span>
+              </button>
+            </div>
+          </div>
+
           <div>
             <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
               Chat Channel Label <span className="text-danger-500">*</span>
@@ -714,7 +805,13 @@ export const TelegramPage: React.FC = () => {
             <input
               type="text"
               required
-              placeholder="e.g. Management Group or HR Channel"
+              placeholder={
+                newChat.chatType === 'PERSONAL'
+                  ? 'e.g. Director Personal Chat or HR Manager'
+                  : newChat.chatType === 'CHANNEL'
+                  ? 'e.g. Official Announcement Channel'
+                  : 'e.g. Management Group or Daily HR Room'
+              }
               value={newChat.label}
               onChange={(e) => setNewChat({ ...newChat, label: e.target.value })}
               className="w-full px-3 py-2 text-xs border border-slate-200 dark:border-dark-border rounded-lg focus:ring-2 focus:ring-brand-500 focus:outline-none bg-white dark:bg-dark-elevated text-slate-900 dark:text-slate-100"
@@ -728,14 +825,29 @@ export const TelegramPage: React.FC = () => {
             <input
               type="text"
               required
-              placeholder="e.g. -100198273645 or 987654321"
+              placeholder={
+                newChat.chatType === 'PERSONAL'
+                  ? 'e.g. 987654321 (Numerical ID)'
+                  : newChat.chatType === 'CHANNEL'
+                  ? 'e.g. -100198273645 (Channel ID)'
+                  : 'e.g. -100123456789 or -987654321'
+              }
               value={newChat.chatId}
               onChange={(e) => setNewChat({ ...newChat, chatId: e.target.value })}
               className="w-full px-3 py-2 text-xs font-mono border border-slate-200 dark:border-dark-border rounded-lg focus:ring-2 focus:ring-brand-500 focus:outline-none bg-white dark:bg-dark-elevated text-slate-900 dark:text-slate-100"
             />
             <p className="text-[10px] text-slate-400 mt-1">
-              Tip: Add your bot to the group and invite @userinfobot to see your group's Chat ID.
+              {newChat.chatType === 'PERSONAL' &&
+                '💡 Tip for Personal Chat: Open Telegram and message @userinfobot to see your user ID.'}
+              {newChat.chatType === 'GROUP' &&
+                '💡 Tip for Group Chat: Add your bot to the Telegram group, then forward a message to @userinfobot to find group ID.'}
+              {newChat.chatType === 'CHANNEL' &&
+                '💡 Tip for Channel: Add bot as Administrator in your Channel, then forward a post to @userinfobot to find channel ID.'}
             </p>
+          </div>
+
+          <div className="p-2.5 rounded-lg bg-slate-50 dark:bg-dark-elevated border border-slate-200/60 dark:border-dark-border text-[11px] text-slate-500">
+            🔒 <strong>Private Access Control:</strong> Only added Chat IDs can see the 7:00 AM summary or use the interactive bot menu (/start, /menu). All other chats will be blocked.
           </div>
 
           <div className="pt-3 border-t border-slate-100 dark:border-dark-border flex items-center justify-end gap-2.5">
@@ -743,7 +855,7 @@ export const TelegramPage: React.FC = () => {
               Cancel
             </Button>
             <Button variant="primary" size="md" isLoading={addChatMutation.isPending}>
-              Save Chat
+              Save Authorized Chat
             </Button>
           </div>
         </form>

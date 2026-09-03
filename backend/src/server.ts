@@ -3,6 +3,7 @@ import { config } from './config/index.js';
 import { prisma } from './utils/prisma.js';
 
 import { startTelegramScheduler, stopTelegramScheduler } from './services/telegramScheduler.js';
+import { startTelegramBotPolling, stopTelegramBotPolling } from './services/telegramBotService.js';
 
 async function startServer() {
   try {
@@ -20,12 +21,16 @@ async function startServer() {
 
       // Initialize Telegram 7:00 AM Daily Summary Scheduler
       startTelegramScheduler();
+
+      // Initialize Telegram Interactive Bot Polling
+      startTelegramBotPolling();
     });
 
     // Graceful Shutdown
     const shutdown = async (signal: string) => {
       console.log(`\nReceived ${signal}. Shutting down gracefully...`);
       stopTelegramScheduler();
+      stopTelegramBotPolling();
       server.close(async () => {
         await prisma.$disconnect();
         console.log('Database disconnected. Process exited.');
