@@ -3,6 +3,7 @@ import { Outlet, Navigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
+import { VersionUpdateBanner } from '../common/VersionUpdateBanner';
 
 export const AdminLayout: React.FC = () => {
   const { isAuthenticated, isLoading, isAdmin } = useAuth();
@@ -24,16 +25,19 @@ export const AdminLayout: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-dark-bg text-slate-900 dark:text-slate-100 flex transition-colors duration-150">
-      {/* Sidebar */}
-      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+    <div className="min-h-screen bg-slate-50 dark:bg-dark-bg text-slate-900 dark:text-slate-100 flex flex-col transition-colors duration-150">
+      <VersionUpdateBanner />
+      <div className="flex-1 flex transition-colors duration-150">
+        {/* Sidebar */}
+        <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0 lg:pl-64">
-        <Header onOpenSidebar={() => setSidebarOpen(true)} />
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto animate-fade-in">
-          <Outlet />
-        </main>
+        {/* Main Content Area */}
+        <div className="flex-1 flex flex-col min-w-0 lg:pl-64">
+          <Header onOpenSidebar={() => setSidebarOpen(true)} />
+          <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto animate-fade-in">
+            <Outlet />
+          </main>
+        </div>
       </div>
     </div>
   );

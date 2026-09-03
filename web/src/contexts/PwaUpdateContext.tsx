@@ -52,9 +52,26 @@ export const PwaUpdateProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const updateSWFnRef = useRef<((reloadPage?: boolean) => Promise<void>) | null>(null);
   const isUpdatingRef = useRef(false);
 
-  // 1. Fetch public version.json metadata (Network-only with cache busting)
+  // 1. Fetch public version metadata (Live /api/version with fallback to version.json)
   const fetchVersionMetadata = useCallback(async () => {
     try {
+      // Primary: Live backend version endpoint
+      const apiResponse = await fetch(`/api/version?_t=${Date.now()}`, {
+        cache: 'no-store',
+        headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' },
+      });
+      if (apiResponse.ok) {
+        const resData = await apiResponse.json();
+        const liveVer = resData?.data?.version;
+        if (liveVer && liveVer !== currentVersion) {
+          setNewVersion(liveVer);
+          setUpdateAvailable(true);
+          setUpdateStage('AVAILABLE');
+          return resData.data;
+        }
+      }
+
+      // Secondary: Static version.json fallback
       const response = await fetch(`/version.json?_t=${Date.now()}`, {
         cache: 'no-store',
         headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' },
@@ -63,6 +80,8 @@ export const PwaUpdateProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         const data: VersionMetadata = await response.json();
         if (data.version && data.version !== currentVersion) {
           setNewVersion(data.version);
+          setUpdateAvailable(true);
+          setUpdateStage('AVAILABLE');
           if (Array.isArray(data.releaseNotes)) {
             setReleaseNotes(data.releaseNotes);
           }
@@ -70,7 +89,7 @@ export const PwaUpdateProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         }
       }
     } catch {
-      // offline or version.json unavailable
+      // offline or server restarting
     }
     return null;
   }, [currentVersion]);
@@ -104,14 +123,26 @@ export const PwaUpdateProvider: React.FC<{ children: React.ReactNode }> = ({ chi
               fetchVersionMetadata();
             }
 
-            // Periodic background update check (every 30 minutes)
+            // Periodic background update check (every 60 seconds)
             const interval = setInterval(() => {
               if (navigator.onLine && !isUpdatingRef.current) {
                 registration.update().catch(() => {});
+                fetchVersionMetadata();
               }
-            }, 30 * 60 * 1000);
+            }, 60 * 1000);
 
-            return () => clearInterval(interval);
+            const handleFocus = () => {
+              if (navigator.onLine && !isUpdatingRef.current) {
+                registration.update().catch(() => {});
+                fetchVersionMetadata();
+              }
+            };
+            window.addEventListener('focus', handleFocus);
+
+            return () => {
+              clearInterval(interval);
+              window.removeEventListener('focus', handleFocus);
+            };
           }
         },
         onRegisterError(error) {

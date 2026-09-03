@@ -331,39 +331,28 @@ export async function seedOfficialEmployees(prisma: PrismaClient) {
     }
   }
 
-  // 5. Clean up all non-admin user accounts and old employee records
-  const nonAdminUsers = await prisma.user.findMany({
-    where: { role: { not: UserRole.ADMIN } },
-    select: { id: true },
-  });
-  const nonAdminUserIds = nonAdminUsers.map((u) => u.id);
-
-  if (nonAdminUserIds.length > 0) {
-    await prisma.session.deleteMany({
-      where: { userId: { in: nonAdminUserIds } },
-    });
-    await prisma.user.deleteMany({
-      where: { id: { in: nonAdminUserIds } },
-    });
-  }
-
-  await prisma.attendance.deleteMany({});
-  await prisma.leaveBalance.deleteMany({});
-  await prisma.leaveRequest.deleteMany({});
-  await prisma.outRequest.deleteMany({});
-  await prisma.employeeLocation.deleteMany({});
-  await prisma.locationEvent.deleteMany({});
-  await prisma.employee.deleteMany({});
-  console.log('✓ Cleaned up previous employee records.');
-
-  // 6. Insert all 20 official employees
+  // 5. Upsert all 20 official employees safely WITHOUT deleting any attendance, leaves, or GPS settings
   const currentYear = new Date().getFullYear();
 
   for (const empData of OFFICIAL_EMPLOYEES) {
     const deptId = deptMap.get(empData.departmentName);
 
-    const employee = await prisma.employee.create({
-      data: {
+    // Safely upsert employee record preserving ID, relationships and attendance
+    const employee = await prisma.employee.upsert({
+      where: { employeeCode: empData.code },
+      update: {
+        displayName: empData.latinName,
+        khmerName: empData.khmerName,
+        latinName: empData.latinName,
+        gender: empData.gender,
+        skill: empData.skill,
+        studyDay: empData.studyDay,
+        phone: empData.phone,
+        position: empData.position,
+        departmentId: deptId || null,
+        scheduleId: defaultSchedule?.id || null,
+      },
+      create: {
         employeeCode: empData.code,
         displayName: empData.latinName,
         khmerName: empData.khmerName,
@@ -380,9 +369,15 @@ export async function seedOfficialEmployees(prisma: PrismaClient) {
       },
     });
 
-    // Create User login account
-    await prisma.user.create({
-      data: {
+    // Safely upsert user login account
+    await prisma.user.upsert({
+      where: { email: empData.email.toLowerCase() },
+      update: {
+        employeeId: employee.id,
+        role: UserRole.EMPLOYEE,
+        status: UserStatus.ACTIVE,
+      },
+      create: {
         email: empData.email.toLowerCase(),
         passwordHash: employeePasswordHash,
         role: UserRole.EMPLOYEE,
@@ -391,9 +386,16 @@ export async function seedOfficialEmployees(prisma: PrismaClient) {
       },
     });
 
-    // Create Leave Balance
-    await prisma.leaveBalance.create({
-      data: {
+    // Safely upsert leave balance
+    await prisma.leaveBalance.upsert({
+      where: {
+        employeeId_year: {
+          employeeId: employee.id,
+          year: currentYear,
+        },
+      },
+      update: {},
+      create: {
         employeeId: employee.id,
         year: currentYear,
         annualTotal: 15.0,
@@ -404,7 +406,7 @@ export async function seedOfficialEmployees(prisma: PrismaClient) {
   }
 
   console.log(
-    `✅ All ${OFFICIAL_EMPLOYEES.length} official employees inserted successfully with email lastname@galaxytv4k.com and password galaxytv@@`
+    `✅ All ${OFFICIAL_EMPLOYEES.length} official employees safely verified/synced with no data loss`
   );
 
   return {

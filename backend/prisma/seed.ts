@@ -360,40 +360,29 @@ async function main() {
   });
   console.log('✓ Super Admin created: admin@galaxytv4k.com / admin@company.com with password galaxytv@@');
 
-  // 5. Clean up old non-admin employee user accounts and obsolete employee data
-  const nonAdminUsers = await prisma.user.findMany({
-    where: { role: { not: UserRole.ADMIN } },
-    select: { id: true },
-  });
-  const nonAdminUserIds = nonAdminUsers.map((u) => u.id);
-
-  if (nonAdminUserIds.length > 0) {
-    await prisma.session.deleteMany({
-      where: { userId: { in: nonAdminUserIds } },
-    });
-    await prisma.user.deleteMany({
-      where: { id: { in: nonAdminUserIds } },
-    });
-  }
-
-  await prisma.attendance.deleteMany({});
-  await prisma.leaveBalance.deleteMany({});
-  await prisma.leaveRequest.deleteMany({});
-  await prisma.outRequest.deleteMany({});
-  await prisma.employeeLocation.deleteMany({});
-  await prisma.locationEvent.deleteMany({});
-  await prisma.employee.deleteMany({});
-  console.log('✓ Previous dummy employee records cleaned up cleanly');
-
-  // 6. Insert all 20 Official Employees
+  // 5. Safely seed/sync all 20 Official Employees WITHOUT deleting existing attendance, leaves, or GPS settings
   const employeePasswordHash = await bcrypt.hash('galaxytv@@', 10);
   const currentYear = new Date().getFullYear();
 
   for (const empData of OFFICIAL_EMPLOYEES) {
     const deptId = deptMap.get(empData.departmentName);
 
-    const employee = await prisma.employee.create({
-      data: {
+    // Upsert Employee to preserve existing ID, relations, and attendance
+    const employee = await prisma.employee.upsert({
+      where: { employeeCode: empData.code },
+      update: {
+        displayName: empData.latinName,
+        khmerName: empData.khmerName,
+        latinName: empData.latinName,
+        gender: empData.gender,
+        skill: empData.skill,
+        studyDay: empData.studyDay,
+        phone: empData.phone,
+        position: empData.position,
+        departmentId: deptId || null,
+        scheduleId: defaultSchedule?.id || null,
+      },
+      create: {
         employeeCode: empData.code,
         displayName: empData.latinName,
         khmerName: empData.khmerName,
@@ -410,8 +399,15 @@ async function main() {
       },
     });
 
-    await prisma.user.create({
-      data: {
+    // Upsert User account
+    await prisma.user.upsert({
+      where: { email: empData.email.toLowerCase() },
+      update: {
+        employeeId: employee.id,
+        role: UserRole.EMPLOYEE,
+        status: UserStatus.ACTIVE,
+      },
+      create: {
         email: empData.email.toLowerCase(),
         passwordHash: employeePasswordHash,
         role: UserRole.EMPLOYEE,
@@ -420,8 +416,16 @@ async function main() {
       },
     });
 
-    await prisma.leaveBalance.create({
-      data: {
+    // Upsert Leave Balance
+    await prisma.leaveBalance.upsert({
+      where: {
+        employeeId_year: {
+          employeeId: employee.id,
+          year: currentYear,
+        },
+      },
+      update: {},
+      create: {
         employeeId: employee.id,
         year: currentYear,
         annualTotal: 15.0,
@@ -430,7 +434,7 @@ async function main() {
       },
     });
   }
-  console.log(`✓ All ${OFFICIAL_EMPLOYEES.length} official employees inserted (Password for all: galaxytv@@)`);
+  console.log(`✓ All ${OFFICIAL_EMPLOYEES.length} official employees safely verified/synced without data loss`);
 
   // 7. Holidays
   const holidays = [
