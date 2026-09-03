@@ -12,5 +12,6 @@ router.post('/test', TelegramController.testConnection);
 router.post('/chats', TelegramController.addChat);
 router.delete('/chats/:id', TelegramController.deleteChat);
 router.post('/daily-summary', TelegramController.sendDailySummary);
+router.get('/daily-summary-preview', TelegramController.getDailySummaryPreview);
 
 export default router;

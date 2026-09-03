@@ -6,7 +6,6 @@ import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { Modal } from '../components/common/Modal';
 import { Skeleton } from '../components/ui/Skeleton';
-import { EmptyState } from '../components/ui/EmptyState';
 import { useToast } from '../components/ui/Toast';
 import {
   Send,
@@ -17,8 +16,15 @@ import {
   Plus,
   Trash2,
   MessageSquare,
-  Bell,
-  RefreshCw,
+  Clock,
+  Eye,
+  Copy,
+  Check,
+  Users,
+  GraduationCap,
+  Briefcase,
+  Calendar,
+  Sparkles,
 } from 'lucide-react';
 
 interface TelegramChat {
@@ -42,6 +48,16 @@ interface TelegramConfig {
   chats: TelegramChat[];
 }
 
+interface SummaryPreviewData {
+  dateStr: string;
+  totalEmployees: number;
+  workingCount: number;
+  studentCount: number;
+  onLeaveCount: number;
+  messages: string[];
+  rawText: string;
+}
+
 export const TelegramPage: React.FC = () => {
   const queryClient = useQueryClient();
   const { showToast } = useToast();
@@ -49,6 +65,8 @@ export const TelegramPage: React.FC = () => {
   const [botTokenInput, setBotTokenInput] = useState('');
   const [testChatIdInput, setTestChatIdInput] = useState('');
   const [isAddChatOpen, setIsAddChatOpen] = useState(false);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
   const [newChat, setNewChat] = useState({ chatId: '', label: '' });
   const [testStatus, setTestStatus] = useState<{
     success?: boolean;
@@ -56,12 +74,22 @@ export const TelegramPage: React.FC = () => {
   } | null>(null);
 
   // Fetch Telegram Config
-  const { data, isLoading, refetch } = useQuery<TelegramConfig>({
+  const { data, isLoading } = useQuery<TelegramConfig>({
     queryKey: ['adminTelegramConfig'],
     queryFn: async () => {
       const res = await apiClient.get('/admin/telegram/config');
       return res.data.data;
     },
+  });
+
+  // Fetch Live Khmer 7:00 AM Daily Summary Preview
+  const { data: previewData, isLoading: isPreviewLoading, refetch: refetchPreview } = useQuery<SummaryPreviewData>({
+    queryKey: ['adminTelegramDailyPreview'],
+    queryFn: async () => {
+      const res = await apiClient.get('/admin/telegram/daily-summary-preview');
+      return res.data.data;
+    },
+    enabled: isPreviewOpen,
   });
 
   // Save Settings Mutation
@@ -124,18 +152,36 @@ export const TelegramPage: React.FC = () => {
     },
   });
 
-  // Send Daily Summary Mutation
+  // Send Daily 7:00 AM Summary Mutation
   const summaryMutation = useMutation({
     mutationFn: async () => {
       return await apiClient.post('/admin/telegram/daily-summary');
     },
-    onSuccess: () => {
-      showToast('Daily summary dispatched to Telegram.');
+    onSuccess: (res) => {
+      const msg = res?.data?.message || 'Daily 7:00 AM summary dispatched to Telegram.';
+      showToast(msg);
+      if (isPreviewOpen) {
+        setIsPreviewOpen(false);
+      }
     },
     onError: (err: any) => {
       showToast(err?.response?.data?.error?.message || 'Failed to dispatch summary.', 'error');
     },
   });
+
+  const handleCopyPreviewText = () => {
+    if (!previewData?.rawText) return;
+    // Strip simple HTML tags for clipboard plain text
+    const cleanText = previewData.rawText
+      .replace(/<b>(.*?)<\/b>/g, '$1')
+      .replace(/<code>(.*?)<\/code>/g, '$1')
+      .replace(/<i>(.*?)<\/i>/g, '$1');
+
+    navigator.clipboard.writeText(cleanText);
+    setIsCopied(true);
+    showToast('✓ បានចម្លងសារគំរូទៅកាន់ក្តារតម្បៀតខ្ទាស់ (Copied)');
+    setTimeout(() => setIsCopied(false), 2000);
+  };
 
   const isConnected = data?.enabled && data?.hasBotToken;
 
@@ -148,7 +194,7 @@ export const TelegramPage: React.FC = () => {
             Telegram Bot Integration
           </h1>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Configure automated attendance alerts, office entry events, and daily summaries
+            Automated morning work & study rosters, attendance alerts, and office events
           </p>
         </div>
 
@@ -156,11 +202,23 @@ export const TelegramPage: React.FC = () => {
           <Button
             variant="secondary"
             size="sm"
+            icon={Eye}
+            onClick={() => {
+              setIsPreviewOpen(true);
+              refetchPreview();
+            }}
+          >
+            Preview Khmer Message
+          </Button>
+
+          <Button
+            variant="primary"
+            size="sm"
             icon={Send}
             isLoading={summaryMutation.isPending}
             onClick={() => summaryMutation.mutate()}
           >
-            Send Daily Summary Now
+            Send 7:00 AM Summary Now
           </Button>
         </div>
       </div>
@@ -243,6 +301,101 @@ export const TelegramPage: React.FC = () => {
             </div>
           </div>
         )}
+      </Card>
+
+      {/* 7:00 AM Daily Morning Summary Showcase Card */}
+      <Card className="p-5 border-brand-200/80 dark:border-brand-900/50 bg-gradient-to-br from-white via-white to-brand-50/40 dark:from-dark-surface dark:via-dark-surface dark:to-brand-950/20 shadow-xs">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-100 dark:border-dark-border">
+          <div className="flex items-start gap-3.5">
+            <div className="w-11 h-11 rounded-2xl bg-brand-600 text-white flex items-center justify-center flex-shrink-0 shadow-md shadow-brand-600/20">
+              <Clock className="w-6 h-6" />
+            </div>
+
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 tracking-tight">
+                  7:00 AM Daily Summary (របាយការណ៍ស្វ័យប្រវត្តិម៉ោង ០៧:០០ ព្រឹក)
+                </h3>
+                <Badge
+                  status={data?.dailySummaryEnabled ? 'PRESENT' : 'ABSENT'}
+                  customLabel={data?.dailySummaryEnabled ? 'Auto 07:00 AM Active' : 'Disabled'}
+                  size="sm"
+                />
+              </div>
+              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed max-w-2xl">
+                Automatically broadcasts an official Khmer summary to all registered Telegram channels every morning at <strong>07:00 AM</strong> (Asia/Phnom_Penh). Summarizes which employees work today, student count, and lists all 20 staff members with list numbers and <strong>zero emojis</strong>.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 flex-shrink-0 self-start md:self-center">
+            <label className="flex items-center gap-2 p-2 px-3 rounded-xl bg-slate-100 dark:bg-dark-elevated cursor-pointer hover:bg-slate-200/60 dark:hover:bg-dark-border transition-colors">
+              <input
+                type="checkbox"
+                checked={data?.dailySummaryEnabled || false}
+                onChange={(e) => {
+                  saveMutation.mutate({
+                    enabled: data?.enabled,
+                    attendanceNotificationsEnabled: data?.attendanceNotificationsEnabled,
+                    locationNotificationsEnabled: data?.locationNotificationsEnabled,
+                    dailySummaryEnabled: e.target.checked,
+                    systemAlertsEnabled: data?.systemAlertsEnabled,
+                  });
+                }}
+                className="rounded border-slate-300 text-brand-600 focus:ring-brand-500 w-4 h-4 cursor-pointer"
+              />
+              <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                {data?.dailySummaryEnabled ? 'Enabled' : 'Enable 7:00 AM Auto-Send'}
+              </span>
+            </label>
+          </div>
+        </div>
+
+        {/* Feature Points & Actions */}
+        <div className="pt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex flex-wrap items-center gap-4 text-xs text-slate-600 dark:text-slate-400">
+            <span className="inline-flex items-center gap-1.5 font-medium">
+              <Users className="w-4 h-4 text-brand-500" />
+              All 20 Official Employees
+            </span>
+            <span className="inline-flex items-center gap-1.5 font-medium">
+              <GraduationCap className="w-4 h-4 text-brand-500" />
+              Daily Student Count & Study Day
+            </span>
+            <span className="inline-flex items-center gap-1.5 font-medium">
+              <Briefcase className="w-4 h-4 text-brand-500" />
+              Shift & Working Status
+            </span>
+            <span className="inline-flex items-center gap-1.5 font-medium">
+              <Calendar className="w-4 h-4 text-brand-500" />
+              No Emoji • Numbered List
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              icon={Eye}
+              onClick={() => {
+                setIsPreviewOpen(true);
+                refetchPreview();
+              }}
+            >
+              Preview Message
+            </Button>
+
+            <Button
+              variant="primary"
+              size="sm"
+              icon={Send}
+              isLoading={summaryMutation.isPending}
+              onClick={() => summaryMutation.mutate()}
+            >
+              Send to Telegram Now
+            </Button>
+          </div>
+        </div>
       </Card>
 
       {/* Main Settings & Channels Grid */}
@@ -353,7 +506,7 @@ export const TelegramPage: React.FC = () => {
                   }}
                   className="rounded border-slate-300 text-brand-600 focus:ring-brand-500"
                 />
-                <span>Scheduled Daily Attendance Summary</span>
+                <span>Daily 7:00 AM Attendance & Study Summary (All 20 Staff, Zero Emojis)</span>
               </label>
 
               <label className="flex items-center gap-2.5 text-xs text-slate-700 dark:text-slate-300 cursor-pointer">
@@ -447,12 +600,105 @@ export const TelegramPage: React.FC = () => {
         </div>
       </div>
 
+      {/* Live Khmer 7:00 AM Message Preview Modal */}
+      <Modal
+        isOpen={isPreviewOpen}
+        onClose={() => setIsPreviewOpen(false)}
+        title="គំរូសារ Telegram ប្រចាំថ្ងៃ (ម៉ោង ០៧:០០ ព្រឹក)"
+        maxWidth="lg"
+      >
+        <div className="space-y-4">
+          {isPreviewLoading ? (
+            <div className="space-y-3 py-6">
+              <Skeleton className="h-6 w-3/4" />
+              <Skeleton className="h-4 w-1/2" />
+              <Skeleton className="h-48 w-full rounded-2xl" />
+            </div>
+          ) : (
+            <>
+              {/* Stat Highlights */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                <div className="p-3 rounded-xl bg-slate-50 dark:bg-dark-elevated border border-slate-200 dark:border-dark-border text-center">
+                  <span className="text-[11px] text-slate-500 dark:text-slate-400 block">បុគ្គលិកសរុប</span>
+                  <span className="text-lg font-bold text-slate-900 dark:text-slate-100">
+                    {previewData?.totalEmployees || 20} នាក់
+                  </span>
+                </div>
+
+                <div className="p-3 rounded-xl bg-success-50/50 dark:bg-success-950/30 border border-success-200 dark:border-success-900/40 text-center">
+                  <span className="text-[11px] text-success-700 dark:text-success-400 block">បំពេញការងារថ្ងៃនេះ</span>
+                  <span className="text-lg font-bold text-success-700 dark:text-success-300">
+                    {previewData?.workingCount || 0} នាក់
+                  </span>
+                </div>
+
+                <div className="p-3 rounded-xl bg-brand-50/50 dark:bg-brand-950/30 border border-brand-200 dark:border-brand-900/40 text-center">
+                  <span className="text-[11px] text-brand-700 dark:text-brand-400 block">មានវេនរៀនថ្ងៃនេះ</span>
+                  <span className="text-lg font-bold text-brand-700 dark:text-brand-300">
+                    {previewData?.studentCount || 0} នាក់
+                  </span>
+                </div>
+
+                <div className="p-3 rounded-xl bg-amber-50/50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/40 text-center">
+                  <span className="text-[11px] text-amber-700 dark:text-amber-400 block">សុំច្បាប់ថ្ងៃនេះ</span>
+                  <span className="text-lg font-bold text-amber-700 dark:text-amber-300">
+                    {previewData?.onLeaveCount || 0} នាក់
+                  </span>
+                </div>
+              </div>
+
+              {/* Message Details Preview Card */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                    ទម្រង់សារផ្លូវការ (គ្មាន Emoji • លេខរៀងតាមលំដាប់):
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    icon={isCopied ? Check : Copy}
+                    onClick={handleCopyPreviewText}
+                  >
+                    {isCopied ? 'Copied' : 'Copy Text'}
+                  </Button>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-slate-900 text-slate-100 font-sans text-xs leading-relaxed max-h-96 overflow-y-auto border border-slate-800 space-y-3 select-text shadow-inner">
+                  {previewData?.messages?.map((msg, i) => (
+                    <div
+                      key={i}
+                      className="whitespace-pre-wrap font-sans"
+                      dangerouslySetInnerHTML={{ __html: msg }}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {/* Footer Actions */}
+              <div className="pt-3 border-t border-slate-100 dark:border-dark-border flex items-center justify-end gap-2.5">
+                <Button variant="secondary" size="md" onClick={() => setIsPreviewOpen(false)}>
+                  Close
+                </Button>
+                <Button
+                  variant="primary"
+                  size="md"
+                  icon={Send}
+                  isLoading={summaryMutation.isPending}
+                  onClick={() => summaryMutation.mutate()}
+                >
+                  Send to Telegram Now
+                </Button>
+              </div>
+            </>
+          )}
+        </div>
+      </Modal>
+
       {/* Add Chat Modal */}
       <Modal
         isOpen={isAddChatOpen}
         onClose={() => setIsAddChatOpen(false)}
-        title="Add Telegram Chat ID"
-        maxWidth="sm"
+        title="Add Telegram Chat Channel"
       >
         <form
           onSubmit={(e) => {
@@ -462,7 +708,7 @@ export const TelegramPage: React.FC = () => {
           className="space-y-4"
         >
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
+            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
               Chat Channel Label <span className="text-danger-500">*</span>
             </label>
             <input
@@ -471,12 +717,12 @@ export const TelegramPage: React.FC = () => {
               placeholder="e.g. Management Group or HR Channel"
               value={newChat.label}
               onChange={(e) => setNewChat({ ...newChat, label: e.target.value })}
-              className="w-full px-3 py-2 text-xs border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500 focus:outline-none"
+              className="w-full px-3 py-2 text-xs border border-slate-200 dark:border-dark-border rounded-lg focus:ring-2 focus:ring-brand-500 focus:outline-none bg-white dark:bg-dark-elevated text-slate-900 dark:text-slate-100"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
+            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
               Telegram Chat ID <span className="text-danger-500">*</span>
             </label>
             <input
@@ -485,14 +731,14 @@ export const TelegramPage: React.FC = () => {
               placeholder="e.g. -100198273645 or 987654321"
               value={newChat.chatId}
               onChange={(e) => setNewChat({ ...newChat, chatId: e.target.value })}
-              className="w-full px-3 py-2 text-xs font-mono border border-slate-200 rounded-lg focus:ring-2 focus:ring-brand-500 focus:outline-none"
+              className="w-full px-3 py-2 text-xs font-mono border border-slate-200 dark:border-dark-border rounded-lg focus:ring-2 focus:ring-brand-500 focus:outline-none bg-white dark:bg-dark-elevated text-slate-900 dark:text-slate-100"
             />
             <p className="text-[10px] text-slate-400 mt-1">
               Tip: Add your bot to the group and invite @userinfobot to see your group's Chat ID.
             </p>
           </div>
 
-          <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2.5">
+          <div className="pt-3 border-t border-slate-100 dark:border-dark-border flex items-center justify-end gap-2.5">
             <Button variant="secondary" size="md" onClick={() => setIsAddChatOpen(false)}>
               Cancel
             </Button>

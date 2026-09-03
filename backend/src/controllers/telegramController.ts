@@ -188,38 +188,36 @@ export class TelegramController {
   }
 
   /**
-   * Send Manual Daily Summary (Admin)
+   * Send 7:00 AM Daily Summary (Admin manual trigger or automated test)
    */
   public static async sendDailySummary(req: Request, res: Response): Promise<void> {
     try {
-      const todayDate = new Date().toISOString().split('T')[0];
+      const result = await TelegramService.sendDailyMorningSummary();
 
-      const totalEmployees = await prisma.employee.count({ where: { status: 'ACTIVE' } });
-      const attendances = await prisma.attendance.findMany({ where: { date: todayDate } });
-
-      const presentCount = attendances.filter((a) => a.status === 'PRESENT').length;
-      const lateCount = attendances.filter((a) => a.status === 'LATE').length;
-      const onLeaveCount = attendances.filter((a) => a.status === 'ON_LEAVE').length;
-      const absentCount = attendances.filter((a) => a.status === 'ABSENT').length;
-
-      const employees = await prisma.employee.findMany({ where: { status: 'ACTIVE' } });
-      const insideCount = employees.filter((e) => e.lastLocationStatus === 'INSIDE_OFFICE').length;
-      const outsideCount = employees.filter((e) => e.lastLocationStatus === 'OUTSIDE_OFFICE').length;
-
-      await TelegramService.notifyDailySummary({
-        date: todayDate,
-        totalEmployees,
-        presentCount,
-        lateCount,
-        onLeaveCount,
-        absentCount,
-        insideCount,
-        outsideCount,
+      res.status(200).json({
+        success: true,
+        message: `បានផ្ញើរបាយការណ៍សង្ខេបប្រចាំថ្ងៃទៅ Telegram ជោគជ័យ (បុគ្គលិកសរុប ${result.totalEmployees} នាក់, រៀន ${result.studentCount} នាក់, ធ្វើការ ${result.workingCount} នាក់)`,
+        data: result,
       });
-
-      res.status(200).json({ success: true, message: 'Daily summary notification sent to Telegram.' });
     } catch (err: any) {
-      res.status(500).json({ success: false, error: { message: 'Failed to dispatch daily summary.' } });
+      console.error('[TelegramController] sendDailySummary error:', err);
+      res.status(500).json({ success: false, error: { message: 'Failed to dispatch daily summary to Telegram.' } });
+    }
+  }
+
+  /**
+   * Get Live Preview of Clean Khmer Morning Summary (Admin)
+   */
+  public static async getDailySummaryPreview(req: Request, res: Response): Promise<void> {
+    try {
+      const preview = await TelegramService.buildDailyMorningSummaryKhmer();
+      res.status(200).json({
+        success: true,
+        data: preview,
+      });
+    } catch (err: any) {
+      console.error('[TelegramController] getDailySummaryPreview error:', err);
+      res.status(500).json({ success: false, error: { message: 'Failed to generate summary preview.' } });
     }
   }
 }

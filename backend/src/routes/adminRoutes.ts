@@ -90,5 +90,7 @@ router.patch('/telegram/config', TelegramController.saveConfig);
 router.post('/telegram/test', TelegramController.testConnection);
 router.post('/telegram/chats', TelegramController.addChat);
 router.delete('/telegram/chats/:id', TelegramController.deleteChat);
+router.post('/telegram/daily-summary', TelegramController.sendDailySummary);
+router.get('/telegram/daily-summary-preview', TelegramController.getDailySummaryPreview);
 
 export default router;

@@ -2,6 +2,8 @@ import { app } from './app.js';
 import { config } from './config/index.js';
 import { prisma } from './utils/prisma.js';
 
+import { startTelegramScheduler, stopTelegramScheduler } from './services/telegramScheduler.js';
+
 async function startServer() {
   try {
     // Verify database connection
@@ -15,11 +17,15 @@ async function startServer() {
       console.log(`🌍 Environment: ${config.nodeEnv}`);
       console.log(`⏱️ Default Timezone: ${config.defaultTimezone}`);
       console.log(`=========================================`);
+
+      // Initialize Telegram 7:00 AM Daily Summary Scheduler
+      startTelegramScheduler();
     });
 
     // Graceful Shutdown
     const shutdown = async (signal: string) => {
       console.log(`\nReceived ${signal}. Shutting down gracefully...`);
+      stopTelegramScheduler();
       server.close(async () => {
         await prisma.$disconnect();
         console.log('Database disconnected. Process exited.');
