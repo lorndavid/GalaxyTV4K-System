@@ -186,7 +186,103 @@ export const QrStationPage: React.FC = () => {
   };
 
   const triggerBrowserPrint = () => {
-    window.print();
+    const printElement = document.querySelector('.a4-print-sheet') as HTMLElement;
+    if (!printElement) {
+      window.print();
+      return;
+    }
+
+    // Clean up any previous print iframe
+    const oldFrame = document.getElementById('attendance-qr-print-frame');
+    if (oldFrame) oldFrame.remove();
+
+    const iframe = document.createElement('iframe');
+    iframe.id = 'attendance-qr-print-frame';
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = '0';
+    iframe.style.opacity = '0';
+    iframe.style.pointerEvents = 'none';
+    document.body.appendChild(iframe);
+
+    const frameDoc = iframe.contentWindow?.document;
+    if (!frameDoc) {
+      window.print();
+      return;
+    }
+
+    // Extract all styles to preserve fonts, Tailwind utilities, and colors
+    const styleTags = Array.from(document.querySelectorAll('link[rel="stylesheet"], style'))
+      .map((el) => el.outerHTML)
+      .join('\n');
+
+    frameDoc.open();
+    frameDoc.write(`
+      <!DOCTYPE html>
+      <html lang="km">
+        <head>
+          <meta charset="utf-8" />
+          <title>Attendance QR - Galaxy TV4K</title>
+          ${styleTags}
+          <style>
+            @page {
+              size: A4 portrait;
+              margin: 0;
+            }
+            *, *::before, *::after {
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+              box-sizing: border-box;
+            }
+            html, body {
+              margin: 0 !important;
+              padding: 0 !important;
+              width: 210mm !important;
+              height: 297mm !important;
+              min-height: 297mm !important;
+              max-height: 297mm !important;
+              overflow: hidden !important;
+              background: #ffffff !important;
+              color: #0f172a !important;
+            }
+            .a4-print-sheet {
+              width: 210mm !important;
+              height: 297mm !important;
+              max-height: 297mm !important;
+              margin: 0 auto !important;
+              padding: 12mm 14mm !important;
+              box-sizing: border-box !important;
+              border: none !important;
+              box-shadow: none !important;
+              transform: none !important;
+              display: flex !important;
+              flex-direction: column !important;
+              justify-content: space-between !important;
+              page-break-after: avoid !important;
+              break-inside: avoid !important;
+              background: #ffffff !important;
+            }
+          </style>
+        </head>
+        <body>
+          ${printElement.outerHTML}
+        </body>
+      </html>
+    `);
+    frameDoc.close();
+
+    // Give browser 300ms to render SVG QR and fonts, then trigger print
+    setTimeout(() => {
+      iframe.contentWindow?.focus();
+      iframe.contentWindow?.print();
+      // Remove temporary iframe after dialog completes
+      setTimeout(() => {
+        iframe.remove();
+      }, 3000);
+    }, 300);
   };
 
   // Filtered list
@@ -563,8 +659,8 @@ export const QrStationPage: React.FC = () => {
             </div>
 
             {/* Scrollable preview wrapper for screen */}
-            <div className="max-h-[65vh] overflow-y-auto overflow-x-auto p-2 bg-slate-200 dark:bg-dark-bg rounded-2xl flex justify-center">
-              <div className="scale-90 sm:scale-95 origin-top">
+            <div className="max-h-[65vh] overflow-y-auto overflow-x-auto p-2 bg-slate-200 dark:bg-dark-bg rounded-2xl flex justify-center print:overflow-visible print:max-h-none print:p-0 print:m-0">
+              <div className="scale-90 sm:scale-95 origin-top print:scale-100 print:transform-none">
                 <AttendanceQrPrintDocument data={printData} />
               </div>
             </div>
