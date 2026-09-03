@@ -7,6 +7,12 @@ let isPollingActive = false;
 let pollingAbortController: AbortController | null = null;
 let lastUpdateId = 0;
 
+interface ReplyKeyboardMarkup {
+  keyboard: Array<Array<{ text: string }>>;
+  resize_keyboard: boolean;
+  is_persistent?: boolean;
+}
+
 interface InlineKeyboardButton {
   text: string;
   callback_data: string;
@@ -17,7 +23,23 @@ interface InlineKeyboardMarkup {
 }
 
 /**
- * Main Interactive Menu Markup (Rich Emoji Animations & Clean Khmer UI)
+ * Persistent Bottom Keyboard Dock (Under the Text Input Box - Exactly as in Screenshot)
+ */
+export function getPersistentReplyKeyboard(): ReplyKeyboardMarkup {
+  return {
+    keyboard: [
+      [{ text: '📊 របាយការណ៍សង្ខេប' }, { text: '👥 បញ្ជីបុគ្គលិក ២០ នាក់' }],
+      [{ text: '🎓 បុគ្គលិកវេនរៀន' }, { text: '💼 បុគ្គលិកបំពេញការងារ' }],
+      [{ text: '🏢 វត្តមានក្នុង/ក្រៅការិយាល័យ' }, { text: '📝 បុគ្គលិកសុំច្បាប់' }],
+      [{ text: '🔄 ធ្វើបច្ចុប្បន្នភាពទិន្នន័យ' }],
+    ],
+    resize_keyboard: true,
+    is_persistent: true,
+  };
+}
+
+/**
+ * Inline Menu Markup (Attached to messages)
  */
 export function getMainInlineMenu(): InlineKeyboardMarkup {
   return {
@@ -204,7 +226,7 @@ export function buildMainMenuText(): string {
     `📅 <b>កាលបរិច្ឆេទ:</b> ថ្ងៃ${dayName} ទី${dayNum} ខែ${monthName} ឆ្នាំ${yearNum}`,
     `⏰ <b>ម៉ោងបច្ចុប្បន្ន:</b> ${timeStr}`,
     `━━━━━━━━━━━━━━━━━━━━━`,
-    `សូមចុចប៊ូតុងខាងក្រោម ដើម្បីពិនិត្យមើលព័ត៌មានជាក់ស្តែង:`,
+    `សូមជ្រើសរើសមុខងារពី <b>ផ្ទាំងបញ្ជាខាងក្រោម (Keyboard Menu)</b>:`,
   ].join('\n');
 }
 
@@ -507,7 +529,7 @@ async function processUpdate(botToken: string, update: any): Promise<void> {
         chat_id: chatId,
         text: responseText,
         parse_mode: 'HTML',
-        reply_markup: keyboard,
+        reply_markup: getPersistentReplyKeyboard(),
         disable_web_page_preview: true,
       });
     }
@@ -515,7 +537,7 @@ async function processUpdate(botToken: string, update: any): Promise<void> {
     return;
   }
 
-  // 2. Handle Direct Text Message (e.g. /start, /menu, or general text)
+  // 2. Handle Bottom Reply Keyboard Clicks or Direct Text (e.g. /start, /menu, button clicks)
   if (update.message) {
     const msg = update.message;
     const chatId = msg.chat?.id;
@@ -539,62 +561,99 @@ async function processUpdate(botToken: string, update: any): Promise<void> {
       return;
     }
 
-    // Command matching
     const lower = text.toLowerCase();
-    if (
-      lower.startsWith('/start') ||
-      lower.startsWith('/menu') ||
-      lower.includes('menu') ||
-      lower.includes('ម៉ឺនុយ') ||
-      lower.includes('វត្តមាន') ||
-      lower.includes('កាលវិភាគ')
-    ) {
-      const menuText = buildMainMenuText();
-      await callTelegram(botToken, 'sendMessage', {
-        chat_id: chatId,
-        text: menuText,
-        parse_mode: 'HTML',
-        reply_markup: getMainInlineMenu(),
-        disable_web_page_preview: true,
-      });
-    } else if (lower.startsWith('/study') || lower.includes('រៀន')) {
+
+    // 1. Daily Summary
+    if (text.includes('សង្ខេប') || lower.startsWith('/summary')) {
+      const full = await TelegramService.buildDailyMorningSummaryKhmer();
+      for (const msgPart of full.messages) {
+        await callTelegram(botToken, 'sendMessage', {
+          chat_id: chatId,
+          text: msgPart,
+          parse_mode: 'HTML',
+          reply_markup: getPersistentReplyKeyboard(),
+          disable_web_page_preview: true,
+        });
+      }
+      return;
+    }
+
+    // 2. Study filter
+    if (text.includes('រៀន') || lower.startsWith('/study')) {
       const report = await buildStudyOnlyReport();
       await callTelegram(botToken, 'sendMessage', {
         chat_id: chatId,
         text: report,
         parse_mode: 'HTML',
-        reply_markup: getStudyNavMarkup(),
+        reply_markup: getPersistentReplyKeyboard(),
         disable_web_page_preview: true,
       });
-    } else if (lower.startsWith('/work') || lower.includes('ធ្វើការ')) {
+      return;
+    }
+
+    // 3. Work filter
+    if (text.includes('បំពេញការងារ') || text.includes('ធ្វើការ') || lower.startsWith('/work')) {
       const report = await buildWorkOnlyReport();
       await callTelegram(botToken, 'sendMessage', {
         chat_id: chatId,
         text: report,
         parse_mode: 'HTML',
-        reply_markup: getWorkNavMarkup(),
+        reply_markup: getPersistentReplyKeyboard(),
         disable_web_page_preview: true,
       });
-    } else if (lower.startsWith('/location') || lower.includes('ទីតាំង')) {
+      return;
+    }
+
+    // 4. Location filter
+    if (text.includes('វត្តមាន') || text.includes('ទីតាំង') || lower.startsWith('/location')) {
       const report = await buildLocationStatusReport();
       await callTelegram(botToken, 'sendMessage', {
         chat_id: chatId,
         text: report,
         parse_mode: 'HTML',
-        reply_markup: getLocationNavMarkup(),
+        reply_markup: getPersistentReplyKeyboard(),
         disable_web_page_preview: true,
       });
-    } else {
-      // Default to Main Menu
-      const menuText = buildMainMenuText();
+      return;
+    }
+
+    // 5. Leave filter
+    if (text.includes('ច្បាប់') || lower.startsWith('/leave')) {
+      const report = await buildLeaveOnlyReport();
       await callTelegram(botToken, 'sendMessage', {
         chat_id: chatId,
-        text: menuText,
+        text: report,
         parse_mode: 'HTML',
-        reply_markup: getMainInlineMenu(),
+        reply_markup: getPersistentReplyKeyboard(),
         disable_web_page_preview: true,
       });
+      return;
     }
+
+    // 6. All 20 Staff
+    if (text.includes('២០') || text.includes('20') || text.includes('បញ្ជី') || lower.startsWith('/staff')) {
+      const full = await TelegramService.buildDailyMorningSummaryKhmer();
+      for (const msgPart of full.messages) {
+        await callTelegram(botToken, 'sendMessage', {
+          chat_id: chatId,
+          text: msgPart,
+          parse_mode: 'HTML',
+          reply_markup: getPersistentReplyKeyboard(),
+          disable_web_page_preview: true,
+        });
+      }
+      return;
+    }
+
+    // Default: Main Menu with persistent bottom keyboard
+    const menuText = buildMainMenuText();
+    await callTelegram(botToken, 'sendMessage', {
+      chat_id: chatId,
+      text: menuText,
+      parse_mode: 'HTML',
+      reply_markup: getPersistentReplyKeyboard(),
+      disable_web_page_preview: true,
+    });
   }
 }
 
@@ -630,6 +689,18 @@ export async function startTelegramBotPolling(): Promise<void> {
           await new Promise((r) => setTimeout(r, 10000));
           continue;
         }
+
+        // Configure default commands for top [Menu] button
+        callTelegram(botToken, 'setMyCommands', {
+          commands: [
+            { command: 'menu', description: 'បើកផ្ទាំងបញ្ជា (Open Menu)' },
+            { command: 'summary', description: 'របាយការណ៍សង្ខេបប្រចាំថ្ងៃ' },
+            { command: 'study', description: 'បុគ្គលិកវេនរៀន' },
+            { command: 'work', description: 'បុគ្គលិកបំពេញការងារ' },
+            { command: 'location', description: 'វត្តមានទីតាំង' },
+            { command: 'leave', description: 'បុគ្គលិកសុំច្បាប់' },
+          ],
+        }).catch(() => {});
 
         // Long poll updates with 20s timeout
         const updatesRes = await callTelegram(

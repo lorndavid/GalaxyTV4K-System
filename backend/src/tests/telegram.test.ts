@@ -110,7 +110,7 @@ describe('TelegramService & Security Tests', () => {
     const welcome = buildMainMenuText();
 
     expect(welcome).toContain('Galaxy TV 4K');
-    expect(welcome).toContain('សូមចុចប៊ូតុងខាងក្រោម');
+    expect(welcome).toContain('ផ្ទាំងបញ្ជាខាងក្រោម');
 
     // Check menu buttons have emoji animations
     expect(menu.inline_keyboard[0][0].text).toContain('📊');
@@ -129,5 +129,33 @@ describe('TelegramService & Security Tests', () => {
         });
       });
     });
+  });
+
+  it('generates persistent bottom ReplyKeyboardMarkup under the text input bar', async () => {
+    const { getPersistentReplyKeyboard } = await import('../services/telegramBotService');
+    const replyKb = getPersistentReplyKeyboard();
+
+    expect(replyKb.resize_keyboard).toBe(true);
+    expect(replyKb.is_persistent).toBe(true);
+    expect(replyKb.keyboard.length).toBe(4);
+
+    // Row 1: Summary + All 20 Staff
+    expect(replyKb.keyboard[0].length).toBe(2);
+    expect(replyKb.keyboard[0][0].text).toContain('📊 របាយការណ៍សង្ខេប');
+    expect(replyKb.keyboard[0][1].text).toContain('👥 បញ្ជីបុគ្គលិក ២០ នាក់');
+
+    // Row 2: Study + Work
+    expect(replyKb.keyboard[1].length).toBe(2);
+    expect(replyKb.keyboard[1][0].text).toContain('🎓 បុគ្គលិកវេនរៀន');
+    expect(replyKb.keyboard[1][1].text).toContain('💼 បុគ្គលិកបំពេញការងារ');
+
+    // Row 3: Location + Leave
+    expect(replyKb.keyboard[2].length).toBe(2);
+    expect(replyKb.keyboard[2][0].text).toContain('🏢 វត្តមានក្នុង/ក្រៅការិយាល័យ');
+    expect(replyKb.keyboard[2][1].text).toContain('📝 បុគ្គលិកសុំច្បាប់');
+
+    // Row 4: Refresh
+    expect(replyKb.keyboard[3].length).toBe(1);
+    expect(replyKb.keyboard[3][0].text).toContain('🔄 ធ្វើបច្ចុប្បន្នភាពទិន្នន័យ');
   });
 });
