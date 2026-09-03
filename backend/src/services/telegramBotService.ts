@@ -17,33 +17,93 @@ interface InlineKeyboardMarkup {
 }
 
 /**
- * Main Interactive Menu Markup (Clean Khmer, Zero Emojis)
+ * Main Interactive Menu Markup (Rich Emoji Animations & Clean Khmer UI)
  */
 export function getMainInlineMenu(): InlineKeyboardMarkup {
   return {
     inline_keyboard: [
-      [{ text: 'របាយការណ៍សង្ខេបប្រចាំថ្ងៃ', callback_data: 'menu_summary' }],
+      [{ text: '📊 របាយការណ៍សង្ខេបប្រចាំថ្ងៃ', callback_data: 'menu_summary' }],
       [
-        { text: 'បុគ្គលិកវេនរៀន', callback_data: 'menu_study' },
-        { text: 'បុគ្គលិកបំពេញការងារ', callback_data: 'menu_work' },
+        { text: '🎓 បុគ្គលិកវេនរៀន', callback_data: 'menu_study' },
+        { text: '💼 បុគ្គលិកបំពេញការងារ', callback_data: 'menu_work' },
       ],
       [
-        { text: 'វត្តមានក្នុង/ក្រៅការិយាល័យ', callback_data: 'menu_location' },
-        { text: 'បុគ្គលិកសុំច្បាប់', callback_data: 'menu_leave' },
+        { text: '🏢 វត្តមានក្នុង/ក្រៅការិយាល័យ', callback_data: 'menu_location' },
+        { text: '📝 បុគ្គលិកសុំច្បាប់', callback_data: 'menu_leave' },
       ],
-      [{ text: 'បញ្ជីឈ្មោះបុគ្គលិកទាំង ២០ រូប', callback_data: 'menu_all_staff' }],
-      [{ text: 'ធ្វើបច្ចុប្បន្នភាពទិន្នន័យ', callback_data: 'menu_main' }],
+      [{ text: '👥 បញ្ជីឈ្មោះបុគ្គលិកទាំង ២០ រូប', callback_data: 'menu_all_staff' }],
+      [{ text: '🔄 ធ្វើបច្ចុប្បន្នភាពទិន្នន័យ (Refresh)', callback_data: 'menu_main' }],
     ],
   };
 }
 
 /**
- * Back to Main Menu Markup
+ * Navigation for Study Filter View
+ */
+export function getStudyNavMarkup(): InlineKeyboardMarkup {
+  return {
+    inline_keyboard: [
+      [
+        { text: '💼 មើលអ្នកធ្វើការ', callback_data: 'menu_work' },
+        { text: '🏢 វត្តមានទីតាំង', callback_data: 'menu_location' },
+      ],
+      [{ text: '🔙 ត្រឡប់ទៅម៉ឺនុយដើម', callback_data: 'menu_main' }],
+    ],
+  };
+}
+
+/**
+ * Navigation for Work Filter View
+ */
+export function getWorkNavMarkup(): InlineKeyboardMarkup {
+  return {
+    inline_keyboard: [
+      [
+        { text: '🎓 មើលអ្នករៀន', callback_data: 'menu_study' },
+        { text: '🏢 វត្តមានទីតាំង', callback_data: 'menu_location' },
+      ],
+      [{ text: '🔙 ត្រឡប់ទៅម៉ឺនុយដើម', callback_data: 'menu_main' }],
+    ],
+  };
+}
+
+/**
+ * Navigation for Location Filter View
+ */
+export function getLocationNavMarkup(): InlineKeyboardMarkup {
+  return {
+    inline_keyboard: [
+      [
+        { text: '🔄 ផ្ទុកទីតាំងឡើងវិញ', callback_data: 'menu_location' },
+        { text: '📝 មើលអ្នកសុំច្បាប់', callback_data: 'menu_leave' },
+      ],
+      [{ text: '🔙 ត្រឡប់ទៅម៉ឺនុយដើម', callback_data: 'menu_main' }],
+    ],
+  };
+}
+
+/**
+ * Navigation for Leave Filter View
+ */
+export function getLeaveNavMarkup(): InlineKeyboardMarkup {
+  return {
+    inline_keyboard: [
+      [
+        { text: '💼 មើលអ្នកធ្វើការ', callback_data: 'menu_work' },
+        { text: '🎓 មើលអ្នករៀន', callback_data: 'menu_study' },
+      ],
+      [{ text: '🔙 ត្រឡប់ទៅម៉ឺនុយដើម', callback_data: 'menu_main' }],
+    ],
+  };
+}
+
+/**
+ * Standard Back to Main Menu Markup
  */
 export function getBackToMenuMarkup(): InlineKeyboardMarkup {
   return {
     inline_keyboard: [
-      [{ text: 'ត្រឡប់ទៅម៉ឺនុយដើម', callback_data: 'menu_main' }],
+      [{ text: '🔙 ត្រឡប់ទៅម៉ឺនុយដើម', callback_data: 'menu_main' }],
     ],
   };
 }
@@ -116,7 +176,7 @@ export async function isChatAuthorized(chatId: string | number): Promise<boolean
 }
 
 /**
- * Build Main Menu Welcome Text (Clean Khmer, Zero Emojis)
+ * Build Main Menu Welcome Text (Lively Emojis & Premium Visual Design)
  */
 export function buildMainMenuText(): string {
   const KHMER_DAYS = ['អាទិត្យ', 'ចន្ទ', 'អង្គារ', 'ពុធ', 'ព្រហស្បតិ៍', 'សុក្រ', 'សៅរ៍'];
@@ -131,13 +191,20 @@ export function buildMainMenuText(): string {
   const monthName = KHMER_MONTHS[cambodiaDate.getMonth()];
   const dayNum = TelegramService.toKhmerDigits(cambodiaDate.getDate());
   const yearNum = TelegramService.toKhmerDigits(cambodiaDate.getFullYear());
+  const timeStr = now.toLocaleTimeString('en-US', {
+    timeZone: 'Asia/Phnom_Penh',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
+  });
 
   return [
-    `<b>ប្រព័ន្ធគ្រប់គ្រងវត្តមាន និងកាលវិភាគការងារ Galaxy TV 4K</b>`,
-    `<b>ស្ថាប័ន:</b> Galaxy TV 4K`,
-    `<b>កាលបរិច្ឆេទ:</b> ថ្ងៃ${dayName} ទី${dayNum} ខែ${monthName} ឆ្នាំ${yearNum}`,
-    `--------------------------------------------------`,
-    `សូមជ្រើសរើសផ្នែកព័ត៌មានដែលលោកអ្នកចង់ពិនិត្យមើល:`,
+    `✨ <b>ប្រព័ន្ធគ្រប់គ្រងវត្តមាន និងកាលវិភាគការងារ</b>`,
+    `🏢 <b>ស្ថាប័ន:</b> Galaxy TV 4K`,
+    `📅 <b>កាលបរិច្ឆេទ:</b> ថ្ងៃ${dayName} ទី${dayNum} ខែ${monthName} ឆ្នាំ${yearNum}`,
+    `⏰ <b>ម៉ោងបច្ចុប្បន្ន:</b> ${timeStr}`,
+    `━━━━━━━━━━━━━━━━━━━━━`,
+    `សូមចុចប៊ូតុងខាងក្រោម ដើម្បីពិនិត្យមើលព័ត៌មានជាក់ស្តែង:`,
   ].join('\n');
 }
 
@@ -169,23 +236,24 @@ export async function buildStudyOnlyReport(): Promise<string> {
     const studyDay = emp.studyDay || 'គ្មាន';
 
     lines.push(
-      `${numKh}. <b>${khmerName}</b>\n` +
-      `   ផ្នែកការងារ: ${deptName}\n` +
-      `   តួនាទី: ${position}\n` +
-      `   ជំនាញ: ${skill}\n` +
-      `   ថ្ងៃរៀន: ${studyDay}\n` +
-      `   ស្ថានភាពថ្ងៃនេះ: <b>វេនរៀន</b>`
+      `${numKh}. 👤 <b>${khmerName}</b>\n` +
+      `   🔹 ផ្នែកការងារ: ${deptName}\n` +
+      `   🔹 តួនាទី: ${position}\n` +
+      `   🔹 ជំនាញ: ${skill}\n` +
+      `   🔹 ថ្ងៃរៀន: ${studyDay}\n` +
+      `   🔸 ស្ថានភាព: 🎓 <b>វេនរៀន</b>`
     );
   });
 
   return [
-    `<b>បញ្ជីបុគ្គលិកមានវេនរៀនថ្ងៃនេះ</b>`,
-    `--------------------------------------------------`,
-    `<b>ចំនួនសរុប:</b> ${TelegramService.toKhmerDigits(studyingStaff.length)} នាក់`,
-    `--------------------------------------------------`,
+    `🎓 <b>បញ្ជីបុគ្គលិកមានវេនរៀនថ្ងៃនេះ</b>`,
+    `🏢 <b>ស្ថាប័ន:</b> Galaxy TV 4K`,
+    `━━━━━━━━━━━━━━━━━━━━━`,
+    `📊 <b>ចំនួនសរុប:</b> <b>${TelegramService.toKhmerDigits(studyingStaff.length)} នាក់</b>`,
+    `━━━━━━━━━━━━━━━━━━━━━`,
     studyingStaff.length > 0
       ? lines.join('\n\n')
-      : 'មិនមានបុគ្គលិកមានវេនរៀននៅថ្ងៃនេះទេ។',
+      : '✨ មិនមានបុគ្គលិកមានវេនរៀននៅថ្ងៃនេះទេ។',
   ].join('\n');
 }
 
@@ -229,23 +297,24 @@ export async function buildWorkOnlyReport(): Promise<string> {
     const studyDay = emp.studyDay || 'គ្មាន';
 
     lines.push(
-      `${numKh}. <b>${khmerName}</b>\n` +
-      `   ផ្នែកការងារ: ${deptName}\n` +
-      `   តួនាទី: ${position}\n` +
-      `   ជំនាញ: ${skill}\n` +
-      `   ថ្ងៃរៀន: ${studyDay}\n` +
-      `   ស្ថានភាពថ្ងៃនេះ: <b>បំពេញការងារ</b>`
+      `${numKh}. 👤 <b>${khmerName}</b>\n` +
+      `   🔹 ផ្នែកការងារ: ${deptName}\n` +
+      `   🔹 តួនាទី: ${position}\n` +
+      `   🔹 ជំនាញ: ${skill}\n` +
+      `   🔹 ថ្ងៃរៀន: ${studyDay}\n` +
+      `   🔸 ស្ថានភាព: 💼 <b>បំពេញការងារ</b>`
     );
   });
 
   return [
-    `<b>បញ្ជីបុគ្គលិកបំពេញការងារថ្ងៃនេះ</b>`,
-    `--------------------------------------------------`,
-    `<b>ចំនួនសរុប:</b> ${TelegramService.toKhmerDigits(workingStaff.length)} នាក់`,
-    `--------------------------------------------------`,
+    `💼 <b>បញ្ជីបុគ្គលិកបំពេញការងារថ្ងៃនេះ</b>`,
+    `🏢 <b>ស្ថាប័ន:</b> Galaxy TV 4K`,
+    `━━━━━━━━━━━━━━━━━━━━━`,
+    `📊 <b>ចំនួនសរុប:</b> <b>${TelegramService.toKhmerDigits(workingStaff.length)} នាក់</b>`,
+    `━━━━━━━━━━━━━━━━━━━━━`,
     workingStaff.length > 0
       ? lines.join('\n\n')
-      : 'មិនមានបុគ្គលិកបំពេញការងារនៅថ្ងៃនេះទេ។',
+      : '✨ មិនមានបុគ្គលិកបំពេញការងារនៅថ្ងៃនេះទេ។',
   ].join('\n');
 }
 
@@ -270,19 +339,25 @@ export async function buildLocationStatusReport(): Promise<string> {
     const numKh = index + 1;
     const khmerName = emp.khmerName || emp.displayName;
     let statusText = 'មិនទាន់កំណត់ទីតាំង';
-    if (emp.lastLocationStatus === 'INSIDE_OFFICE') statusText = 'នៅក្នុងការិយាល័យ';
-    if (emp.lastLocationStatus === 'OUTSIDE_OFFICE') statusText = 'នៅក្រៅការិយាល័យ';
+    let statusIcon = '⚪';
+    if (emp.lastLocationStatus === 'INSIDE_OFFICE') {
+      statusText = 'នៅក្នុងការិយាល័យ';
+      statusIcon = '🟢';
+    } else if (emp.lastLocationStatus === 'OUTSIDE_OFFICE') {
+      statusText = 'នៅក្រៅការិយាល័យ';
+      statusIcon = '🔴';
+    }
 
-    lines.push(`${numKh}. <b>${khmerName}</b> - ${statusText}`);
+    lines.push(`${numKh}. 👤 <b>${khmerName}</b> — ${statusIcon} ${statusText}`);
   });
 
   return [
-    `<b>ស្ថានភាពវត្តមានក្នុង និងក្រៅការិយាល័យ</b>`,
-    `--------------------------------------------------`,
-    `- នៅក្នុងការិយាល័យ: ${TelegramService.toKhmerDigits(insideStaff.length)} នាក់`,
-    `- នៅក្រៅការិយាល័យ: ${TelegramService.toKhmerDigits(outsideStaff.length)} នាក់`,
-    `- មិនទាន់កំណត់ទីតាំង: ${TelegramService.toKhmerDigits(otherStaff.length)} នាក់`,
-    `--------------------------------------------------`,
+    `🏢 <b>ស្ថានភាពវត្តមានក្នុង និងក្រៅការិយាល័យ (Real-time)</b>`,
+    `━━━━━━━━━━━━━━━━━━━━━`,
+    `🟢 នៅក្នុងការិយាល័យ: <b>${TelegramService.toKhmerDigits(insideStaff.length)} នាក់</b>`,
+    `🔴 នៅក្រៅការិយាល័យ: <b>${TelegramService.toKhmerDigits(outsideStaff.length)} នាក់</b>`,
+    `⚪ មិនទាន់កំណត់ទីតាំង: <b>${TelegramService.toKhmerDigits(otherStaff.length)} នាក់</b>`,
+    `━━━━━━━━━━━━━━━━━━━━━`,
     lines.join('\n'),
   ].join('\n');
 }
@@ -306,9 +381,9 @@ export async function buildLeaveOnlyReport(): Promise<string> {
 
   if (activeLeaves.length === 0) {
     return [
-      `<b>បញ្ជីបុគ្គលិកសុំច្បាប់សម្រាកថ្ងៃនេះ</b>`,
-      `--------------------------------------------------`,
-      `មិនមានបុគ្គលិកសុំច្បាប់សម្រាកនៅថ្ងៃនេះទេ។`,
+      `📝 <b>បញ្ជីបុគ្គលិកសុំច្បាប់សម្រាកថ្ងៃនេះ</b>`,
+      `━━━━━━━━━━━━━━━━━━━━━`,
+      `✨ មិនមានបុគ្គលិកសុំច្បាប់សម្រាកនៅថ្ងៃនេះទេ។`,
     ].join('\n');
   }
 
@@ -316,18 +391,18 @@ export async function buildLeaveOnlyReport(): Promise<string> {
     const numKh = index + 1;
     const name = l.employee.khmerName || l.employee.displayName;
     return (
-      `${numKh}. <b>${name}</b>\n` +
-      `   ប្រភេទច្បាប់: ${l.type}\n` +
-      `   រយៈពេល: ${l.startDate} ដល់ ${l.endDate}\n` +
-      `   មូលហេតុ: ${l.reason || 'ផ្ទាល់ខ្លួន'}`
+      `${numKh}. 👤 <b>${name}</b>\n` +
+      `   🔹 ប្រភេទច្បាប់: 🌴 ${l.type}\n` +
+      `   🔹 រយៈពេល: ${l.startDate} ដល់ ${l.endDate}\n` +
+      `   🔹 មូលហេតុ: ${l.reason || 'ផ្ទាល់ខ្លួន'}`
     );
   });
 
   return [
-    `<b>បញ្ជីបុគ្គលិកសុំច្បាប់សម្រាកថ្ងៃនេះ</b>`,
-    `--------------------------------------------------`,
-    `<b>ចំនួនសរុប:</b> ${TelegramService.toKhmerDigits(activeLeaves.length)} នាក់`,
-    `--------------------------------------------------`,
+    `📝 <b>បញ្ជីបុគ្គលិកសុំច្បាប់សម្រាកថ្ងៃនេះ</b>`,
+    `━━━━━━━━━━━━━━━━━━━━━`,
+    `📊 <b>ចំនួនសរុប:</b> <b>${TelegramService.toKhmerDigits(activeLeaves.length)} នាក់</b>`,
+    `━━━━━━━━━━━━━━━━━━━━━`,
     lines.join('\n\n'),
   ].join('\n');
 }
@@ -343,9 +418,18 @@ async function processUpdate(botToken: string, update: any): Promise<void> {
     const messageId = cq.message?.message_id;
     const data = cq.data;
 
-    // Acknowledge callback immediately to remove button spinner
+    // Fast responsive native toast animation
+    let toastMsg = '✨ កំពុងដំណើរការ...';
+    if (data === 'menu_main') toastMsg = '🏠 ម៉ឺនុយដើម';
+    if (data === 'menu_study') toastMsg = '🎓 បុគ្គលិកវេនរៀន';
+    if (data === 'menu_work') toastMsg = '💼 បុគ្គលិកបំពេញការងារ';
+    if (data === 'menu_location') toastMsg = '🏢 វត្តមានទីតាំង';
+    if (data === 'menu_leave') toastMsg = '📝 បុគ្គលិកសុំច្បាប់';
+    if (data === 'menu_summary' || data === 'menu_all_staff') toastMsg = '📊 របាយការណ៍សង្ខេប';
+
     await callTelegram(botToken, 'answerCallbackQuery', {
       callback_query_id: cq.id,
+      text: toastMsg,
     });
 
     if (!chatId) return;
@@ -356,11 +440,11 @@ async function processUpdate(botToken: string, update: any): Promise<void> {
       await callTelegram(botToken, 'sendMessage', {
         chat_id: chatId,
         text:
-          `<b>ការជូនដំណឹងពីប្រព័ន្ធសុវត្ថិភាព</b>\n` +
-          `--------------------------------------------------\n` +
-          `លោកអ្នកមិនមានសិទ្ធិចូលមើលទិន្នន័យនេះទេ។\n` +
-          `លេខសម្គាល់គណនីរបស់អ្នកគឺ: <code>${chatId}</code>\n` +
-          `សូមទាក់ទងអ្នកគ្រប់គ្រងប្រព័ន្ធ (Admin) ដើម្បីបន្ថែមលេខសម្គាល់នេះ។`,
+          `🔒 <b>ការជូនដំណឹងពីប្រព័ន្ធសុវត្ថិភាព</b>\n` +
+          `━━━━━━━━━━━━━━━━━━━━━\n` +
+          `⛔ លោកអ្នកមិនមានសិទ្ធិចូលមើលទិន្នន័យនេះទេ។\n` +
+          `🆔 លេខសម្គាល់គណនីរបស់អ្នកគឺ: <code>${chatId}</code>\n` +
+          `💬 សូមទាក់ទងអ្នកគ្រប់គ្រងប្រព័ន្ធ (Admin) ដើម្បីបន្ថែមលេខសម្គាល់នេះ។`,
         parse_mode: 'HTML',
       });
       return;
@@ -377,24 +461,29 @@ async function processUpdate(botToken: string, update: any): Promise<void> {
 
       case 'menu_study':
         responseText = await buildStudyOnlyReport();
+        keyboard = getStudyNavMarkup();
         break;
 
       case 'menu_work':
         responseText = await buildWorkOnlyReport();
+        keyboard = getWorkNavMarkup();
         break;
 
       case 'menu_location':
         responseText = await buildLocationStatusReport();
+        keyboard = getLocationNavMarkup();
         break;
 
       case 'menu_leave':
         responseText = await buildLeaveOnlyReport();
+        keyboard = getLeaveNavMarkup();
         break;
 
       case 'menu_summary':
       case 'menu_all_staff': {
         const full = await TelegramService.buildDailyMorningSummaryKhmer();
         responseText = full.messages[0] || 'មិនមានទិន្នន័យ';
+        keyboard = getBackToMenuMarkup();
         break;
       }
 
@@ -440,11 +529,11 @@ async function processUpdate(botToken: string, update: any): Promise<void> {
       await callTelegram(botToken, 'sendMessage', {
         chat_id: chatId,
         text:
-          `<b>ការជូនដំណឹងពីប្រព័ន្ធសុវត្ថិភាព</b>\n` +
-          `--------------------------------------------------\n` +
-          `លោកអ្នកមិនមានសិទ្ធិចូលមើលទិន្នន័យនេះទេ។\n` +
-          `លេខសម្គាល់គណនីរបស់អ្នកគឺ: <code>${chatId}</code>\n` +
-          `សូមទាក់ទងអ្នកគ្រប់គ្រងប្រព័ន្ធ (Admin) ដើម្បីបន្ថែមលេខសម្គាល់នេះ។`,
+          `🔒 <b>ការជូនដំណឹងពីប្រព័ន្ធសុវត្ថិភាព</b>\n` +
+          `━━━━━━━━━━━━━━━━━━━━━\n` +
+          `⛔ លោកអ្នកមិនមានសិទ្ធិចូលមើលទិន្នន័យនេះទេ។\n` +
+          `🆔 លេខសម្គាល់គណនីរបស់អ្នកគឺ: <code>${chatId}</code>\n` +
+          `💬 សូមទាក់ទងអ្នកគ្រប់គ្រងប្រព័ន្ធ (Admin) ដើម្បីបន្ថែមលេខសម្គាល់នេះ។`,
         parse_mode: 'HTML',
       });
       return;
@@ -474,7 +563,7 @@ async function processUpdate(botToken: string, update: any): Promise<void> {
         chat_id: chatId,
         text: report,
         parse_mode: 'HTML',
-        reply_markup: getBackToMenuMarkup(),
+        reply_markup: getStudyNavMarkup(),
         disable_web_page_preview: true,
       });
     } else if (lower.startsWith('/work') || lower.includes('ធ្វើការ')) {
@@ -483,7 +572,7 @@ async function processUpdate(botToken: string, update: any): Promise<void> {
         chat_id: chatId,
         text: report,
         parse_mode: 'HTML',
-        reply_markup: getBackToMenuMarkup(),
+        reply_markup: getWorkNavMarkup(),
         disable_web_page_preview: true,
       });
     } else if (lower.startsWith('/location') || lower.includes('ទីតាំង')) {
@@ -492,7 +581,7 @@ async function processUpdate(botToken: string, update: any): Promise<void> {
         chat_id: chatId,
         text: report,
         parse_mode: 'HTML',
-        reply_markup: getBackToMenuMarkup(),
+        reply_markup: getLocationNavMarkup(),
         disable_web_page_preview: true,
       });
     } else {

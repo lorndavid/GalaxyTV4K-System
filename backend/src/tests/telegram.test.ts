@@ -90,30 +90,43 @@ describe('TelegramService & Security Tests', () => {
     });
   });
 
-  it('generates interactive main menu with clean Khmer text and zero emojis', async () => {
-    const { getMainInlineMenu, getBackToMenuMarkup, buildMainMenuText } = await import('../services/telegramBotService');
+  it('generates interactive main menu with clean Khmer text, emoji animations and rich navigation', async () => {
+    const {
+      getMainInlineMenu,
+      getStudyNavMarkup,
+      getWorkNavMarkup,
+      getLocationNavMarkup,
+      getLeaveNavMarkup,
+      getBackToMenuMarkup,
+      buildMainMenuText,
+    } = await import('../services/telegramBotService');
+
     const menu = getMainInlineMenu();
     const backMenu = getBackToMenuMarkup();
+    const studyNav = getStudyNavMarkup();
+    const workNav = getWorkNavMarkup();
+    const locNav = getLocationNavMarkup();
+    const leaveNav = getLeaveNavMarkup();
     const welcome = buildMainMenuText();
 
-    const emojiRegex = /[\u{1F300}-\u{1F5FF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/u;
-
-    expect(emojiRegex.test(welcome)).toBe(false);
     expect(welcome).toContain('Galaxy TV 4K');
-    expect(welcome).toContain('សូមជ្រើសរើសផ្នែកព័ត៌មាន');
+    expect(welcome).toContain('សូមចុចប៊ូតុងខាងក្រោម');
 
-    // Check all buttons have zero emoji
-    menu.inline_keyboard.forEach((row) => {
-      row.forEach((btn) => {
-        expect(emojiRegex.test(btn.text)).toBe(false);
-        expect(btn.callback_data).toBeDefined();
-      });
-    });
+    // Check menu buttons have emoji animations
+    expect(menu.inline_keyboard[0][0].text).toContain('📊');
+    expect(menu.inline_keyboard[1][0].text).toContain('🎓');
+    expect(menu.inline_keyboard[1][1].text).toContain('💼');
+    expect(menu.inline_keyboard[2][0].text).toContain('🏢');
+    expect(menu.inline_keyboard[2][1].text).toContain('📝');
+    expect(menu.inline_keyboard[3][0].text).toContain('👥');
 
-    backMenu.inline_keyboard.forEach((row) => {
-      row.forEach((btn) => {
-        expect(emojiRegex.test(btn.text)).toBe(false);
-        expect(btn.callback_data).toBe('menu_main');
+    // Check callback_data is defined on all buttons
+    [menu, backMenu, studyNav, workNav, locNav, leaveNav].forEach((kb) => {
+      kb.inline_keyboard.forEach((row) => {
+        row.forEach((btn) => {
+          expect(btn.text).toBeDefined();
+          expect(btn.callback_data).toBeDefined();
+        });
       });
     });
   });
