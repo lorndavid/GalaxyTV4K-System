@@ -1,6 +1,5 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Outlet, Navigate } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNetworkStatus } from '../../hooks/useNetworkStatus';
 import { PwaInstallBanner } from '../pwa/PwaInstallBanner';
@@ -8,15 +7,11 @@ import { AppSplashScreen } from '../pwa/AppSplashScreen';
 import { BottomNav } from './BottomNav';
 import { ThemeToggle } from '../ui/ThemeToggle';
 import { LanguageSwitcher } from '../ui/LanguageSwitcher';
-import { ConfirmationModal } from '../settings/ConfirmationModal';
-import { LogOut, WifiOff } from 'lucide-react';
+import { WifiOff } from 'lucide-react';
 
 export const EmployeeLayout: React.FC = () => {
-  const { isAuthenticated, isLoading, user, logout } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
   const { isOnline } = useNetworkStatus();
-  const { t } = useTranslation();
-  const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   // App bootstrap loading state (branded splash)
   if (isLoading) {
@@ -26,16 +21,6 @@ export const EmployeeLayout: React.FC = () => {
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
-
-  const handleConfirmLogout = async () => {
-    setIsLoggingOut(true);
-    try {
-      await logout();
-    } finally {
-      setIsLoggingOut(false);
-      setIsLogoutModalOpen(false);
-    }
-  };
 
   const employeeName = user?.employee?.displayName || user?.email?.split('@')[0] || 'Employee';
   const employeeCode = user?.employee?.employeeCode || 'EMP';
@@ -52,10 +37,10 @@ export const EmployeeLayout: React.FC = () => {
           </div>
         )}
 
-        {/* Top App Bar Header */}
-        <header className="min-h-14 py-2 bg-white/95 dark:bg-dark-surface/95 backdrop-blur-md border-b border-slate-100 dark:border-dark-border px-4 flex items-center justify-between sticky top-0 z-30 pt-[calc(env(safe-area-inset-top)+0.5rem)] transition-colors duration-150">
-          <div className="flex items-center gap-2.5 min-w-0 flex-1 pr-2">
-            <div className="w-8 h-8 rounded-xl p-1 bg-slate-50 dark:bg-dark-elevated border border-slate-200/80 dark:border-dark-border flex items-center justify-center flex-shrink-0 shadow-xs">
+        {/* Top App Bar Header - Resized +20% with larger brand mark & improved typography */}
+        <header className="min-h-[4.25rem] py-3 bg-white/95 dark:bg-dark-surface/95 backdrop-blur-md border-b border-slate-100 dark:border-dark-border px-4 sm:px-5 flex items-center justify-between sticky top-0 z-30 pt-[calc(env(safe-area-inset-top)+0.625rem)] transition-colors duration-150">
+          <div className="flex items-center gap-3 min-w-0 flex-1 pr-2">
+            <div className="w-10 h-10 rounded-xl p-1.5 bg-slate-50 dark:bg-dark-elevated border border-slate-200/80 dark:border-dark-border flex items-center justify-center flex-shrink-0 shadow-xs">
               <img
                 src="/logo.png"
                 alt="Logo"
@@ -63,28 +48,20 @@ export const EmployeeLayout: React.FC = () => {
               />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-xs font-semibold text-slate-900 dark:text-slate-100 leading-tight truncate">
+              <p className="text-sm font-bold text-slate-900 dark:text-slate-100 leading-tight truncate">
                 {employeeName}
               </p>
-              <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-tight mt-0.5 break-words">
-                <span className="font-medium text-slate-600 dark:text-slate-300">{employeeCode}</span>
-                <span className="mx-1 text-slate-300 dark:text-slate-600">•</span>
+              <p className="text-xs text-slate-500 dark:text-slate-400 leading-tight mt-0.5 break-words">
+                <span className="font-semibold text-slate-700 dark:text-slate-300">{employeeCode}</span>
+                <span className="mx-1.5 text-slate-300 dark:text-slate-600">•</span>
                 <span>{departmentName}</span>
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5 flex-shrink-0">
+          <div className="flex items-center gap-2 flex-shrink-0">
             <LanguageSwitcher compact />
             <ThemeToggle compact />
-            <button
-              onClick={() => setIsLogoutModalOpen(true)}
-              title={t('common.signOut', 'Sign Out')}
-              className="p-1.5 text-slate-400 hover:text-danger-600 hover:bg-danger-50 dark:hover:bg-danger-950/40 rounded-xl transition-colors active:scale-95"
-              aria-label="Sign Out"
-            >
-              <LogOut className="w-4 h-4" />
-            </button>
           </div>
         </header>
 
@@ -94,22 +71,6 @@ export const EmployeeLayout: React.FC = () => {
           <Outlet />
         </main>
       </div>
-
-      {/* Centered Logout Confirmation Modal */}
-      <ConfirmationModal
-        isOpen={isLogoutModalOpen}
-        onClose={() => setIsLogoutModalOpen(false)}
-        onConfirm={handleConfirmLogout}
-        title={t('auth.signOutConfirmTitle', 'Sign out of this device?')}
-        description={t(
-          'auth.signOutConfirmDesc',
-          'Are you sure you want to sign out? You will need to log back in to record your attendance.'
-        )}
-        confirmLabel={t('common.signOut', 'Sign Out')}
-        cancelLabel={t('common.cancel', 'Cancel')}
-        destructive={true}
-        isLoading={isLoggingOut}
-      />
 
       {/* Floating Bottom Navigation with Center QR Action */}
       <BottomNav />
