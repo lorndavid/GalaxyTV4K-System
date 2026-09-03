@@ -8,21 +8,6 @@ async function startServer() {
     await prisma.$connect();
     console.log('✓ Connected to PostgreSQL database via Prisma');
 
-    // Auto-seed official employees if not already present
-    try {
-      const { seedOfficialEmployees } = await import('./services/seedEmployeesService.js');
-      const employeeCount = await prisma.employee.count();
-      const firstOfficial = await prisma.employee.findUnique({
-        where: { email: 'bunthoeun@galaxytv4k.com' },
-      });
-      if (employeeCount < 20 || !firstOfficial) {
-        console.log('🌱 Official employees not found or outdated. Running automated sync...');
-        await seedOfficialEmployees(prisma);
-      }
-    } catch (seedErr) {
-      console.warn('⚠️ Auto-seed check notice:', seedErr);
-    }
-
     const server = app.listen(config.port, () => {
       console.log(`=========================================`);
       console.log(`🚀 System HR Backend Server Running`);
@@ -44,6 +29,20 @@ async function startServer() {
 
     process.on('SIGTERM', () => shutdown('SIGTERM'));
     process.on('SIGINT', () => shutdown('SIGINT'));
+
+    // Non-blocking background check for official employee sync
+    setTimeout(async () => {
+      try {
+        const { seedOfficialEmployees } = await import('./services/seedEmployeesService.js');
+        const employeeCount = await prisma.employee.count();
+        if (employeeCount < 20) {
+          console.log('🌱 Official employees not found or outdated. Running automated sync...');
+          await seedOfficialEmployees(prisma);
+        }
+      } catch (seedErr) {
+        console.warn('⚠️ Auto-seed check notice:', seedErr);
+      }
+    }, 1000);
   } catch (error) {
     console.error('Failed to start server:', error);
     process.exit(1);
