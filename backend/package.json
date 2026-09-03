@@ -16,7 +16,7 @@
     "prisma:studio": "prisma studio",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate deploy",
-    "db:seed": "npx tsx prisma/seed.ts"
+    "db:seed": "npx --yes tsx prisma/seed.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.19.1",
