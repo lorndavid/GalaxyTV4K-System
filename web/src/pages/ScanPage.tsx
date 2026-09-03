@@ -49,10 +49,9 @@ export const ScanPage: React.FC = () => {
   const [isGpsReady, setIsGpsReady] = useState<boolean>(false);
   const [successRecord, setSuccessRecord] = useState<any>(null);
   const [facingMode, setFacingMode] = useState<'environment' | 'user'>('environment');
-  const [isCameraActive, setIsCameraActive] = useState<boolean>(false);
   const [hasTorch, setHasTorch] = useState<boolean>(false);
   const [isTorchOn, setIsTorchOn] = useState<boolean>(false);
-  const [countdown, setCountdown] = useState<number>(3);
+  const [countdown, setCountdown] = useState<number>(2);
 
   // Hardware & scanning refs
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -72,23 +71,43 @@ export const ScanPage: React.FC = () => {
     accuracy: number;
   } | null>(null);
   const geoWatchIdRef = useRef<number | null>(null);
-  const countdownTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const autoCloseTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // 1. Continuous High-Accuracy Geolocation Acquisition
+  // 1. Play synthesized audio chime on QR detection
+  const playSuccessChime = useCallback(() => {
+    try {
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, ctx.currentTime); // A5
+      osc.frequency.exponentialRampToValueAtTime(1760, ctx.currentTime + 0.12); // A6
+      gain.gain.setValueAtTime(0.25, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.15);
+    } catch {
+      // Audio playback fails gracefully if muted
+    }
+  }, []);
+
+  // 2. Continuous High-Accuracy Geolocation Acquisition
   useEffect(() => {
     let isMounted = true;
 
     if (navigator.geolocation) {
-      // Immediate single acquisition
       navigator.geolocation.getCurrentPosition(
         (pos) => {
           if (!isMounted) return;
-          const coords = {
+          geoCoordsRef.current = {
             latitude: pos.coords.latitude,
             longitude: pos.coords.longitude,
             accuracy: pos.coords.accuracy,
           };
-          geoCoordsRef.current = coords;
           setIsGpsReady(true);
           setLocationStatus(
             t('attendance.gpsVerified', `GPS Verified (±${Math.round(pos.coords.accuracy)}m)`)
@@ -101,16 +120,14 @@ export const ScanPage: React.FC = () => {
         { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
       );
 
-      // Continuous watch to keep coordinates fresh without latency
       geoWatchIdRef.current = navigator.geolocation.watchPosition(
         (pos) => {
           if (!isMounted) return;
-          const coords = {
+          geoCoordsRef.current = {
             latitude: pos.coords.latitude,
             longitude: pos.coords.longitude,
             accuracy: pos.coords.accuracy,
           };
-          geoCoordsRef.current = coords;
           setIsGpsReady(true);
           setLocationStatus(
             t('attendance.gpsVerified', `GPS Verified (±${Math.round(pos.coords.accuracy)}m)`)
@@ -126,13 +143,13 @@ export const ScanPage: React.FC = () => {
       if (geoWatchIdRef.current !== null) {
         navigator.geolocation.clearWatch(geoWatchIdRef.current);
       }
-      if (countdownTimerRef.current) {
-        clearInterval(countdownTimerRef.current);
+      if (autoCloseTimerRef.current) {
+        clearInterval(autoCloseTimerRef.current);
       }
     };
   }, [t]);
 
-  // 2. Camera Stream Cleanup
+  // 3. Camera Stream Cleanup (immediately frees camera hardware & turns off green iOS camera dot)
   const stopCameraStream = useCallback(() => {
     if (animationFrameRef.current) {
       cancelAnimationFrame(animationFrameRef.current);
@@ -149,24 +166,24 @@ export const ScanPage: React.FC = () => {
     if (videoRef.current) {
       videoRef.current.srcObject = null;
     }
-    setIsCameraActive(false);
     setIsTorchOn(false);
     setHasTorch(false);
   }, []);
 
-  // 3. Process Attendance Scan (Single execution per scan)
+  // 4. Process Attendance Scan (Single execution per scan)
   const processAttendanceScan = useCallback(
     async (decodedText: string) => {
-      // 1. Immediately turn off camera tracks and animation to prevent background work
-      stopCameraStream();
-      setState('VALIDATING');
-
-      // Subtle haptic feedback
+      // 1. Play audio chime & subtle haptic feedback immediately
+      playSuccessChime();
       if ('vibrate' in navigator) {
         try {
           navigator.vibrate([40, 25, 40]);
         } catch {}
       }
+
+      // 2. Immediately shut down camera tracks so the phone camera dot turns off
+      stopCameraStream();
+      setState('VALIDATING');
 
       try {
         let qrToken = decodedText;
@@ -239,29 +256,27 @@ export const ScanPage: React.FC = () => {
           } catch {}
         }
 
-        // Seamless query cache invalidation without page reload
+        // Seamless query cache invalidation without full page reload
         queryClient.invalidateQueries({ queryKey: queryKeys.attendance.today });
         queryClient.invalidateQueries({ queryKey: ['attendance'] });
         queryClient.invalidateQueries({ queryKey: ['myHistorySummary'] });
 
-        showToast(
-          t('attendance.recordSuccessToast', '✓ Attendance recorded successfully')
-        );
+        showToast(t('attendance.recordSuccessToast', '✓ Attendance recorded successfully'));
 
-        // Auto-redirect countdown to return home smoothly in 3s
-        setCountdown(3);
-        countdownTimerRef.current = setInterval(() => {
+        // Auto-close camera and return home smoothly after 1.5 seconds
+        setCountdown(2);
+        autoCloseTimerRef.current = setInterval(() => {
           setCountdown((prev) => {
             if (prev <= 1) {
-              if (countdownTimerRef.current) clearInterval(countdownTimerRef.current);
+              if (autoCloseTimerRef.current) clearInterval(autoCloseTimerRef.current);
+              stopCameraStream();
               navigate('/');
               return 0;
             }
             return prev - 1;
           });
-        }, 1000);
+        }, 800);
       } catch (err: any) {
-        const errCode = err?.response?.data?.error?.code;
         const errorMsg =
           err?.response?.data?.error?.message ||
           t(
@@ -277,10 +292,10 @@ export const ScanPage: React.FC = () => {
         scanCompletedRef.current = false;
       }
     },
-    [stopCameraStream, t, queryClient, showToast, navigate]
+    [stopCameraStream, playSuccessChime, t, queryClient, showToast, navigate]
   );
 
-  // 4. Scan Frame Loop with Hardware Decoupling
+  // 5. Scan Frame Loop with Hardware Decoupling
   const startScanLoop = useCallback(() => {
     const scanFrame = async () => {
       // If already processed or completed, terminate scan loop immediately
@@ -296,7 +311,7 @@ export const ScanPage: React.FC = () => {
         return;
       }
 
-      // Check readyState and video dimensions to avoid iOS/Android crashes
+      // Check readyState and video dimensions
       if (video.readyState < 2 || video.videoWidth === 0 || video.videoHeight === 0) {
         animationFrameRef.current = requestAnimationFrame(scanFrame);
         return;
@@ -359,11 +374,11 @@ export const ScanPage: React.FC = () => {
     animationFrameRef.current = requestAnimationFrame(scanFrame);
   }, [processAttendanceScan]);
 
-  // 5. Camera Initializer (Android & iOS Safari)
+  // 6. Camera Initializer (Android & iOS Safari with permanent video ref guarantee)
   const startCamera = useCallback(
     async (currentFacing: 'environment' | 'user') => {
       stopCameraStream();
-      setState('REQUESTING_PERMISSION');
+      setState('INITIALIZING');
       setErrorMessage('');
       isProcessingRef.current = false;
       scanCompletedRef.current = false;
@@ -448,20 +463,45 @@ export const ScanPage: React.FC = () => {
         video.setAttribute('autoplay', 'true');
         video.srcObject = stream;
 
-        try {
-          await video.play();
-          setIsCameraActive(true);
-          setState('SCANNING');
-          startScanLoop();
-        } catch {
-          setState('CAMERA_UNAVAILABLE');
+        // Handle iOS Safari metadata loading and play transition
+        const onLoaded = async () => {
+          try {
+            await video.play();
+            setState('SCANNING');
+            startScanLoop();
+          } catch {
+            setState('SCANNING');
+            startScanLoop();
+          }
+        };
+
+        if (video.readyState >= 1) {
+          await onLoaded();
+        } else {
+          video.onloadedmetadata = onLoaded;
+          // Fallback direct play
+          video.play().then(() => {
+            setState('SCANNING');
+            startScanLoop();
+          }).catch(() => {});
         }
+      } else {
+        // In case ref took a frame to attach
+        setTimeout(() => {
+          if (videoRef.current) {
+            videoRef.current.srcObject = stream;
+            videoRef.current.play().then(() => {
+              setState('SCANNING');
+              startScanLoop();
+            }).catch(() => {});
+          }
+        }, 100);
       }
     },
     [stopCameraStream, startScanLoop, t]
   );
 
-  // 6. Flashlight / Torch Toggle
+  // 7. Flashlight / Torch Toggle
   const toggleTorch = async () => {
     const track = streamRef.current?.getVideoTracks()[0];
     if (track) {
@@ -477,21 +517,21 @@ export const ScanPage: React.FC = () => {
     }
   };
 
-  // 7. Lifecycle: Mount & Cleanup (Only triggered by explicit facingMode changes)
+  // 8. Lifecycle: Auto-start Camera on Mount
   useEffect(() => {
     startCamera(facingMode);
     return () => {
       stopCameraStream();
     };
-  }, [facingMode]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [facingMode, startCamera, stopCameraStream]);
 
-  // 8. Toggle Front/Rear Camera
+  // 9. Toggle Front/Rear Camera
   const toggleFacingMode = () => {
     const nextMode = facingMode === 'environment' ? 'user' : 'environment';
     setFacingMode(nextMode);
   };
 
-  // 9. Photo Upload Fallback
+  // 10. Photo Upload Fallback
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -528,10 +568,10 @@ export const ScanPage: React.FC = () => {
     reader.readAsDataURL(file);
   };
 
-  // Reset scanner to try again without page reload
+  // 11. Reset scanner to try again without page reload
   const handleRetry = () => {
-    if (countdownTimerRef.current) {
-      clearInterval(countdownTimerRef.current);
+    if (autoCloseTimerRef.current) {
+      clearInterval(autoCloseTimerRef.current);
     }
     isProcessingRef.current = false;
     scanCompletedRef.current = false;
@@ -610,45 +650,72 @@ export const ScanPage: React.FC = () => {
       </header>
 
       {/* 2. Main Viewport Area */}
-      <main className="flex-1 flex flex-col items-center justify-center px-4 relative z-10">
-        {/* CAMERA SCANNER VIEWPORT */}
-        {state === 'SCANNING' && (
-          <div className="flex flex-col items-center justify-center space-y-4 animate-fade-in w-full max-w-sm">
-            <div className="relative w-72 h-72 sm:w-80 sm:h-80 rounded-3xl overflow-hidden bg-black border border-cyan-500/30 shadow-[0_0_40px_rgba(6,182,212,0.15)] flex items-center justify-center">
-              <video
-                ref={videoRef}
-                playsInline
-                autoPlay
-                muted
-                className="w-full h-full object-cover"
-              />
+      <main className="flex-1 flex flex-col items-center justify-center px-4 relative z-10 w-full max-w-sm mx-auto">
+        {/* CAMERA SCANNER BOX - PERMANENTLY MOUNTED TO PREVENT DOM DEADLOCKS */}
+        <div
+          className={`flex flex-col items-center justify-center space-y-4 w-full transition-all duration-300 ${
+            state === 'SCANNING' || state === 'INITIALIZING' || state === 'REQUESTING_PERMISSION'
+              ? 'opacity-100 scale-100'
+              : 'hidden pointer-events-none'
+          }`}
+        >
+          <div className="relative w-72 h-72 sm:w-80 sm:h-80 rounded-3xl overflow-hidden bg-black border border-cyan-500/30 shadow-[0_0_40px_rgba(6,182,212,0.15)] flex items-center justify-center">
+            {/* The persistent HTML Video element */}
+            <video
+              ref={videoRef}
+              playsInline
+              autoPlay
+              muted
+              className="w-full h-full object-cover"
+            />
 
-              {/* Laser scan target frame */}
+            {/* Laser Target Frame & Scan Animation (Active when SCANNING) */}
+            {state === 'SCANNING' && (
               <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center p-6">
                 <div className="relative w-60 h-60 border-2 border-cyan-400/60 rounded-2xl shadow-[0_0_20px_rgba(6,182,212,0.3)]">
-                  {/* Scanning laser line */}
+                  {/* Scanning Laser Line */}
                   <div className="absolute left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-cyan-400 to-transparent shadow-[0_0_12px_#22d3ee] animate-scan-laser" />
 
-                  {/* Corner accents */}
+                  {/* Corner Accents */}
                   <div className="absolute -top-1 -left-1 w-5 h-5 border-t-3 border-l-3 border-cyan-400 rounded-tl" />
                   <div className="absolute -top-1 -right-1 w-5 h-5 border-t-3 border-r-3 border-cyan-400 rounded-tr" />
                   <div className="absolute -bottom-1 -left-1 w-5 h-5 border-b-3 border-l-3 border-cyan-400 rounded-bl" />
                   <div className="absolute -bottom-1 -right-1 w-5 h-5 border-b-3 border-r-3 border-cyan-400 rounded-br" />
                 </div>
               </div>
-            </div>
+            )}
 
-            {/* Instruction Prompt */}
-            <div className="text-center space-y-1">
-              <p className="text-sm font-semibold text-white tracking-wide">
-                {t('attendance.scanInstruction', 'Scan the attendance QR code')}
-              </p>
-              <p className="text-xs text-slate-400">
-                {t('attendance.autoDetected', 'Align inside frame • Scans automatically')}
-              </p>
-            </div>
+            {/* Smooth Connecting Overlay while camera sensor activates */}
+            {(state === 'INITIALIZING' || state === 'REQUESTING_PERMISSION') && (
+              <div className="absolute inset-0 bg-slate-950/85 backdrop-blur-md flex flex-col items-center justify-center space-y-3.5 z-20 animate-fade-in">
+                <div className="relative w-16 h-16 flex items-center justify-center">
+                  <span className="absolute inset-0 rounded-full border-2 border-cyan-400/30 animate-ping" />
+                  <div className="w-14 h-14 rounded-full border-2 border-cyan-500 border-t-transparent animate-spin flex items-center justify-center">
+                    <Camera className="w-6 h-6 text-cyan-400 animate-pulse" />
+                  </div>
+                </div>
+                <div className="text-center px-4 space-y-1">
+                  <p className="text-sm font-bold text-white tracking-wide">
+                    {t('attendance.startingCamera', 'Starting Camera...')}
+                  </p>
+                  <p className="text-[11px] text-slate-400">
+                    {t('attendance.connectingSensor', 'Initializing camera sensor')}
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
-        )}
+
+          {/* Instruction Prompt */}
+          <div className="text-center space-y-1">
+            <p className="text-sm font-semibold text-white tracking-wide">
+              {t('attendance.scanInstruction', 'Scan the attendance QR code')}
+            </p>
+            <p className="text-xs text-slate-400">
+              {t('attendance.autoDetected', 'Align inside frame • Scans automatically')}
+            </p>
+          </div>
+        </div>
 
         {/* VALIDATING STATE (Fast, smooth transition with neon radar ring) */}
         {state === 'VALIDATING' && (
@@ -671,7 +738,7 @@ export const ScanPage: React.FC = () => {
           </div>
         )}
 
-        {/* SUCCESS STATE (Stunning Glassmorphic Transformation) */}
+        {/* SUCCESS STATE (Auto-close with instant Done button) */}
         {state === 'SUCCESS' && (
           <div className="bg-slate-900/95 backdrop-blur-2xl border border-emerald-500/40 p-6 sm:p-7 rounded-3xl max-w-sm w-full text-center space-y-5 shadow-[0_25px_60px_rgba(16,185,129,0.25)] animate-slide-up">
             {/* Animated Emerald Checkmark */}
@@ -745,13 +812,14 @@ export const ScanPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Action buttons & Countdown */}
+            {/* Action button & Auto-close progress */}
             <div className="space-y-2 pt-1">
               <Button
                 variant="primary"
                 size="lg"
                 className="w-full h-12 font-bold bg-emerald-600 hover:bg-emerald-500 active:scale-95 shadow-lg shadow-emerald-600/30 text-sm transition-all"
                 onClick={() => {
+                  if (autoCloseTimerRef.current) clearInterval(autoCloseTimerRef.current);
                   stopCameraStream();
                   navigate('/');
                 }}
@@ -761,7 +829,7 @@ export const ScanPage: React.FC = () => {
 
               <p className="text-[11px] text-slate-400 animate-pulse font-mono">
                 {t('attendance.redirectingHome', {
-                  defaultValue: `Returning to home in ${countdown}s...`,
+                  defaultValue: `Closing scanner in ${countdown}s...`,
                   seconds: countdown,
                 })}
               </p>
@@ -808,10 +876,8 @@ export const ScanPage: React.FC = () => {
           </div>
         )}
 
-        {/* CAMERA ACCESS / PERMISSION PROMPT */}
-        {(state === 'CAMERA_UNAVAILABLE' ||
-          state === 'REQUESTING_PERMISSION' ||
-          state === 'PERMISSION_DENIED') && (
+        {/* PERMISSION DENIED OR CAMERA UNAVAILABLE */}
+        {(state === 'PERMISSION_DENIED' || state === 'CAMERA_UNAVAILABLE') && (
           <div className="bg-slate-900/95 backdrop-blur-2xl border border-brand-500/40 p-6 sm:p-7 rounded-3xl max-w-xs w-full text-center space-y-4 shadow-2xl animate-fade-in">
             <div className="w-16 h-16 rounded-2xl bg-brand-500/20 border border-brand-500/40 text-brand-400 flex items-center justify-center mx-auto shadow-[0_0_20px_rgba(59,130,246,0.3)]">
               <Camera className="w-8 h-8" />
@@ -821,12 +887,10 @@ export const ScanPage: React.FC = () => {
               <h3 className="text-base font-bold text-white">
                 {state === 'PERMISSION_DENIED'
                   ? t('attendance.permissionDeniedTitle', 'Camera Access Required')
-                  : state === 'REQUESTING_PERMISSION'
-                  ? 'Requesting Camera...'
                   : 'Camera Access'}
               </h3>
               <p className="text-xs text-slate-300 leading-relaxed">
-                {errorMessage || 'Tap below to activate camera permissions.'}
+                {errorMessage || 'Please enable camera permissions in your browser settings to scan attendance.'}
               </p>
             </div>
 
