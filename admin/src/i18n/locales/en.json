@@ -51,7 +51,12 @@
     "male": "Male",
     "female": "Female",
     "other": "Other",
-    "resetPassword": "Reset Password"
+    "resetPassword": "Reset Password",
+    "deleteEmployee": "Delete Employee",
+    "deleteSuccess": "Employee and related records deleted successfully.",
+    "deleteFailed": "Failed to delete employee.",
+    "deleteConfirmTitle": "Delete Employee Record?",
+    "deleteConfirmDesc": "Are you sure you want to permanently delete this employee? All related attendance logs, leave balances, and login credentials will be removed from the database. This action cannot be undone."
   },
   "auth": {
     "adminPortal": "Admin Portal",

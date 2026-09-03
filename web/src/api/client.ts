@@ -7,9 +7,11 @@ export const apiClient = axios.create({
   },
 });
 
-// Attach JWT token from localStorage
+// Attach JWT token from localStorage or sessionStorage
 apiClient.interceptors.request.use((config) => {
-  const token = localStorage.getItem('system_hr_employee_token');
+  const token =
+    localStorage.getItem('system_hr_employee_token') ||
+    sessionStorage.getItem('system_hr_employee_token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -23,6 +25,8 @@ apiClient.interceptors.response.use(
     if (error.response?.status === 401) {
       localStorage.removeItem('system_hr_employee_token');
       localStorage.removeItem('system_hr_employee_user');
+      sessionStorage.removeItem('system_hr_employee_token');
+      sessionStorage.removeItem('system_hr_employee_user');
       // Dispatch event for React Router SPA auth listener
       window.dispatchEvent(new CustomEvent('auth:unauthorized'));
     }

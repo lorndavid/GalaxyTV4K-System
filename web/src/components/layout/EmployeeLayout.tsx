@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Outlet, Navigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNetworkStatus } from '../../hooks/useNetworkStatus';
 import { PwaInstallBanner } from '../pwa/PwaInstallBanner';
@@ -7,11 +8,15 @@ import { AppSplashScreen } from '../pwa/AppSplashScreen';
 import { BottomNav } from './BottomNav';
 import { ThemeToggle } from '../ui/ThemeToggle';
 import { LanguageSwitcher } from '../ui/LanguageSwitcher';
+import { ConfirmationModal } from '../settings/ConfirmationModal';
 import { LogOut, WifiOff } from 'lucide-react';
 
 export const EmployeeLayout: React.FC = () => {
   const { isAuthenticated, isLoading, user, logout } = useAuth();
   const { isOnline } = useNetworkStatus();
+  const { t } = useTranslation();
+  const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   // App bootstrap loading state (branded splash)
   if (isLoading) {
@@ -21,6 +26,16 @@ export const EmployeeLayout: React.FC = () => {
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
+
+  const handleConfirmLogout = async () => {
+    setIsLoggingOut(true);
+    try {
+      await logout();
+    } finally {
+      setIsLoggingOut(false);
+      setIsLogoutModalOpen(false);
+    }
+  };
 
   const employeeName = user?.employee?.displayName || user?.email?.split('@')[0] || 'Employee';
   const employeeCode = user?.employee?.employeeCode || 'EMP';
@@ -63,8 +78,8 @@ export const EmployeeLayout: React.FC = () => {
             <LanguageSwitcher compact />
             <ThemeToggle compact />
             <button
-              onClick={logout}
-              title="Sign Out"
+              onClick={() => setIsLogoutModalOpen(true)}
+              title={t('common.signOut', 'Sign Out')}
               className="p-1.5 text-slate-400 hover:text-danger-600 hover:bg-danger-50 dark:hover:bg-danger-950/40 rounded-xl transition-colors active:scale-95"
               aria-label="Sign Out"
             >
@@ -79,6 +94,22 @@ export const EmployeeLayout: React.FC = () => {
           <Outlet />
         </main>
       </div>
+
+      {/* Centered Logout Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={isLogoutModalOpen}
+        onClose={() => setIsLogoutModalOpen(false)}
+        onConfirm={handleConfirmLogout}
+        title={t('auth.signOutConfirmTitle', 'Sign out of this device?')}
+        description={t(
+          'auth.signOutConfirmDesc',
+          'Are you sure you want to sign out? You will need to log back in to record your attendance.'
+        )}
+        confirmLabel={t('common.signOut', 'Sign Out')}
+        cancelLabel={t('common.cancel', 'Cancel')}
+        destructive={true}
+        isLoading={isLoggingOut}
+      />
 
       {/* Floating Bottom Navigation with Center QR Action */}
       <BottomNav />

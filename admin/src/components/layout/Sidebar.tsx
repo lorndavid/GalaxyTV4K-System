@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
@@ -18,8 +18,11 @@ import {
   ShieldAlert,
   LogOut,
   X,
+  AlertCircle,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { Modal } from '../common/Modal';
+import { Button } from '../ui/Button';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -28,6 +31,7 @@ interface SidebarProps {
 
 export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const { user, logout } = useAuth();
+  const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const { t } = useTranslation();
 
   const navItems = [
@@ -126,15 +130,55 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
               </div>
             </div>
             <button
-              onClick={logout}
+              onClick={() => setIsLogoutModalOpen(true)}
               title={t('common.signOut')}
-              className="p-1.5 text-slate-400 hover:text-danger-600 hover:bg-danger-50 dark:hover:bg-danger-950/40 rounded-lg transition-colors"
+              className="p-1.5 text-slate-400 hover:text-danger-600 hover:bg-danger-50 dark:hover:bg-danger-950/40 rounded-lg transition-colors active:scale-95"
             >
               <LogOut className="w-4 h-4" />
             </button>
           </div>
         </div>
       </aside>
+
+      {/* Centered Logout Confirmation Modal */}
+      {isLogoutModalOpen && (
+        <Modal
+          isOpen={isLogoutModalOpen}
+          onClose={() => setIsLogoutModalOpen(false)}
+          title={t('common.signOut', 'Sign Out')}
+        >
+          <div className="space-y-4 text-xs">
+            <div className="flex items-start gap-3 p-3 bg-slate-50 dark:bg-dark-elevated rounded-xl border border-slate-200 dark:border-dark-border">
+              <div className="w-9 h-9 rounded-xl bg-danger-50 dark:bg-danger-950/40 text-danger-600 dark:text-danger-400 flex items-center justify-center flex-shrink-0">
+                <AlertCircle className="w-5 h-5 stroke-[2]" />
+              </div>
+              <p className="text-slate-600 dark:text-slate-300 text-xs sm:text-sm leading-relaxed pt-1">
+                Are you sure you want to sign out of the Administrator Portal?
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-100 dark:border-dark-border">
+              <Button
+                variant="secondary"
+                size="md"
+                onClick={() => setIsLogoutModalOpen(false)}
+              >
+                {t('common.cancel', 'Cancel')}
+              </Button>
+              <Button
+                variant="danger"
+                size="md"
+                onClick={() => {
+                  setIsLogoutModalOpen(false);
+                  logout();
+                }}
+              >
+                {t('common.signOut', 'Sign Out')}
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </>
   );
 };

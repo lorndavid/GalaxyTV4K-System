@@ -293,6 +293,71 @@ export class AdminController {
     return sendSuccess(res, { temporaryPassword: tempPassword });
   }
 
+  static async deleteEmployee(req: AuthenticatedRequest, res: Response) {
+    const { id } = req.params;
+    const adminId = req.user?.userId;
+
+    const employee = await prisma.employee.findUnique({
+      where: { id },
+      include: { user: true },
+    });
+
+    if (!employee) {
+      return sendError(res, 'EMPLOYEE_NOT_FOUND', 'Employee not found.', 404);
+    }
+
+    // Safety guard: Prevent deleting yourself
+    if (adminId && employee.user?.id === adminId) {
+      return sendError(res, 'CANNOT_DELETE_SELF', 'You cannot delete your own administrative account.', 400);
+    }
+
+    await prisma.$transaction(async (tx) => {
+      // 1. Delete associated user account and sessions
+      if (employee.user) {
+        await tx.session.deleteMany({
+          where: { userId: employee.user.id },
+        });
+        await tx.user.delete({
+          where: { id: employee.user.id },
+        });
+      }
+
+      // 2. Cascade delete related records
+      await tx.attendance.deleteMany({ where: { employeeId: id } });
+      await tx.leaveBalance.deleteMany({ where: { employeeId: id } });
+      await tx.leaveRequest.deleteMany({ where: { employeeId: id } });
+      await tx.outRequest.deleteMany({ where: { employeeId: id } });
+      await tx.employeeLocation.deleteMany({ where: { employeeId: id } });
+      await tx.locationEvent.deleteMany({ where: { employeeId: id } });
+
+      // 3. Delete Employee record
+      await tx.employee.delete({
+        where: { id },
+      });
+
+      // 4. Record Audit Log
+      await createAuditLog(
+        {
+          actorId: adminId || null,
+          actorType: ActorType.ADMIN,
+          action: 'EMPLOYEE_DELETED',
+          entityType: 'Employee',
+          entityId: id,
+          metadata: {
+            employeeCode: employee.employeeCode,
+            displayName: employee.displayName,
+            email: employee.email,
+          },
+          ipAddress: req.ip,
+          userAgent: req.headers['user-agent'],
+        },
+        tx
+      );
+    });
+
+    return sendSuccess(res, { id, message: 'Employee and all associated records deleted successfully.' });
+  }
+
   static async getDepartments(req: AuthenticatedRequest, res: Response) {
     const departments = await prisma.department.findMany({
       include: {
@@ -311,5 +376,15 @@ export class AdminController {
     });
 
     return sendSuccess(res, dept, 201);
+  }
+
+  static async seedOfficialEmployees(req: AuthenticatedRequest, res: Response) {
+    try {
+      const { seedOfficialEmployees } = await import('../services/seedEmployeesService.js');
+      const result = await seedOfficialEmployees(prisma);
+      return sendSuccess(res, result);
+    } catch (error: any) {
+      return sendError(res, 'SEED_ERROR', error?.message || 'Failed to seed official employees.', 500);
+    }
   }
 }

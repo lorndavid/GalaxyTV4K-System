@@ -28,7 +28,9 @@ router.post('/employees', AdminController.createEmployee);
 router.get('/employees/:id', AdminController.getEmployeeById);
 router.patch('/employees/:id', AdminController.updateEmployee);
 router.put('/employees/:id', AdminController.updateEmployee);
+router.delete('/employees/:id', AdminController.deleteEmployee);
 router.post('/employees/:id/reset-password', AdminController.resetPassword);
+router.post('/employees/seed-official', AdminController.seedOfficialEmployees);
 
 // Departments
 router.get('/departments', AdminController.getDepartments);

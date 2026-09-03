@@ -12,8 +12,13 @@ export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const { login } = useAuth();
   const { t } = useTranslation();
-  const [email, setEmail] = useState('sokha.chan@company.com');
-  const [password, setPassword] = useState('Employee@123456');
+  const [email, setEmail] = useState(() => {
+    return localStorage.getItem('saved_login_email') || 'bunthoeun@galaxytv4k.com';
+  });
+  const [password, setPassword] = useState('galaxytv@@');
+  const [rememberMe, setRememberMe] = useState(() => {
+    return localStorage.getItem('system_hr_remember_me') !== 'false';
+  });
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [justFilled, setJustFilled] = useState(false);
@@ -24,7 +29,7 @@ export const LoginPage: React.FC = () => {
     setIsLoading(true);
 
     try {
-      await login(email, password);
+      await login(email, password, rememberMe);
       navigate('/');
     } catch (err: any) {
       setError(
@@ -37,8 +42,9 @@ export const LoginPage: React.FC = () => {
   };
 
   const handleAutofillDemo = () => {
-    setEmail('sokha.chan@company.com');
-    setPassword('Employee@123456');
+    setEmail('bunthoeun@galaxytv4k.com');
+    setPassword('galaxytv@@');
+    setRememberMe(true);
     setJustFilled(true);
     setTimeout(() => setJustFilled(false), 2000);
   };
@@ -101,12 +107,12 @@ export const LoginPage: React.FC = () => {
               <div className="relative group">
                 <Mail className="w-4 h-4 text-slate-400 group-focus-within:text-brand-600 dark:group-focus-within:text-brand-400 transition-colors absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none stroke-[1.8]" />
                 <input
-                  type="email"
+                  type="text"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full pl-11 pr-4 py-3 text-sm bg-slate-50/70 dark:bg-dark-elevated/60 border border-slate-200 dark:border-dark-border text-slate-900 dark:text-slate-100 rounded-xl focus:bg-white dark:focus:bg-dark-surface focus:border-brand-500 focus:ring-4 focus:ring-brand-500/15 dark:focus:ring-brand-500/20 focus:outline-none transition-all duration-150 font-normal placeholder:text-slate-400"
-                  placeholder="sokha.chan@company.com"
+                  placeholder="bunthoeun@galaxytv4k.com"
                 />
               </div>
             </div>
@@ -124,9 +130,22 @@ export const LoginPage: React.FC = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full pl-11 pr-4 py-3 text-sm bg-slate-50/70 dark:bg-dark-elevated/60 border border-slate-200 dark:border-dark-border text-slate-900 dark:text-slate-100 rounded-xl focus:bg-white dark:focus:bg-dark-surface focus:border-brand-500 focus:ring-4 focus:ring-brand-500/15 dark:focus:ring-brand-500/20 focus:outline-none transition-all duration-150 font-normal placeholder:text-slate-400"
-                  placeholder="••••••••"
+                  placeholder="galaxytv@@"
                 />
               </div>
+            </div>
+
+            {/* Remember Me Checkbox */}
+            <div className="flex items-center justify-between pt-0.5">
+              <label className="flex items-center gap-2 cursor-pointer select-none text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-slate-800 dark:hover:text-slate-100 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="w-4 h-4 rounded-md border-slate-300 dark:border-dark-border text-brand-600 focus:ring-brand-500/20 dark:bg-dark-elevated cursor-pointer"
+                />
+                <span>{t('auth.rememberMe', 'Remember me on this device')}</span>
+              </label>
             </div>
 
             {/* Submit Action Button */}
@@ -149,7 +168,7 @@ export const LoginPage: React.FC = () => {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400 text-[11px] font-medium">
                   <ShieldCheck className="w-3.5 h-3.5 text-slate-400" />
-                  <span>Demo Account</span>
+                  <span>Sample Account</span>
                 </div>
 
                 <button
@@ -165,14 +184,14 @@ export const LoginPage: React.FC = () => {
                   ) : (
                     <>
                       <Sparkles className="w-3 h-3" />
-                      <span>Fill demo credentials</span>
+                      <span>Fill sample credentials</span>
                     </>
                   )}
                 </button>
               </div>
 
               <p className="text-[11px] text-slate-500 dark:text-slate-400 font-mono tracking-tight select-all">
-                sokha.chan@company.com • Employee@123456
+                bunthoeun@galaxytv4k.com • galaxytv@@
               </p>
             </div>
           </div>

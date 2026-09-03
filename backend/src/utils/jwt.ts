@@ -9,9 +9,9 @@ export interface JwtPayload {
   employeeId?: string | null;
 }
 
-export function generateToken(payload: JwtPayload): string {
+export function generateToken(payload: JwtPayload, expiresIn?: string): string {
   return jwt.sign(payload, config.jwtSecret, {
-    expiresIn: config.jwtExpiresIn as any,
+    expiresIn: (expiresIn || config.jwtExpiresIn || '30d') as any,
   });
 }
 

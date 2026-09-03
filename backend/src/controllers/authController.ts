@@ -10,14 +10,24 @@ import { ActorType, UserStatus } from '@prisma/client';
 export class AuthController {
   static async login(req: Request, res: Response) {
     try {
-      const { email, password } = req.body;
+      const { email, password, rememberMe } = req.body;
 
       if (!email || !password) {
         return sendError(res, 'MISSING_CREDENTIALS', 'Email and password are required.', 400);
       }
 
-      const user = await prisma.user.findUnique({
-        where: { email: email.toLowerCase().trim() },
+      const cleanInput = email.toLowerCase().trim();
+      const candidateEmail = cleanInput.includes('@') ? cleanInput : `${cleanInput}@galaxytv4k.com`;
+
+      const user = await prisma.user.findFirst({
+        where: {
+          OR: [
+            { email: cleanInput },
+            { email: candidateEmail },
+            { employee: { employeeCode: { equals: cleanInput, mode: 'insensitive' } } },
+            { employee: { phone: cleanInput } },
+          ],
+        },
         include: {
           employee: {
             include: { department: true, schedule: true },
@@ -48,12 +58,16 @@ export class AuthController {
         console.warn('Could not update lastLoginAt:', err);
       }
 
-      const token = generateToken({
-        userId: user.id,
-        email: user.email,
-        role: user.role,
-        employeeId: user.employeeId,
-      });
+      const tokenExpiresIn = rememberMe === false ? '24h' : '30d';
+      const token = generateToken(
+        {
+          userId: user.id,
+          email: user.email,
+          role: user.role,
+          employeeId: user.employeeId,
+        },
+        tokenExpiresIn
+      );
 
       try {
         await createAuditLog({

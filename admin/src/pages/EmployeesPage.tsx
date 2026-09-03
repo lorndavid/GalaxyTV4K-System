@@ -24,6 +24,7 @@ import {
   Calendar,
   Briefcase,
   UserCheck,
+  Trash2,
 } from 'lucide-react';
 
 interface Employee {
@@ -59,6 +60,7 @@ export const EmployeesPage: React.FC = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isResetPwdModalOpen, setIsResetPwdModalOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
+  const [employeeToDelete, setEmployeeToDelete] = useState<Employee | null>(null);
   const [newPassword, setNewPassword] = useState('');
   const [resetSuccessMsg, setResetSuccessMsg] = useState('');
 
@@ -146,6 +148,26 @@ export const EmployeesPage: React.FC = () => {
       setResetSuccessMsg(`Password successfully reset to: ${data.temporaryPassword || newPassword}`);
       queryClient.invalidateQueries({ queryKey: ['employees'] });
       showToast('Password reset successfully.');
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await apiClient.delete(`/admin/employees/${id}`);
+      return res.data.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['employees'] });
+      queryClient.invalidateQueries({ queryKey: ['adminDashboard'] });
+      setEmployeeToDelete(null);
+      showToast(t('employees.deleteSuccess', 'Employee and related records deleted successfully.'));
+    },
+    onError: (err: any) => {
+      showToast(
+        err?.response?.data?.error?.message ||
+          t('employees.deleteFailed', 'Failed to delete employee.'),
+        'error'
+      );
     },
   });
 
@@ -415,6 +437,14 @@ export const EmployeesPage: React.FC = () => {
                           title={t('employees.resetPassword', 'Reset Password')}
                         >
                           <KeyRound className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => setEmployeeToDelete(emp)}
+                          className="p-1.5 text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition-colors"
+                          title={t('common.delete', 'Delete')}
+                          aria-label="Delete Employee"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     </td>
@@ -853,6 +883,53 @@ export const EmployeesPage: React.FC = () => {
                 </div>
               </>
             )}
+          </div>
+        </Modal>
+      )}
+
+      {/* MODAL: DELETE EMPLOYEE CONFIRMATION */}
+      {employeeToDelete && (
+        <Modal
+          isOpen={!!employeeToDelete}
+          onClose={() => setEmployeeToDelete(null)}
+          title={t('employees.deleteConfirmTitle', 'Delete Employee Record?')}
+        >
+          <div className="space-y-4 text-xs">
+            <div className="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/50 text-rose-800 dark:text-rose-200 flex items-start gap-3">
+              <div className="w-8 h-8 rounded-lg bg-rose-500/20 text-rose-600 dark:text-rose-400 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <Trash2 className="w-4 h-4" />
+              </div>
+              <div className="space-y-1">
+                <p className="font-bold text-sm text-rose-900 dark:text-rose-100">
+                  {employeeToDelete.khmerName || employeeToDelete.displayName} ({employeeToDelete.employeeCode})
+                </p>
+                <p className="text-xs text-rose-700 dark:text-rose-300 leading-relaxed">
+                  {t(
+                    'employees.deleteConfirmDesc',
+                    'Are you sure you want to permanently delete this employee? All related attendance logs, leave balances, and login credentials will be removed from the database. This action cannot be undone.'
+                  )}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-dark-border">
+              <Button
+                variant="secondary"
+                size="md"
+                onClick={() => setEmployeeToDelete(null)}
+              >
+                {t('common.cancel', 'Cancel')}
+              </Button>
+              <Button
+                variant="danger"
+                size="md"
+                icon={Trash2}
+                isLoading={deleteMutation.isPending}
+                onClick={() => deleteMutation.mutate(employeeToDelete.id)}
+              >
+                {t('common.delete', 'Delete Permanently')}
+              </Button>
+            </div>
           </div>
         </Modal>
       )}

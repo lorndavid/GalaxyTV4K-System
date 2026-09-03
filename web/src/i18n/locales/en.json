@@ -23,6 +23,17 @@
     "save": "Save Changes",
     "close": "Close"
   },
+  "auth": {
+    "welcome": "Galaxy TV4K Portal",
+    "subtitle": "Sign in with your work credentials to record attendance and access HR features.",
+    "emailLabel": "Work Email / Username",
+    "passwordLabel": "Password",
+    "signInBtn": "Sign In",
+    "rememberMe": "Remember me on this device",
+    "signOutConfirmTitle": "Sign out of your account?",
+    "signOutConfirmDesc": "Are you sure you want to sign out? You will need to log back in to record your attendance.",
+    "demoAccount": "Sample Account"
+  },
   "home": {
     "greeting": "Good day",
     "todayShift": "Today's Shift",

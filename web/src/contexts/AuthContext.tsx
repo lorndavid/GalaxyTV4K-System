@@ -47,7 +47,7 @@ interface AuthContextType {
   token: string | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  login: (email: string, password?: string) => Promise<void>;
+  login: (email: string, password?: string, rememberMe?: boolean) => Promise<void>;
   logout: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
@@ -58,7 +58,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const queryClient = useQueryClient();
   const [user, setUser] = useState<User | null>(() => {
     try {
-      const saved = localStorage.getItem('system_hr_employee_user');
+      const saved =
+        localStorage.getItem('system_hr_employee_user') ||
+        sessionStorage.getItem('system_hr_employee_user');
       return saved ? JSON.parse(saved) : null;
     } catch {
       return null;
@@ -66,7 +68,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   });
 
   const [token, setToken] = useState<string | null>(() => {
-    return localStorage.getItem('system_hr_employee_token');
+    return (
+      localStorage.getItem('system_hr_employee_token') ||
+      sessionStorage.getItem('system_hr_employee_token')
+    );
   });
 
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -76,7 +81,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const res = await apiClient.get('/auth/me');
       if (res.data.success) {
         setUser(res.data.data.user);
-        localStorage.setItem('system_hr_employee_user', JSON.stringify(res.data.data.user));
+        if (localStorage.getItem('system_hr_employee_token')) {
+          localStorage.setItem('system_hr_employee_user', JSON.stringify(res.data.data.user));
+        } else {
+          sessionStorage.setItem('system_hr_employee_user', JSON.stringify(res.data.data.user));
+        }
       }
     } catch {
       // ignore
@@ -90,7 +99,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const res = await apiClient.get('/auth/me');
           if (res.data.success) {
             setUser(res.data.data.user);
-            localStorage.setItem('system_hr_employee_user', JSON.stringify(res.data.data.user));
+            if (localStorage.getItem('system_hr_employee_token')) {
+              localStorage.setItem('system_hr_employee_user', JSON.stringify(res.data.data.user));
+            } else {
+              sessionStorage.setItem('system_hr_employee_user', JSON.stringify(res.data.data.user));
+            }
           } else {
             await logout();
           }
@@ -114,13 +127,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, [token]);
 
-  const login = async (email: string, password?: string) => {
-    const res = await apiClient.post('/auth/login', { email, password });
+  const login = async (email: string, password?: string, rememberMe: boolean = true) => {
+    const res = await apiClient.post('/auth/login', { email, password, rememberMe });
     const { token: newToken, user: newUser } = res.data.data;
     setToken(newToken);
     setUser(newUser);
-    localStorage.setItem('system_hr_employee_token', newToken);
-    localStorage.setItem('system_hr_employee_user', JSON.stringify(newUser));
+
+    if (rememberMe) {
+      localStorage.setItem('system_hr_employee_token', newToken);
+      localStorage.setItem('system_hr_employee_user', JSON.stringify(newUser));
+      localStorage.setItem('system_hr_remember_me', 'true');
+      localStorage.setItem('saved_login_email', email.trim());
+      sessionStorage.removeItem('system_hr_employee_token');
+      sessionStorage.removeItem('system_hr_employee_user');
+    } else {
+      sessionStorage.setItem('system_hr_employee_token', newToken);
+      sessionStorage.setItem('system_hr_employee_user', JSON.stringify(newUser));
+      localStorage.removeItem('system_hr_employee_token');
+      localStorage.removeItem('system_hr_employee_user');
+      localStorage.removeItem('system_hr_remember_me');
+      localStorage.removeItem('saved_login_email');
+    }
   };
 
   const logout = async () => {
@@ -133,6 +160,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(null);
       localStorage.removeItem('system_hr_employee_token');
       localStorage.removeItem('system_hr_employee_user');
+      sessionStorage.removeItem('system_hr_employee_token');
+      sessionStorage.removeItem('system_hr_employee_user');
       // Wipe sensitive user query cache on logout to avoid data leaks
       queryClient.clear();
     }
