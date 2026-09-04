@@ -24,7 +24,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSidebar }) => {
 
         <div className="flex items-center gap-2">
           <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider hidden sm:inline">
-            Apex Enterprise
+            Galaxy TV 4K
           </span>
           <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-success-50 dark:bg-success-950/40 text-success-700 dark:text-success-400 border border-success-200 dark:border-success-800/60">
             <span className="w-1.5 h-1.5 rounded-full bg-success-500 animate-pulse" />
