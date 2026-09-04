@@ -18,7 +18,7 @@ echo "🔄 [3/5] Applying safe database schema migrations (Non-destructive)..."
 docker compose -f docker-compose.prod.yml exec -T backend npx prisma db push --skip-generate
 
 echo "🌱 [4/5] Verifying official employee roster and system settings (Idempotent)..."
-timeout 30s docker compose -f docker-compose.prod.yml exec -T backend npm run db:seed || true
+timeout 30s docker compose -f docker-compose.prod.yml exec -T backend node dist/runSeed.js || true
 
 echo "🧹 [5/5] Pruning old Docker build caches..."
 docker image prune -f

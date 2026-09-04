@@ -16,7 +16,7 @@
     "prisma:studio": "prisma studio",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate deploy",
-    "db:seed": "tsx prisma/seed.ts"
+    "db:seed": "node dist/runSeed.js"
   },
   "dependencies": {
     "@prisma/client": "^5.19.1",
