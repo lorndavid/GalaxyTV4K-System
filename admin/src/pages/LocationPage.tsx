@@ -191,7 +191,9 @@ export const LocationPage: React.FC = () => {
         return;
       }
 
-      const isInside = emp.status === 'INSIDE_OFFICE';
+      const isInside =
+        emp.status === 'INSIDE_OFFICE' ||
+        (emp.distanceFromOffice !== null && emp.distanceFromOffice <= 30);
       const isStale = emp.freshness === 'STALE';
       const pinColor = isStale ? '#94A3B8' : isInside ? '#16A34A' : '#EA580C';
 
@@ -213,7 +215,7 @@ export const LocationPage: React.FC = () => {
             <span style="font-size: 10px; font-family: monospace; color: #64748B;">${emp.employeeCode}</span>
           </div>
           <p style="margin: 2px 0; color: #475569; font-size: 11px;">
-            Status: <b style="color: ${isInside ? '#16A34A' : '#EA580C'};">${emp.status.replace('_', ' ')}</b>
+            Status: <b style="color: ${isInside ? '#16A34A' : '#EA580C'};">${isInside ? 'INSIDE OFFICE' : emp.status.replace('_', ' ')}</b>
           </p>
           <p style="margin: 2px 0; color: #64748B; font-size: 11px;">
             Distance: <b>${emp.distanceFromOffice || 0}m</b> ${isInside ? '(Inside)' : '(Outside)'}
@@ -288,16 +290,24 @@ export const LocationPage: React.FC = () => {
 
     if (!matchesSearch) return false;
 
-    if (statusFilter === 'INSIDE') return emp.status === 'INSIDE_OFFICE';
-    if (statusFilter === 'OUTSIDE') return emp.status === 'OUTSIDE_OFFICE';
+    const isEmpInside =
+      emp.status === 'INSIDE_OFFICE' ||
+      (emp.distanceFromOffice !== null && emp.distanceFromOffice <= 30);
+
+    if (statusFilter === 'INSIDE') return isEmpInside;
+    if (statusFilter === 'OUTSIDE') return !isEmpInside && emp.status === 'OUTSIDE_OFFICE';
     if (statusFilter === 'INACTIVE')
       return !emp.isLocationSharingActive || emp.status === 'LOCATION_INACTIVE' || emp.freshness === 'STALE';
 
     return true;
   });
 
-  const insideCount = employees.filter((e) => e.status === 'INSIDE_OFFICE').length;
-  const outsideCount = employees.filter((e) => e.status === 'OUTSIDE_OFFICE').length;
+  const insideCount = employees.filter(
+    (e) => e.status === 'INSIDE_OFFICE' || (e.distanceFromOffice !== null && e.distanceFromOffice <= 30)
+  ).length;
+  const outsideCount = employees.filter(
+    (e) => e.status === 'OUTSIDE_OFFICE' && !(e.distanceFromOffice !== null && e.distanceFromOffice <= 30)
+  ).length;
   const inactiveCount = employees.filter(
     (e) => !e.isLocationSharingActive || e.freshness === 'STALE'
   ).length;
@@ -441,7 +451,9 @@ export const LocationPage: React.FC = () => {
             ) : (
               filteredEmployees.map((emp) => {
                 const isSelected = selectedEmployee?.id === emp.id;
-                const isInside = emp.status === 'INSIDE_OFFICE';
+                const isInside =
+                  emp.status === 'INSIDE_OFFICE' ||
+                  (emp.distanceFromOffice !== null && emp.distanceFromOffice <= 30);
 
                 return (
                   <div
@@ -487,7 +499,7 @@ export const LocationPage: React.FC = () => {
                     </div>
 
                     <div className="text-right flex-shrink-0 space-y-1">
-                      <Badge status={emp.status} size="sm" />
+                      <Badge status={isInside ? 'INSIDE_OFFICE' : emp.status} size="sm" />
                       {emp.lastUpdated && (
                         <span className="text-[9px] text-slate-400 block">
                           {new Date(emp.lastUpdated).toLocaleTimeString([], {

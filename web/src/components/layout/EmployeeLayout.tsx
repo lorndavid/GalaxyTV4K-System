@@ -2,6 +2,7 @@ import React from 'react';
 import { Outlet, Navigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNetworkStatus } from '../../hooks/useNetworkStatus';
+import { useLocationTracker } from '../../hooks/useLocationTracker';
 import { PwaInstallBanner } from '../pwa/PwaInstallBanner';
 import { AppSplashScreen } from '../pwa/AppSplashScreen';
 import { BottomNav } from './BottomNav';
@@ -12,6 +13,10 @@ import { WifiOff } from 'lucide-react';
 export const EmployeeLayout: React.FC = () => {
   const { isAuthenticated, isLoading, user } = useAuth();
   const { isOnline } = useNetworkStatus();
+
+  // Automatically acquire and stream location in background when employee opens the app
+  const isLocationSharingActive = user?.employee?.isLocationSharingActive ?? true;
+  useLocationTracker(isLocationSharingActive, 30);
 
   // App bootstrap loading state (branded splash)
   if (isLoading) {

@@ -191,10 +191,16 @@ export class LocationController {
 
         if (!emp.isLocationSharingActive) {
           status = LocationStatus.LOCATION_INACTIVE;
-        } else if (emp.lastLocationAt) {
-          freshness = LocationService.getFreshness(emp.lastLocationAt);
-          if (freshness === 'STALE' && status === LocationStatus.INSIDE_OFFICE) {
-            status = LocationStatus.LOCATION_STALE;
+        } else {
+          // If employee is within 30 meters of the office, guaranteed to be INSIDE_OFFICE
+          if (emp.lastDistanceMeters !== null && emp.lastDistanceMeters <= 30.0) {
+            status = LocationStatus.INSIDE_OFFICE;
+          }
+          if (emp.lastLocationAt) {
+            freshness = LocationService.getFreshness(emp.lastLocationAt);
+            if (freshness === 'STALE' && status === LocationStatus.INSIDE_OFFICE) {
+              status = LocationStatus.LOCATION_STALE;
+            }
           }
         }
 

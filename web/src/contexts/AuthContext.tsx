@@ -33,6 +33,7 @@ export interface EmployeeProfile {
       breakEndTime?: string;
     }>;
   };
+  isLocationSharingActive?: boolean;
 }
 
 export interface User {

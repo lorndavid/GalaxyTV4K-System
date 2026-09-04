@@ -124,6 +124,28 @@ describe('LocationService & Geofencing Tests', () => {
     expect(evalOutside.status).toBe(LocationStatus.OUTSIDE_OFFICE);
   });
 
+  it('guarantees employee around 30m (e.g. 19m) is classified as INSIDE_OFFICE even if previously OUTSIDE', () => {
+    // 0.00017 deg latitude is approximately ~19 meters
+    const eval19m = LocationService.evaluateLocation(
+      companyLat + 0.00017, // ~19m
+      companyLng,
+      13.0,
+      new Date(),
+      LocationStatus.OUTSIDE_OFFICE,
+      {
+        latitude: companyLat,
+        longitude: companyLng,
+        allowedRadiusMeters: 20.0, // even with small radius
+        gpsAccuracyThresholdMeters: 50.0,
+        geofenceInsideBufferMeters: 10.0,
+      }
+    );
+
+    expect(eval19m.distanceMeters).toBeLessThan(30);
+    expect(eval19m.status).toBe(LocationStatus.INSIDE_OFFICE);
+    expect(eval19m.isInsideOffice).toBe(true);
+  });
+
   it('computes correct location freshness', () => {
     const now = new Date();
     expect(LocationService.getFreshness(now)).toBe('LIVE');

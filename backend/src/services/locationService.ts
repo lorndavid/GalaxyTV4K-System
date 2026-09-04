@@ -89,7 +89,8 @@ export class LocationService {
   ): LocationEvaluation {
     const officeLat = settings?.latitude || 11.5564;
     const officeLng = settings?.longitude || 104.9282;
-    const radius = settings?.allowedRadiusMeters || 100.0;
+    // Ensure effective radius is at least 30.0 meters so employees around 30m are strictly inside office
+    const radius = Math.max(settings?.allowedRadiusMeters || 100.0, 30.0);
     const accuracyThreshold = settings?.gpsAccuracyThresholdMeters || 50.0;
     const buffer = settings?.geofenceInsideBufferMeters || 10.0;
 
@@ -150,19 +151,21 @@ export class LocationService {
       };
     }
 
-    // 3. Geofence evaluation with Hysteresis
+    // 3. Geofence evaluation: Any reading <= 30m is guaranteed to be INSIDE_OFFICE
     let status: LocationStatus;
 
-    if (prevStatus === LocationStatus.INSIDE_OFFICE) {
+    if (distanceMeters <= 30.0) {
+      status = LocationStatus.INSIDE_OFFICE;
+    } else if (prevStatus === LocationStatus.INSIDE_OFFICE) {
       // Must move beyond radius + buffer to be considered OUTSIDE
       status =
         distanceMeters > radius + buffer
           ? LocationStatus.OUTSIDE_OFFICE
           : LocationStatus.INSIDE_OFFICE;
     } else {
-      // Must move within radius - buffer to transition into INSIDE
+      // Must move within radius - buffer (or <= 30m) to transition into INSIDE
       status =
-        distanceMeters <= Math.max(radius - buffer, 10)
+        distanceMeters <= Math.max(radius - buffer, 30.0)
           ? LocationStatus.INSIDE_OFFICE
           : LocationStatus.OUTSIDE_OFFICE;
     }

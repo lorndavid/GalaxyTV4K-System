@@ -68,7 +68,7 @@ export const useLocationTracker = (
     }
   };
 
-  // Watch position when sharing is enabled
+  // Watch position and ping periodic updates when sharing is enabled
   useEffect(() => {
     if (!isLocationSharingActive || !('geolocation' in navigator)) {
       if (watchIdRef.current !== null) {
@@ -95,19 +95,39 @@ export const useLocationTracker = (
       }
     };
 
+    // 1. Immediate first location fix on app launch / mount
+    navigator.geolocation.getCurrentPosition(handleSuccess, handleError, {
+      enableHighAccuracy: true,
+      timeout: 10000,
+      maximumAge: 0,
+    });
+
+    // 2. Continuous position watcher
     const watchId = navigator.geolocation.watchPosition(handleSuccess, handleError, {
       enableHighAccuracy: true,
       timeout: 15000,
-      maximumAge: 10000,
+      maximumAge: 5000,
     });
 
     watchIdRef.current = watchId;
+
+    // 3. Fallback periodic ping (every 30s) to keep status LIVE even when stationary
+    const intervalId = setInterval(() => {
+      if (navigator.onLine && 'geolocation' in navigator) {
+        navigator.geolocation.getCurrentPosition(handleSuccess, handleError, {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 10000,
+        });
+      }
+    }, Math.max(intervalSeconds, 30) * 1000);
 
     return () => {
       if (watchIdRef.current !== null) {
         navigator.geolocation.clearWatch(watchIdRef.current);
         watchIdRef.current = null;
       }
+      clearInterval(intervalId);
     };
   }, [isLocationSharingActive, intervalSeconds]);
 
