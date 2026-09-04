@@ -148,7 +148,7 @@ export const Badge: React.FC<BadgeProps> = ({
         'bg-slate-100 dark:bg-dark-elevated text-slate-600 dark:text-slate-400 border-slate-200 dark:border-dark-border',
     },
     MANUAL_ADJUSTMENT: {
-      labelKey: 'status.PRESENT',
+      labelKey: 'status.MANUAL_ADJUSTMENT',
       icon: ShieldCheck,
       classes:
         'bg-cyan-50 dark:bg-cyan-950/40 text-cyan-700 dark:text-cyan-400 border-cyan-200 dark:border-cyan-800/60',

@@ -63,6 +63,116 @@
     "importNoticeDesc": "This will import all 20 official employees with their exact Khmer names, Latin names, phone numbers, skills, study shifts, and department assignments. User login credentials will be generated with email (lastname@galaxytv4k.com) and default password (galaxytv@@).",
     "confirmImport": "Import Now"
   },
+  "attendance": {
+    "title": "Daily Attendance",
+    "subtitle": "Live daily attendance tracking with automated work and study roster",
+    "liveAutoSync": "Live Auto-Sync",
+    "today": "Today",
+    "autoUpdateLabel": "Auto-update on employee QR scan (4s)",
+    "refresh": "Refresh",
+    "stats": {
+      "totalStaff": "Total Employees",
+      "totalDesc": "All active employees",
+      "workingToday": "Working Today",
+      "workingDesc": "Scheduled for work duty",
+      "studyingToday": "Studying Today",
+      "studyingDesc": "Scheduled for study session",
+      "checkedIn": "Checked In",
+      "checkedInDesc": "Scanned QR code",
+      "pendingScan": "Pending Scan",
+      "pendingScanDesc": "Working duty awaiting check-in",
+      "people": "staff"
+    },
+    "tabs": {
+      "workingToday": "Working Today",
+      "studyingToday": "Studying Today",
+      "all": "All Employees"
+    },
+    "searchPlaceholder": "Search by employee name or department...",
+    "filterStatus": "All Statuses",
+    "table": {
+      "num": "#",
+      "employee": "Employee",
+      "department": "Department",
+      "duty": "Today's Duty",
+      "checkIn": "Check-In",
+      "checkOut": "Check-Out",
+      "worked": "Worked Hours",
+      "gps": "GPS Location",
+      "status": "Status",
+      "actions": "Actions"
+    },
+    "duty": {
+      "work": "Working Duty",
+      "study": "Study Shift",
+      "leave": "On Leave",
+      "fullTime": "Full-Time Work",
+      "studyDays": "Study: {{days}}",
+      "studyToday": "Study session today"
+    },
+    "gps": {
+      "inside": "Inside Office",
+      "outside": "Outside Office",
+      "meters": "{{dist}}m"
+    },
+    "pending": "Pending scan",
+    "emptyWork": "No employees scheduled for work today",
+    "emptyStudy": "No employees scheduled for study today",
+    "emptyGeneral": "No attendance records found",
+    "emptyDesc": "Check the selected date or search criteria.",
+    "adjust": {
+      "title": "Manual Attendance Adjustment",
+      "notice": "Adjusting attendance record for {{name}} on {{date}}. All changes are logged in the immutable audit trail.",
+      "checkIn": "Check-In Time",
+      "checkOut": "Check-Out Time",
+      "statusOverride": "Status Override",
+      "reason": "Audit Reason / Explanation",
+      "reasonPlaceholder": "e.g. Employee forgot phone, approved by manager...",
+      "cancel": "Cancel",
+      "save": "Save Adjustment",
+      "success": "Attendance record adjusted and logged to audit trail."
+    }
+  },
+  "schedules": {
+    "title": "Work Schedules",
+    "subtitle": "Standard Monday to Sunday work hours (8:00 AM - 5:30 PM) and lunch break (11:30 AM - 1:00 PM)",
+    "createNew": "Create Shift Schedule",
+    "bannerTitle": "Official Working Shift Policy",
+    "bannerDesc": "Monday through Sunday from 08:00 AM to 05:30 PM • Lunch break from 11:30 AM to 01:00 PM (1.5 hours)",
+    "standardShift": "Standard 7-Day Shift",
+    "standardDesc": "Daily working hours Monday to Sunday (8:00 AM - 5:30 PM • Lunch 11:30 AM - 1:00 PM)",
+    "defaultBadge": "Default",
+    "workHours": "Work Hours",
+    "lunchBreak": "Lunch Break",
+    "weeklySchedule": "Weekly 7-Day Schedule",
+    "workingDaysCount": "{{count}} Working Days",
+    "timezone": "Timezone: {{tz}}",
+    "assignedCount": "{{count}} employees assigned",
+    "editHours": "Edit Hours",
+    "empty": "No work schedules found",
+    "emptyDesc": "Click the button above to create the standard shift schedule.",
+    "modal": {
+      "createTitle": "Create Work Schedule",
+      "editTitle": "Edit Work Schedule",
+      "quickPresetBtn": "Apply Standard Policy",
+      "quickPresetTitle": "Standard Company Policy (Mon-Sun 8:00 AM - 5:30 PM)",
+      "quickPresetDesc": "7 working days, 08:00 - 17:30 with lunch break 11:30 - 13:00",
+      "nameLabel": "Schedule Name",
+      "namePlaceholder": "e.g. Standard 7-Day Shift",
+      "descLabel": "Description",
+      "descPlaceholder": "e.g. Daily shift 8:00 AM to 5:30 PM",
+      "setDefaultTitle": "Set as Default Schedule",
+      "setDefaultDesc": "Automatically assigned to newly added employees",
+      "daysConfigTitle": "Daily Working Hours & Lunch Break",
+      "daysConfigSubtitle": "(Shift: 08:00 - 17:30 • Lunch: 11:30 - 13:00)",
+      "workHoursLabel": "Hours:",
+      "lunchLabel": "Lunch:",
+      "restDay": "Rest Day (Non-working)",
+      "cancel": "Cancel",
+      "save": "Save Schedule",
+      "success": "Work schedule saved successfully."
+    }
+  },
   "auth": {
     "adminPortal": "Admin Portal",
     "welcomeBack": "Welcome back! Enter your credentials to manage attendance and HR operations.",
@@ -86,6 +196,8 @@
     "OUTSIDE_OFFICE": "Outside Office",
     "LOCATION_INACTIVE": "Location Inactive",
     "LOCATION_STALE": "Location Stale",
-    "LOCATION_UNRELIABLE": "Low Accuracy"
+    "LOCATION_UNRELIABLE": "Low Accuracy",
+    "NOT_CHECKED_IN": "Not Checked In",
+    "MANUAL_ADJUSTMENT": "Manual Adjustment"
   }
 }

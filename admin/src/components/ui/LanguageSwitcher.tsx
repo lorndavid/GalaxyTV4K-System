@@ -7,9 +7,9 @@ export const LanguageSwitcher: React.FC<{ className?: string; compact?: boolean 
   compact = false,
 }) => {
   const { i18n } = useTranslation();
-  const currentLang = i18n.language || 'km';
+  const currentLang = i18n.language?.startsWith('en') ? 'en' : 'km';
 
-  const toggleLanguage = (lang: string) => {
+  const setLanguage = (lang: string) => {
     i18n.changeLanguage(lang);
     try {
       localStorage.setItem('system_hr_language', lang);
@@ -21,14 +21,37 @@ export const LanguageSwitcher: React.FC<{ className?: string; compact?: boolean 
 
   if (compact) {
     return (
-      <button
-        onClick={() => toggleLanguage(currentLang === 'km' ? 'en' : 'km')}
-        title="Switch Language (ខ្មែរ / EN)"
-        className={`px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-dark-border bg-white dark:bg-dark-surface text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-dark-elevated text-xs font-bold transition-all flex items-center gap-1.5 shadow-xs ${className}`}
+      <div
+        className={`inline-flex items-center p-0.5 bg-slate-100 dark:bg-dark-elevated border border-slate-200 dark:border-dark-border rounded-xl shadow-2xs ${className}`}
       >
-        <Globe className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400" />
-        <span>{currentLang === 'km' ? 'ខ្មែរ' : 'EN'}</span>
-      </button>
+        <button
+          type="button"
+          onClick={() => setLanguage('km')}
+          className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all flex items-center gap-1 ${
+            currentLang === 'km'
+              ? 'bg-white dark:bg-dark-surface text-brand-600 dark:text-brand-400 shadow-xs ring-1 ring-black/5 dark:ring-white/10'
+              : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
+          }`}
+          title="ប្តូរទៅភាសាខ្មែរ"
+        >
+          <span>🇰🇭</span>
+          <span>ខ្មែរ</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setLanguage('en')}
+          className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all flex items-center gap-1 ${
+            currentLang === 'en'
+              ? 'bg-white dark:bg-dark-surface text-brand-600 dark:text-brand-400 shadow-xs ring-1 ring-black/5 dark:ring-white/10'
+              : 'text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
+          }`}
+          title="Switch to English"
+        >
+          <span>🇺🇸</span>
+          <span>EN</span>
+        </button>
+      </div>
     );
   }
 
@@ -37,24 +60,29 @@ export const LanguageSwitcher: React.FC<{ className?: string; compact?: boolean 
       className={`inline-flex items-center p-1 bg-slate-100 dark:bg-dark-elevated border border-slate-200 dark:border-dark-border rounded-xl ${className}`}
     >
       <button
-        onClick={() => toggleLanguage('km')}
-        className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all ${
+        type="button"
+        onClick={() => setLanguage('km')}
+        className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 ${
           currentLang === 'km'
             ? 'bg-white dark:bg-dark-surface text-brand-600 dark:text-brand-400 shadow-xs'
             : 'text-slate-500 hover:text-slate-900 dark:text-slate-400'
         }`}
       >
-        ខ្មែរ
+        <span>🇰🇭</span>
+        <span>ភាសាខ្មែរ</span>
       </button>
+
       <button
-        onClick={() => toggleLanguage('en')}
-        className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all ${
+        type="button"
+        onClick={() => setLanguage('en')}
+        className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all flex items-center gap-1.5 ${
           currentLang === 'en'
             ? 'bg-white dark:bg-dark-surface text-brand-600 dark:text-brand-400 shadow-xs'
             : 'text-slate-500 hover:text-slate-900 dark:text-slate-400'
         }`}
       >
-        English
+        <span>🇺🇸</span>
+        <span>English</span>
       </button>
     </div>
   );
