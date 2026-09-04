@@ -308,10 +308,57 @@ export async function seedOfficialEmployees(prisma: PrismaClient) {
     },
   });
 
-  // 3. Ensure Default Schedule
+  // 3. Ensure Default Schedule: Monday to Sunday 8:00 AM - 5:30 PM (Lunch 11:30 AM - 1:00 PM)
+  const DAYS_OF_WEEK = [
+    'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'
+  ] as const;
+
   let defaultSchedule = await prisma.schedule.findFirst({ where: { isDefault: true } });
   if (!defaultSchedule) {
-    defaultSchedule = await prisma.schedule.findFirst();
+    defaultSchedule = await prisma.schedule.create({
+      data: {
+        name: 'Standard Office Schedule (Mon-Sun 8:00 AM - 5:30 PM)',
+        description: 'Monday to Sunday 08:00 to 17:30 with lunch break 11:30 to 13:00',
+        timezone: 'Asia/Phnom_Penh',
+        isDefault: true,
+      },
+    });
+  } else {
+    await prisma.schedule.update({
+      where: { id: defaultSchedule.id },
+      data: {
+        name: 'Standard Office Schedule (Mon-Sun 8:00 AM - 5:30 PM)',
+        description: 'Monday to Sunday 08:00 to 17:30 with lunch break 11:30 to 13:00',
+        timezone: 'Asia/Phnom_Penh',
+      },
+    });
+  }
+
+  for (const dayOfWeek of DAYS_OF_WEEK) {
+    await prisma.scheduleDay.upsert({
+      where: {
+        scheduleId_dayOfWeek: {
+          scheduleId: defaultSchedule.id,
+          dayOfWeek: dayOfWeek as any,
+        },
+      },
+      update: {
+        isWorkingDay: true,
+        startTime: '08:00',
+        endTime: '17:30',
+        breakStartTime: '11:30',
+        breakEndTime: '13:00',
+      },
+      create: {
+        scheduleId: defaultSchedule.id,
+        dayOfWeek: dayOfWeek as any,
+        isWorkingDay: true,
+        startTime: '08:00',
+        endTime: '17:30',
+        breakStartTime: '11:30',
+        breakEndTime: '13:00',
+      },
+    });
   }
 
   // 4. Upsert Departments

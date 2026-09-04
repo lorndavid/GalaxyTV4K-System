@@ -153,6 +153,12 @@ export const Badge: React.FC<BadgeProps> = ({
       classes:
         'bg-cyan-50 dark:bg-cyan-950/40 text-cyan-700 dark:text-cyan-400 border-cyan-200 dark:border-cyan-800/60',
     },
+    NOT_CHECKED_IN: {
+      labelKey: 'status.NOT_CHECKED_IN',
+      icon: Clock,
+      classes:
+        'bg-slate-100 dark:bg-dark-elevated text-slate-500 dark:text-slate-400 border-slate-200 dark:border-dark-border',
+    },
   };
 
   const item = configMap[normalized] || {

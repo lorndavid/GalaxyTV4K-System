@@ -73,11 +73,15 @@ router.get('/reports/summary', ReportController.getAttendanceSummary);
 router.get('/reports/attendance', ReportController.getAttendanceReport);
 router.get(['/reports/export', '/reports/export-csv'], ReportController.exportCsv);
 
+// Attendance Adjustment
+router.put('/attendance/:id/manual-adjust', AttendanceController.adjustAttendance);
+
 // Schedules
 router.get('/schedules', ScheduleController.list);
 router.post('/schedules', ScheduleController.create);
 router.get('/schedules/:id', ScheduleController.getById);
 router.patch('/schedules/:id', ScheduleController.update);
+router.put('/schedules/:id', ScheduleController.update);
 router.post('/schedules/:id/recalculate', ScheduleController.recalculate);
 
 // Audit Logs
