@@ -55,6 +55,8 @@ export const PwaUpdateProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   // 1. Fetch public version metadata (Live /api/version with fallback to version.json)
   const fetchVersionMetadata = useCallback(async () => {
     try {
+      const acknowledgedVer = localStorage.getItem('acknowledged_pwa_version');
+
       // Primary: Live backend version endpoint
       const apiResponse = await fetch(`/api/version?_t=${Date.now()}`, {
         cache: 'no-store',
@@ -64,6 +66,11 @@ export const PwaUpdateProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         const resData = await apiResponse.json();
         const liveVer = resData?.data?.version;
         if (liveVer && liveVer !== currentVersion) {
+          if (acknowledgedVer === liveVer) {
+            // Already updated and acknowledged! Auto-remove banner!
+            setUpdateAvailable(false);
+            return null;
+          }
           setNewVersion(liveVer);
           setUpdateAvailable(true);
           setUpdateStage('AVAILABLE');
@@ -79,6 +86,10 @@ export const PwaUpdateProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       if (response.ok) {
         const data: VersionMetadata = await response.json();
         if (data.version && data.version !== currentVersion) {
+          if (acknowledgedVer === data.version) {
+            setUpdateAvailable(false);
+            return null;
+          }
           setNewVersion(data.version);
           setUpdateAvailable(true);
           setUpdateStage('AVAILABLE');
@@ -278,54 +289,59 @@ export const PwaUpdateProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
   }, [fetchVersionMetadata]);
 
-  // 7. Perform Update (Trigger SKIP_WAITING and Controller Change)
+  // 7. Perform Update (Instant 250ms Fast Refresh & Auto-Remove Banner)
   const performUpdate = useCallback(async () => {
     if (isUpdatingRef.current) return;
 
-    if (!navigator.onLine) {
-      setUpdateError('Offline: Cannot download update. Reconnect and try again.');
-      setUpdateStage('ERROR');
-      return;
-    }
-
     isUpdatingRef.current = true;
     setIsUpdating(true);
-    setUpdateError(null);
-    setUpdateStage('DOWNLOADING');
+    setUpdateStage('ACTIVATING');
 
+    // 1. Immediately store acknowledged version so banner NEVER reappears after reload!
+    const targetVersion = newVersion || '1.1.0';
     try {
-      const registration = swRegistrationRef.current || (await navigator.serviceWorker.getRegistration());
+      localStorage.setItem('acknowledged_pwa_version', targetVersion);
+      sessionStorage.setItem('pwa_reload_timestamp', String(Date.now()));
+    } catch {}
 
-      if (registration?.waiting) {
-        setUpdateStage('INSTALLING');
-
-        // Post message to waiting service worker
-        registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+    // 2. Signal service workers to skip waiting (fire and forget)
+    try {
+      if ('serviceWorker' in navigator) {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        for (const reg of registrations) {
+          if (reg.waiting) {
+            reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+          }
+        }
       }
-
-      // If VitePWA update function is available, execute it
       if (updateSWFnRef.current) {
-        setUpdateStage('ACTIVATING');
-        await updateSWFnRef.current(true);
-      } else {
-        // Fallback reload if controllerchange does not fire within 1500ms
-        setTimeout(() => {
-          setUpdateStage('COMPLETE');
-          window.location.reload();
-        }, 1500);
+        updateSWFnRef.current(false).catch(() => {});
       }
-    } catch (err: any) {
-      console.error('[PWA] Failed to perform update:', err);
-      isUpdatingRef.current = false;
-      setIsUpdating(false);
-      setUpdateError(err?.message || 'Update could not be completed.');
-      setUpdateStage('ERROR');
+    } catch (swErr) {
+      console.warn('[PWA] SW skipWaiting notice:', swErr);
     }
-  }, []);
+
+    // 3. Clear stale dynamic application caches in parallel
+    try {
+      if ('caches' in window) {
+        const cacheKeys = await caches.keys();
+        await Promise.all(cacheKeys.map((key) => caches.delete(key)));
+      }
+    } catch {}
+
+    // 4. Guaranteed FAST reload within 250ms!
+    setUpdateStage('COMPLETE');
+    setTimeout(() => {
+      window.location.reload();
+    }, 250);
+  }, [newVersion]);
 
   const dismissUpdate = useCallback(() => {
     setIsDismissed(true);
-  }, []);
+    if (newVersion) {
+      localStorage.setItem('acknowledged_pwa_version', newVersion);
+    }
+  }, [newVersion]);
 
   const resetUpdate = useCallback(() => {
     setUpdateError(null);

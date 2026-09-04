@@ -27,8 +27,11 @@ export const PwaUpdateNotification: React.FC = () => {
     location.pathname === '/attendance/scan' ||
     location.pathname.startsWith('/scan');
 
-  // If dismissed, not available, or user is currently in the camera scanner, hide banner
-  if (!updateAvailable || isDismissed || isScannerActive) {
+  // If dismissed, not available, already updated, or user is currently in the camera scanner, hide banner
+  const isAcknowledged =
+    Boolean(newVersion && localStorage.getItem('acknowledged_pwa_version') === newVersion);
+
+  if (!updateAvailable || isDismissed || isScannerActive || isAcknowledged) {
     return null;
   }
 

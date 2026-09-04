@@ -23,6 +23,11 @@ export const VersionUpdateBanner: React.FC = () => {
 
         if (res.data?.success && res.data?.data?.version) {
           const remoteVersion = res.data.data.version;
+          const acknowledgedAdminVer = localStorage.getItem('acknowledged_admin_version');
+          if (acknowledgedAdminVer === remoteVersion) {
+            setHasNewVersion(false);
+            return;
+          }
           if (isMounted && remoteVersion && remoteVersion !== currentVersion) {
             setServerVersion(remoteVersion);
             setHasNewVersion(true);
@@ -58,10 +63,20 @@ export const VersionUpdateBanner: React.FC = () => {
 
   const handleUpdate = () => {
     setIsReloading(true);
+    if (serverVersion) {
+      localStorage.setItem('acknowledged_admin_version', serverVersion);
+    }
     // Smooth reload preserving auth state in localStorage
     setTimeout(() => {
       window.location.reload();
     }, 200);
+  };
+
+  const handleDismiss = () => {
+    setIsDismissed(true);
+    if (serverVersion) {
+      localStorage.setItem('acknowledged_admin_version', serverVersion);
+    }
   };
 
   return (
@@ -94,7 +109,7 @@ export const VersionUpdateBanner: React.FC = () => {
             <span>{isReloading ? 'កំពុងផ្ទុក...' : 'ធ្វើបច្ចុប្បន្នភាព (Update Now)'}</span>
           </button>
           <button
-            onClick={() => setIsDismissed(true)}
+            onClick={handleDismiss}
             className="p-1 hover:bg-white/20 rounded-lg text-white/80 hover:text-white transition-colors cursor-pointer"
             aria-label="Dismiss notification"
           >

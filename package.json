@@ -1,6 +1,6 @@
 {
   "name": "system-hr-monorepo",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "description": "Production-Ready Employee Attendance & HR Management System",
   "scripts": {
