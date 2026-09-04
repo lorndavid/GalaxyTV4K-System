@@ -158,4 +158,25 @@ describe('TelegramService & Security Tests', () => {
     expect(replyKb.keyboard[3].length).toBe(1);
     expect(replyKb.keyboard[3][0].text).toContain('🔄 ធ្វើបច្ចុប្បន្នភាពទិន្នន័យ');
   });
+
+  it('supports dual chat and sender authorization checking', async () => {
+    const { isChatAuthorized } = await import('../services/telegramBotService');
+    const mockChats = [
+      { chatId: '-100987654321', enabled: true },
+      { chatId: '123456789', enabled: true },
+      { chatId: '888888', enabled: false },
+    ];
+
+    // Authorized group chat ID
+    expect(await isChatAuthorized('-100987654321', '999999', mockChats)).toBe(true);
+
+    // Authorized sender user ID inside unauthorized group
+    expect(await isChatAuthorized('-100000000000', '123456789', mockChats)).toBe(true);
+
+    // Disabled chat
+    expect(await isChatAuthorized('888888', undefined, mockChats)).toBe(false);
+
+    // Completely unknown ID
+    expect(await isChatAuthorized('999999999', '777777777', mockChats)).toBe(false);
+  });
 });

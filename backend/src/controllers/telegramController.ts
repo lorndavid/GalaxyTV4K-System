@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { TelegramService } from '../services/telegramService';
+import { startTelegramBotPolling } from '../services/telegramBotService';
 import { encryptText, decryptText, maskToken } from '../utils/encryption';
 import { z } from 'zod';
 
@@ -94,6 +95,12 @@ export class TelegramController {
         },
         update: updateData,
       });
+
+      if (updated.enabled && updated.botTokenEncrypted) {
+        startTelegramBotPolling().catch((err) =>
+          console.error('[TelegramController] Failed to restart bot polling:', err)
+        );
+      }
 
       res.status(200).json({
         success: true,

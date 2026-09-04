@@ -184,21 +184,38 @@ async function callTelegram(
 }
 
 /**
- * Verify if incoming chat/sender is in the admin-authorized whitelist
+ * Verify if incoming chat or sender is in the admin-authorized whitelist
  */
-export async function isChatAuthorized(chatId: string | number): Promise<boolean> {
-  const strId = String(chatId).trim();
-  const chat = await prisma.telegramChat.findFirst({
-    where: {
-      chatId: strId,
-      enabled: true,
-    },
-  });
-  return Boolean(chat);
+export async function isChatAuthorized(
+  chatId: string | number,
+  senderId?: string | number,
+  mockChats?: Array<{ chatId: string; enabled: boolean }>
+): Promise<boolean> {
+  const ids: string[] = [String(chatId).trim()];
+  if (senderId && String(senderId).trim() !== String(chatId).trim()) {
+    ids.push(String(senderId).trim());
+  }
+
+  if (mockChats) {
+    return mockChats.some((c) => ids.includes(c.chatId) && c.enabled);
+  }
+
+  try {
+    const chat = await prisma.telegramChat.findFirst({
+      where: {
+        chatId: { in: ids },
+        enabled: true,
+      },
+    });
+    return Boolean(chat);
+  } catch (err) {
+    console.error('[TelegramBot] Database check failed in isChatAuthorized:', err);
+    return false;
+  }
 }
 
 /**
- * Build Main Menu Welcome Text (Lively Emojis & Premium Visual Design)
+ * Build Main Menu Welcome Text (Clean Khmer typography, live Cambodian time, and structured layout)
  */
 export function buildMainMenuText(): string {
   const KHMER_DAYS = ['អាទិត្យ', 'ចន្ទ', 'អង្គារ', 'ពុធ', 'ព្រហស្បតិ៍', 'សុក្រ', 'សៅរ៍'];
@@ -350,27 +367,51 @@ export async function buildLocationStatusReport(): Promise<string> {
     orderBy: { employeeCode: 'asc' },
   });
 
-  const insideStaff = employees.filter((e) => e.lastLocationStatus === 'INSIDE_OFFICE');
-  const outsideStaff = employees.filter((e) => e.lastLocationStatus === 'OUTSIDE_OFFICE');
-  const otherStaff = employees.filter(
-    (e) => e.lastLocationStatus !== 'INSIDE_OFFICE' && e.lastLocationStatus !== 'OUTSIDE_OFFICE'
-  );
+  const insideStaff: typeof employees = [];
+  const outsideStaff: typeof employees = [];
+  const otherStaff: typeof employees = [];
+
+  for (const emp of employees) {
+    const isInside =
+      emp.lastLocationStatus === 'INSIDE_OFFICE' ||
+      (emp.lastDistanceMeters !== null && emp.lastDistanceMeters <= 30.0);
+
+    if (isInside) {
+      insideStaff.push(emp);
+    } else if (emp.lastLocationStatus === 'OUTSIDE_OFFICE') {
+      outsideStaff.push(emp);
+    } else {
+      otherStaff.push(emp);
+    }
+  }
 
   const lines: string[] = [];
   employees.forEach((emp, index) => {
     const numKh = index + 1;
     const khmerName = emp.khmerName || emp.displayName;
+    const isInside =
+      emp.lastLocationStatus === 'INSIDE_OFFICE' ||
+      (emp.lastDistanceMeters !== null && emp.lastDistanceMeters <= 30.0);
+
     let statusText = 'មិនទាន់កំណត់ទីតាំង';
     let statusIcon = '⚪';
-    if (emp.lastLocationStatus === 'INSIDE_OFFICE') {
+    let distStr = '';
+
+    if (isInside) {
       statusText = 'នៅក្នុងការិយាល័យ';
       statusIcon = '🟢';
+      if (emp.lastDistanceMeters !== null) {
+        distStr = ` (${Math.round(emp.lastDistanceMeters)}m)`;
+      }
     } else if (emp.lastLocationStatus === 'OUTSIDE_OFFICE') {
       statusText = 'នៅក្រៅការិយាល័យ';
       statusIcon = '🔴';
+      if (emp.lastDistanceMeters !== null) {
+        distStr = ` (${Math.round(emp.lastDistanceMeters)}m)`;
+      }
     }
 
-    lines.push(`${numKh}. 👤 <b>${khmerName}</b> — ${statusIcon} ${statusText}`);
+    lines.push(`${numKh}. 👤 <b>${khmerName}</b> — ${statusIcon} ${statusText}${distStr}`);
   });
 
   return [
@@ -437,6 +478,7 @@ async function processUpdate(botToken: string, update: any): Promise<void> {
   if (update.callback_query) {
     const cq = update.callback_query;
     const chatId = cq.message?.chat?.id;
+    const fromId = cq.from?.id;
     const messageId = cq.message?.message_id;
     const data = cq.data;
 
@@ -456,8 +498,8 @@ async function processUpdate(botToken: string, update: any): Promise<void> {
 
     if (!chatId) return;
 
-    // Check authorization
-    const authorized = await isChatAuthorized(chatId);
+    // Check authorization (supports both chat ID and sender ID)
+    const authorized = await isChatAuthorized(chatId, fromId);
     if (!authorized) {
       await callTelegram(botToken, 'sendMessage', {
         chat_id: chatId,
@@ -465,7 +507,8 @@ async function processUpdate(botToken: string, update: any): Promise<void> {
           `🔒 <b>ការជូនដំណឹងពីប្រព័ន្ធសុវត្ថិភាព</b>\n` +
           `━━━━━━━━━━━━━━━━━━━━━\n` +
           `⛔ លោកអ្នកមិនមានសិទ្ធិចូលមើលទិន្នន័យនេះទេ។\n` +
-          `🆔 លេខសម្គាល់គណនីរបស់អ្នកគឺ: <code>${chatId}</code>\n` +
+          `🆔 <b>Chat ID:</b> <code>${chatId}</code>\n` +
+          (fromId && fromId !== chatId ? `👤 <b>User ID:</b> <code>${fromId}</code>\n` : '') +
           `💬 សូមទាក់ទងអ្នកគ្រប់គ្រងប្រព័ន្ធ (Admin) ដើម្បីបន្ថែមលេខសម្គាល់នេះ។`,
         parse_mode: 'HTML',
       });
@@ -474,6 +517,7 @@ async function processUpdate(botToken: string, update: any): Promise<void> {
 
     let responseText = '';
     let keyboard: InlineKeyboardMarkup = getBackToMenuMarkup();
+    let additionalParts: string[] = [];
 
     switch (data) {
       case 'menu_main':
@@ -505,6 +549,9 @@ async function processUpdate(botToken: string, update: any): Promise<void> {
       case 'menu_all_staff': {
         const full = await TelegramService.buildDailyMorningSummaryKhmer();
         responseText = full.messages[0] || 'មិនមានទិន្នន័យ';
+        if (full.messages.length > 1) {
+          additionalParts = full.messages.slice(1);
+        }
         keyboard = getBackToMenuMarkup();
         break;
       }
@@ -514,7 +561,7 @@ async function processUpdate(botToken: string, update: any): Promise<void> {
         keyboard = getMainInlineMenu();
     }
 
-    // Try to edit the message smoothly, or send new if edit fails
+    // Edit the message smoothly
     const editRes = await callTelegram(botToken, 'editMessageText', {
       chat_id: chatId,
       message_id: messageId,
@@ -525,11 +572,26 @@ async function processUpdate(botToken: string, update: any): Promise<void> {
     });
 
     if (!editRes.ok) {
+      const desc = String(editRes.description || '');
+      // If error is not "message is not modified", send as new message
+      if (!desc.includes('message is not modified')) {
+        await callTelegram(botToken, 'sendMessage', {
+          chat_id: chatId,
+          text: responseText,
+          parse_mode: 'HTML',
+          reply_markup: keyboard,
+          disable_web_page_preview: true,
+        });
+      }
+    }
+
+    // If multi-part message (e.g. all 20 employees exceeded character limit), send remaining parts
+    for (const part of additionalParts) {
       await callTelegram(botToken, 'sendMessage', {
         chat_id: chatId,
-        text: responseText,
+        text: part,
         parse_mode: 'HTML',
-        reply_markup: getPersistentReplyKeyboard(),
+        reply_markup: getBackToMenuMarkup(),
         disable_web_page_preview: true,
       });
     }
@@ -541,12 +603,36 @@ async function processUpdate(botToken: string, update: any): Promise<void> {
   if (update.message) {
     const msg = update.message;
     const chatId = msg.chat?.id;
+    const fromId = msg.from?.id;
     const text = (msg.text || '').trim();
 
     if (!chatId) return;
 
+    const lower = text.toLowerCase();
+
+    // Fast command to view Telegram ID
+    if (lower === '/id' || lower === 'id' || lower.startsWith('/id')) {
+      await callTelegram(botToken, 'sendMessage', {
+        chat_id: chatId,
+        text: [
+          `🆔 <b>ព័ត៌មានលេខសម្គាល់គណនី (Telegram ID)</b>`,
+          `━━━━━━━━━━━━━━━━━━━━━`,
+          `💬 <b>Chat ID:</b> <code>${chatId}</code>`,
+          fromId && fromId !== chatId ? `👤 <b>User ID:</b> <code>${fromId}</code>` : '',
+          `🏷️ <b>ប្រភេទ:</b> ${msg.chat?.type || 'ទូទៅ'}`,
+          `━━━━━━━━━━━━━━━━━━━━━`,
+          `📋 <i>លោកអ្នកអាចចុចលើលេខសម្គាល់ខាងលើដើម្បី Copy រួចផ្ញើជូន Admin ដើម្បីបញ្ចូលទៅក្នុងប្រព័ន្ធអនុញ្ញាត។</i>`,
+        ]
+          .filter(Boolean)
+          .join('\n'),
+        parse_mode: 'HTML',
+        reply_markup: getPersistentReplyKeyboard(),
+      });
+      return;
+    }
+
     // Check authorization
-    const authorized = await isChatAuthorized(chatId);
+    const authorized = await isChatAuthorized(chatId, fromId);
     if (!authorized) {
       await callTelegram(botToken, 'sendMessage', {
         chat_id: chatId,
@@ -554,14 +640,13 @@ async function processUpdate(botToken: string, update: any): Promise<void> {
           `🔒 <b>ការជូនដំណឹងពីប្រព័ន្ធសុវត្ថិភាព</b>\n` +
           `━━━━━━━━━━━━━━━━━━━━━\n` +
           `⛔ លោកអ្នកមិនមានសិទ្ធិចូលមើលទិន្នន័យនេះទេ។\n` +
-          `🆔 លេខសម្គាល់គណនីរបស់អ្នកគឺ: <code>${chatId}</code>\n` +
+          `🆔 <b>Chat ID:</b> <code>${chatId}</code>\n` +
+          (fromId && fromId !== chatId ? `👤 <b>User ID:</b> <code>${fromId}</code>\n` : '') +
           `💬 សូមទាក់ទងអ្នកគ្រប់គ្រងប្រព័ន្ធ (Admin) ដើម្បីបន្ថែមលេខសម្គាល់នេះ។`,
         parse_mode: 'HTML',
       });
       return;
     }
-
-    const lower = text.toLowerCase();
 
     // 1. Daily Summary
     if (text.includes('សង្ខេប') || lower.startsWith('/summary')) {
@@ -571,7 +656,7 @@ async function processUpdate(botToken: string, update: any): Promise<void> {
           chat_id: chatId,
           text: msgPart,
           parse_mode: 'HTML',
-          reply_markup: getPersistentReplyKeyboard(),
+          reply_markup: getMainInlineMenu(),
           disable_web_page_preview: true,
         });
       }
@@ -585,7 +670,7 @@ async function processUpdate(botToken: string, update: any): Promise<void> {
         chat_id: chatId,
         text: report,
         parse_mode: 'HTML',
-        reply_markup: getPersistentReplyKeyboard(),
+        reply_markup: getStudyNavMarkup(),
         disable_web_page_preview: true,
       });
       return;
@@ -598,7 +683,7 @@ async function processUpdate(botToken: string, update: any): Promise<void> {
         chat_id: chatId,
         text: report,
         parse_mode: 'HTML',
-        reply_markup: getPersistentReplyKeyboard(),
+        reply_markup: getWorkNavMarkup(),
         disable_web_page_preview: true,
       });
       return;
@@ -611,7 +696,7 @@ async function processUpdate(botToken: string, update: any): Promise<void> {
         chat_id: chatId,
         text: report,
         parse_mode: 'HTML',
-        reply_markup: getPersistentReplyKeyboard(),
+        reply_markup: getLocationNavMarkup(),
         disable_web_page_preview: true,
       });
       return;
@@ -624,7 +709,7 @@ async function processUpdate(botToken: string, update: any): Promise<void> {
         chat_id: chatId,
         text: report,
         parse_mode: 'HTML',
-        reply_markup: getPersistentReplyKeyboard(),
+        reply_markup: getLeaveNavMarkup(),
         disable_web_page_preview: true,
       });
       return;
@@ -638,22 +723,32 @@ async function processUpdate(botToken: string, update: any): Promise<void> {
           chat_id: chatId,
           text: msgPart,
           parse_mode: 'HTML',
-          reply_markup: getPersistentReplyKeyboard(),
+          reply_markup: getBackToMenuMarkup(),
           disable_web_page_preview: true,
         });
       }
       return;
     }
 
-    // Default: Main Menu with persistent bottom keyboard
+    // Default: Main Menu (ensure both persistent bottom keyboard and inline buttons are active)
     const menuText = buildMainMenuText();
-    await callTelegram(botToken, 'sendMessage', {
-      chat_id: chatId,
-      text: menuText,
-      parse_mode: 'HTML',
-      reply_markup: getPersistentReplyKeyboard(),
-      disable_web_page_preview: true,
-    });
+    if (lower === '/start') {
+      await callTelegram(botToken, 'sendMessage', {
+        chat_id: chatId,
+        text: menuText,
+        parse_mode: 'HTML',
+        reply_markup: getPersistentReplyKeyboard(),
+        disable_web_page_preview: true,
+      });
+    } else {
+      await callTelegram(botToken, 'sendMessage', {
+        chat_id: chatId,
+        text: menuText,
+        parse_mode: 'HTML',
+        reply_markup: getMainInlineMenu(),
+        disable_web_page_preview: true,
+      });
+    }
   }
 }
 
@@ -672,6 +767,9 @@ export async function startTelegramBotPolling(): Promise<void> {
 
   // Run in background without blocking server boot
   (async () => {
+    let lastRegisteredToken: string | null = null;
+    let webhookCleared = false;
+
     while (isPollingActive) {
       try {
         const config = await prisma.telegramConfig.findUnique({
@@ -690,17 +788,28 @@ export async function startTelegramBotPolling(): Promise<void> {
           continue;
         }
 
-        // Configure default commands for top [Menu] button
-        callTelegram(botToken, 'setMyCommands', {
-          commands: [
-            { command: 'menu', description: 'បើកផ្ទាំងបញ្ជា (Open Menu)' },
-            { command: 'summary', description: 'របាយការណ៍សង្ខេបប្រចាំថ្ងៃ' },
-            { command: 'study', description: 'បុគ្គលិកវេនរៀន' },
-            { command: 'work', description: 'បុគ្គលិកបំពេញការងារ' },
-            { command: 'location', description: 'វត្តមានទីតាំង' },
-            { command: 'leave', description: 'បុគ្គលិកសុំច្បាប់' },
-          ],
-        }).catch(() => {});
+        // Configure default commands and clear any old webhooks if token changed or first run
+        if (lastRegisteredToken !== botToken || !webhookCleared) {
+          // Delete any active webhook to prevent conflict errors
+          await callTelegram(botToken, 'deleteWebhook', { drop_pending_updates: false }).catch(() => {});
+          webhookCleared = true;
+
+          // Configure default commands for top [Menu] button
+          callTelegram(botToken, 'setMyCommands', {
+            commands: [
+              { command: 'start', description: 'បើកផ្ទាំងបញ្ជា (Start Menu)' },
+              { command: 'menu', description: 'ម៉ឺនុយមេ (Main Menu)' },
+              { command: 'summary', description: 'របាយការណ៍សង្ខេបប្រចាំថ្ងៃ' },
+              { command: 'study', description: 'បុគ្គលិកវេនរៀន' },
+              { command: 'work', description: 'បុគ្គលិកបំពេញការងារ' },
+              { command: 'location', description: 'វត្តមានទីតាំង' },
+              { command: 'leave', description: 'បុគ្គលិកសុំច្បាប់' },
+              { command: 'id', description: 'ពិនិត្យមើលលេខសម្គាល់ ID របស់អ្នក' },
+            ],
+          }).catch(() => {});
+
+          lastRegisteredToken = botToken;
+        }
 
         // Long poll updates with 20s timeout
         const updatesRes = await callTelegram(
@@ -713,6 +822,13 @@ export async function startTelegramBotPolling(): Promise<void> {
           },
           25000
         );
+
+        if (updatesRes?.error_code === 409) {
+          console.warn('[TelegramBot] Webhook conflict detected, clearing webhook...');
+          await callTelegram(botToken, 'deleteWebhook', { drop_pending_updates: false }).catch(() => {});
+          await new Promise((r) => setTimeout(r, 2000));
+          continue;
+        }
 
         if (updatesRes.ok && Array.isArray(updatesRes.result)) {
           for (const update of updatesRes.result) {
