@@ -4,12 +4,16 @@ import { prisma } from './utils/prisma.js';
 
 import { startTelegramScheduler, stopTelegramScheduler } from './services/telegramScheduler.js';
 import { startTelegramBotPolling, stopTelegramBotPolling } from './services/telegramBotService.js';
+import { StorageService } from './services/storageService.js';
 
 async function startServer() {
   try {
     // Verify database connection
     await prisma.$connect();
     console.log('✓ Connected to PostgreSQL database via Prisma');
+
+    // Initialize MinIO storage & bucket
+    await StorageService.init();
 
     const server = app.listen(config.port, () => {
       console.log(`=========================================`);
