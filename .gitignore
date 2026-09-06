@@ -79,3 +79,7 @@ Thumbs.db
 *.bak
 *.tmp
 *.temp
+uploads/
+**/uploads/
+minio_data/
+

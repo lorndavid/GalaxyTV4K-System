@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Outlet, Navigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNetworkStatus } from '../../hooks/useNetworkStatus';
 import { useLocationTracker } from '../../hooks/useLocationTracker';
@@ -8,11 +9,16 @@ import { AppSplashScreen } from '../pwa/AppSplashScreen';
 import { BottomNav } from './BottomNav';
 import { ThemeToggle } from '../ui/ThemeToggle';
 import { LanguageSwitcher } from '../ui/LanguageSwitcher';
-import { WifiOff } from 'lucide-react';
+import { AvatarUploadModal } from '../profile/AvatarUploadModal';
+import { WifiOff, Camera } from 'lucide-react';
 
 export const EmployeeLayout: React.FC = () => {
   const { isAuthenticated, isLoading, user } = useAuth();
   const { isOnline } = useNetworkStatus();
+  const { i18n } = useTranslation();
+  const isKhmer = !i18n.language?.startsWith('en');
+
+  const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
 
   // Automatically acquire and stream location in background when employee opens the app
   const isLocationSharingActive = user?.employee?.isLocationSharingActive ?? true;
@@ -28,8 +34,17 @@ export const EmployeeLayout: React.FC = () => {
   }
 
   const employeeName = user?.employee?.displayName || user?.email?.split('@')[0] || 'Employee';
-  const employeeCode = user?.employee?.employeeCode || 'EMP';
-  const departmentName = user?.employee?.department?.name || 'Staff Member';
+  const profilePhoto = user?.employee?.profilePhoto;
+
+  const getInitials = (text: string) => {
+    const parts = (text || 'Employee').trim().split(/\s+/);
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+    return (text || 'EM').slice(0, 2).toUpperCase();
+  };
+
+  const initials = getInitials(employeeName);
 
   return (
     <div className="min-h-screen bg-slate-100/70 dark:bg-dark-bg flex flex-col justify-between transition-colors duration-150">
@@ -42,25 +57,45 @@ export const EmployeeLayout: React.FC = () => {
           </div>
         )}
 
-        {/* Top App Bar Header - Resized +20% with larger brand mark & improved typography */}
+        {/* Top App Bar Header - Replaced static logo with interactive Profile Avatar */}
         <header className="min-h-[4.25rem] py-3 bg-white/95 dark:bg-dark-surface/95 backdrop-blur-md border-b border-slate-100 dark:border-dark-border px-4 sm:px-5 flex items-center justify-between sticky top-0 z-30 pt-[calc(env(safe-area-inset-top)+0.625rem)] transition-colors duration-150">
           <div className="flex items-center gap-3 min-w-0 flex-1 pr-2">
-            <div className="w-10 h-10 rounded-xl p-1.5 bg-slate-50 dark:bg-dark-elevated border border-slate-200/80 dark:border-dark-border flex items-center justify-center flex-shrink-0 shadow-xs">
-              <img
-                src="/logo.png"
-                alt="Logo"
-                className="w-full h-full object-contain"
-              />
-            </div>
+            {/* Clickable Profile Avatar Button (Replaces Logo) */}
+            <button
+              type="button"
+              onClick={() => setIsAvatarModalOpen(true)}
+              className="relative group cursor-pointer active:scale-95 transition-transform flex-shrink-0"
+              title={isKhmer ? 'ចុចដើម្បីប្តូររូបភាពប្រវត្តិរូប (Click to change photo)' : 'Click to change profile photo'}
+            >
+              <div className="w-11 h-11 rounded-full overflow-hidden ring-2 ring-brand-500/30 dark:ring-brand-400/30 bg-gradient-to-br from-brand-500/20 to-brand-600/10 flex items-center justify-center shadow-xs border-2 border-white dark:border-dark-surface">
+                {profilePhoto ? (
+                  <img
+                    src={profilePhoto}
+                    alt={employeeName}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <span className="font-bold text-sm text-brand-600 dark:text-brand-400 tracking-wider">
+                    {initials}
+                  </span>
+                )}
+              </div>
+              <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-brand-600 text-white flex items-center justify-center shadow-xs ring-2 ring-white dark:ring-dark-surface">
+                <Camera className="w-2.5 h-2.5" />
+              </div>
+            </button>
+
+            {/* Clean Employee Name & Active Status (Removed EMP-001 • ព័ត៌មានសង្គម) */}
             <div className="min-w-0 flex-1">
               <p className="text-sm font-bold text-slate-900 dark:text-slate-100 leading-tight truncate">
                 {employeeName}
               </p>
-              <p className="text-xs text-slate-500 dark:text-slate-400 leading-tight mt-0.5 break-words">
-                <span className="font-semibold text-slate-700 dark:text-slate-300">{employeeCode}</span>
-                <span className="mx-1.5 text-slate-300 dark:text-slate-600">•</span>
-                <span>{departmentName}</span>
-              </p>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                  {isKhmer ? 'សកម្មក្នុងប្រព័ន្ធ' : 'Active Online'}
+                </span>
+              </div>
             </div>
           </div>
 
@@ -79,6 +114,12 @@ export const EmployeeLayout: React.FC = () => {
 
       {/* Floating Bottom Navigation with Center QR Action */}
       <BottomNav />
+
+      {/* Interactive Avatar Upload Modal */}
+      <AvatarUploadModal
+        isOpen={isAvatarModalOpen}
+        onClose={() => setIsAvatarModalOpen(false)}
+      />
     </div>
   );
 };

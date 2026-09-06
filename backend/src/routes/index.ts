@@ -12,6 +12,8 @@ import auditRoutes from './auditRoutes.js';
 import locationRoutes from './locationRoutes.js';
 import telegramRoutes from './telegramRoutes.js';
 import holidayRoutes from './holidayRoutes.js';
+import profileRoutes from './profileRoutes.js';
+import { ProfileController } from '../controllers/profileController.js';
 
 const router = Router();
 
@@ -31,6 +33,11 @@ router.use('/holidays', holidayRoutes);
 router.use('/leave', leaveRoutes);
 router.use('/out', outRoutes);
 router.use('/settings', settingsRoutes);
+router.use('/profile', profileRoutes);
+
+// Avatar Serving Endpoints (Streamed from MinIO with local cache fallback)
+router.get('/avatar/:key', ProfileController.serveAvatar);
+router.get('/uploads/avatars/:key', ProfileController.serveAvatar);
 
 // Public version endpoint for automated client update detection
 router.get('/version', (_req, res) => {
@@ -38,7 +45,7 @@ router.get('/version', (_req, res) => {
     success: true,
     data: {
       version: process.env.APP_VERSION || '1.1.0',
-      buildDate: '2026-09-04',
+      buildDate: '2026-09-06',
       appName: 'Galaxy TV4K HR System',
       description: 'Official Attendance, QR Tracking & Telegram Automation',
     },

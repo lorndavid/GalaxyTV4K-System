@@ -135,6 +135,8 @@ model Employee {
   email                   String              @unique
   phone                   String?
   profilePhoto            String?
+  avatarUploadCountToday  Int                 @default(0)
+  lastAvatarUploadDate    String?
   position                String              @default("Staff")
   hireDate                DateTime            @default(now())
   status                  EmployeeStatus      @default(ACTIVE)

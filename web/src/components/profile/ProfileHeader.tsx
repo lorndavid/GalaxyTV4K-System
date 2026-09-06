@@ -1,7 +1,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { ProfileAvatar } from './ProfileAvatar';
-import { ShieldCheck, Copy, Check, Settings as SettingsIcon } from 'lucide-react';
+import { ShieldCheck, Copy, Check, Settings as SettingsIcon, Camera } from 'lucide-react';
 
 interface ProfileHeaderProps {
   displayName: string;
@@ -9,8 +9,10 @@ interface ProfileHeaderProps {
   employeeCode: string;
   position: string;
   departmentName: string;
+  photoUrl?: string;
   status?: string;
   onOpenSettings?: () => void;
+  onOpenAvatarUpload?: () => void;
   className?: string;
 }
 
@@ -20,8 +22,10 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
   employeeCode,
   position,
   departmentName,
+  photoUrl,
   status = 'Active',
   onOpenSettings,
+  onOpenAvatarUpload,
   className = '',
 }) => {
   const { t } = useTranslation();
@@ -39,8 +43,17 @@ export const ProfileHeader: React.FC<ProfileHeaderProps> = ({
     >
       {/* Responsive layout: Centered on mobile, clean horizontal flex on tablet/desktop */}
       <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 sm:gap-6 text-center sm:text-left">
-        {/* Avatar */}
-        <ProfileAvatar name={displayName} size="lg" showStatus={true} />
+        {/* Clickable Avatar with Camera badge */}
+        <div
+          className="relative group cursor-pointer active:scale-95 transition-transform shrink-0"
+          onClick={onOpenAvatarUpload}
+          title={t('profile.changeAvatar', 'Change Profile Photo')}
+        >
+          <ProfileAvatar name={displayName} photoUrl={photoUrl} size="lg" showStatus={true} />
+          <div className="absolute -bottom-1 -right-1 p-1.5 rounded-full bg-brand-600 text-white shadow-md ring-2 ring-white dark:ring-dark-surface">
+            <Camera className="w-3.5 h-3.5" />
+          </div>
+        </div>
 
         {/* Text Details */}
         <div className="flex-1 min-w-0 space-y-1">

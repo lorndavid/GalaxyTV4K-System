@@ -39,6 +39,7 @@ interface Employee {
   gender?: string;
   skill?: string;
   studyDay?: string;
+  profilePhoto?: string | null;
   email: string;
   phone?: string;
   position: string;
@@ -374,8 +375,19 @@ export const EmployeesPage: React.FC = () => {
                     {/* 1. ឈ្មោះ (Khmer Name) */}
                     <td className="py-3.5 px-4">
                       <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-full bg-brand-50 dark:bg-brand-950/60 text-brand-600 dark:text-brand-400 font-bold text-xs flex items-center justify-center flex-shrink-0 border border-brand-200/60 dark:border-brand-800/40">
-                          {(emp.khmerName || emp.displayName).charAt(0)}
+                        <div className="w-8 h-8 rounded-full bg-brand-50 dark:bg-brand-950/60 text-brand-600 dark:text-brand-400 font-bold text-xs flex items-center justify-center flex-shrink-0 border border-brand-200/60 dark:border-brand-800/40 overflow-hidden">
+                          {emp.profilePhoto ? (
+                            <img
+                              src={emp.profilePhoto}
+                              alt={emp.khmerName || emp.displayName}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                (e.target as HTMLElement).style.display = 'none';
+                              }}
+                            />
+                          ) : (
+                            (emp.khmerName || emp.displayName).charAt(0)
+                          )}
                         </div>
                         <div>
                           <p className="font-bold text-slate-900 dark:text-slate-100 font-sans">

@@ -22,6 +22,30 @@ services:
         max-size: "20m"
         max-file: "5"
 
+  minio:
+    image: minio/minio:latest
+    container_name: system_hr_minio
+    restart: always
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-ChangeThisMinioStrongPass2026}
+    ports:
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9000/minio/health/live || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "5"
+
   backend:
     build:
       context: ./backend
@@ -30,6 +54,8 @@ services:
     restart: always
     depends_on:
       postgres:
+        condition: service_healthy
+      minio:
         condition: service_healthy
     environment:
       PORT: 4000
@@ -40,6 +66,12 @@ services:
       CORS_ORIGINS: ${CORS_ORIGINS:-https://galaxytv4k.online,https://www.galaxytv4k.online,https://admin.galaxytv4k.online,https://api.galaxytv4k.online,https://galaxytv.online,https://admin.galaxytv.online,https://api.galaxytv.online,http://localhost:5173,http://localhost:5174}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
       TELEGRAM_ADMIN_CHAT_ID: ${TELEGRAM_ADMIN_CHAT_ID:-}
+      MINIO_ENDPOINT: ${MINIO_ENDPOINT:-minio}
+      MINIO_PORT: ${MINIO_PORT:-9000}
+      MINIO_USE_SSL: ${MINIO_USE_SSL:-false}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-ChangeThisMinioStrongPass2026}
+      MINIO_BUCKET: ${MINIO_BUCKET:-system-hr-avatars}
     ports:
       - "127.0.0.1:4000:4000"
     logging:
@@ -82,4 +114,6 @@ services:
 
 volumes:
   postgres_data:
+    driver: local
+  minio_data:
     driver: local

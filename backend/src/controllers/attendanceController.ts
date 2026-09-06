@@ -256,6 +256,7 @@ export class AttendanceController {
             khmerName: emp.khmerName || emp.displayName,
             latinName: emp.latinName || emp.displayName,
             studyDay: emp.studyDay,
+            profilePhoto: emp.profilePhoto,
             department: emp.department ? { id: emp.department.id, name: emp.department.name } : undefined,
           },
           schedule: att?.schedule || emp.schedule || null,

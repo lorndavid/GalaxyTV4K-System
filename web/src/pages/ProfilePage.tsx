@@ -10,6 +10,7 @@ import { SettingsRow } from '../components/settings/SettingsRow';
 import { ConfirmationModal } from '../components/settings/ConfirmationModal';
 import { ChangePasswordModal } from '../components/settings/ChangePasswordModal';
 import { ActiveSessionsModal } from '../components/settings/ActiveSessionsModal';
+import { AvatarUploadModal } from '../components/profile/AvatarUploadModal';
 import {
   User,
   Mail,
@@ -29,6 +30,7 @@ import {
   Award,
   BookOpen,
   Settings as SettingsIcon,
+  Camera,
 } from 'lucide-react';
 
 export const ProfilePage: React.FC = () => {
@@ -38,6 +40,7 @@ export const ProfilePage: React.FC = () => {
   const { theme, currentColor, khmerFont, englishFont } = usePreferences();
 
   const [activeTab, setActiveTab] = useState<'profile' | 'settings'>('profile');
+  const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [isSessionsModalOpen, setIsSessionsModalOpen] = useState(false);
@@ -114,6 +117,8 @@ export const ProfilePage: React.FC = () => {
         employeeCode={emp?.employeeCode || 'EMP-001'}
         position={emp?.position || 'Employee'}
         departmentName={emp?.department?.name || 'General Department'}
+        photoUrl={emp?.profilePhoto}
+        onOpenAvatarUpload={() => setIsAvatarModalOpen(true)}
       />
 
       {activeTab === 'profile' ? (
@@ -395,6 +400,11 @@ export const ProfilePage: React.FC = () => {
       <ActiveSessionsModal
         isOpen={isSessionsModalOpen}
         onClose={() => setIsSessionsModalOpen(false)}
+      />
+
+      <AvatarUploadModal
+        isOpen={isAvatarModalOpen}
+        onClose={() => setIsAvatarModalOpen(false)}
       />
     </div>
   );

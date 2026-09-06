@@ -81,9 +81,9 @@ app.use(
   })
 );
 
-// Standard Body Parsers with payload size restrictions
-app.use(express.json({ limit: '2mb' }));
-app.use(express.urlencoded({ extended: true, limit: '2mb' }));
+// Standard Body Parsers with payload size restrictions (10mb for photo uploads)
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Global Rate Limiting
 app.use('/api', generalApiLimiter);

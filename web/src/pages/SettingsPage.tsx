@@ -10,6 +10,7 @@ import { SettingsRow } from '../components/settings/SettingsRow';
 import { ConfirmationModal } from '../components/settings/ConfirmationModal';
 import { ChangePasswordModal } from '../components/settings/ChangePasswordModal';
 import { ActiveSessionsModal } from '../components/settings/ActiveSessionsModal';
+import { AvatarUploadModal } from '../components/profile/AvatarUploadModal';
 import {
   Palette,
   Languages,
@@ -24,12 +25,13 @@ import {
   FileText,
   Lock,
   RefreshCw,
+  Camera,
 } from 'lucide-react';
 
 export const SettingsPage: React.FC = () => {
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
   const { showToast } = useToast();
   const {
     currentVersion,
@@ -40,6 +42,7 @@ export const SettingsPage: React.FC = () => {
   } = usePwaUpdate();
 
   const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
+  const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
   const {
     theme,
     currentColor,
@@ -112,6 +115,28 @@ export const SettingsPage: React.FC = () => {
           </p>
         </div>
       </div>
+
+      {/* 0. Profile Photo Management */}
+      <SettingsSection
+        title={t('settings.profilePhoto', 'Profile Photo')}
+        description={t('settings.profilePhotoDesc', 'Change your photo up to 2 times per day')}
+      >
+        <SettingsRow
+          icon={Camera}
+          title={t('settings.changePhoto', 'Change Profile Photo')}
+          description={t('settings.changePhotoDesc', 'Upload new picture from camera or gallery')}
+          value={
+            user?.employee?.profilePhoto ? (
+              <div className="w-8 h-8 rounded-full overflow-hidden border border-brand-500/30">
+                <img src={user.employee.profilePhoto} alt="Avatar" className="w-full h-full object-cover" />
+              </div>
+            ) : (
+              <span className="text-xs text-brand-600 dark:text-brand-400 font-bold">{t('common.edit', 'Edit')}</span>
+            )
+          }
+          onClick={() => setIsAvatarModalOpen(true)}
+        />
+      </SettingsSection>
 
       {/* 1. Preferences: Appearance, Language, Typography */}
       <SettingsSection
@@ -296,6 +321,11 @@ export const SettingsPage: React.FC = () => {
       <ActiveSessionsModal
         isOpen={isSessionsModalOpen}
         onClose={() => setIsSessionsModalOpen(false)}
+      />
+
+      <AvatarUploadModal
+        isOpen={isAvatarModalOpen}
+        onClose={() => setIsAvatarModalOpen(false)}
       />
     </div>
   );

@@ -34,6 +34,7 @@ export interface EmployeeProfile {
     }>;
   };
   isLocationSharingActive?: boolean;
+  profilePhoto?: string;
 }
 
 export interface User {
@@ -51,6 +52,7 @@ interface AuthContextType {
   login: (email: string, password?: string, rememberMe?: boolean) => Promise<void>;
   logout: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  updateProfilePhoto: (url: string) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -168,6 +170,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const updateProfilePhoto = (url: string) => {
+    setUser((prev) => {
+      if (!prev || !prev.employee) return prev;
+      const updated = {
+        ...prev,
+        employee: {
+          ...prev.employee,
+          profilePhoto: url,
+        },
+      };
+      if (localStorage.getItem('system_hr_employee_token')) {
+        localStorage.setItem('system_hr_employee_user', JSON.stringify(updated));
+      } else {
+        sessionStorage.setItem('system_hr_employee_user', JSON.stringify(updated));
+      }
+      return updated;
+    });
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -178,6 +199,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         login,
         logout,
         refreshProfile,
+        updateProfilePhoto,
       }}
     >
       {children}

@@ -50,6 +50,7 @@ interface AttendanceRecord {
     khmerName?: string;
     latinName?: string;
     studyDay?: string;
+    profilePhoto?: string | null;
     department?: { name: string };
   };
 }
@@ -582,8 +583,19 @@ export const AttendancePage: React.FC = () => {
                         {/* Employee: Clean Avatar + Name ONLY (NO ID) */}
                         <td className="py-3.5 px-4">
                           <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-brand-500/15 to-brand-600/5 text-brand-600 dark:text-brand-400 flex items-center justify-center shrink-0 shadow-2xs border border-brand-500/20">
-                              <User className="w-4 h-4" />
+                            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-brand-500/15 to-brand-600/5 text-brand-600 dark:text-brand-400 flex items-center justify-center shrink-0 shadow-2xs border border-brand-500/20 overflow-hidden">
+                              {r.employee.profilePhoto ? (
+                                <img
+                                  src={r.employee.profilePhoto}
+                                  alt={primaryName}
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    (e.target as HTMLElement).style.display = 'none';
+                                  }}
+                                />
+                              ) : (
+                                <User className="w-4 h-4" />
+                              )}
                             </div>
                             <div>
                               <div className="font-bold text-slate-900 dark:text-slate-100 text-sm">
@@ -734,8 +746,19 @@ export const AttendancePage: React.FC = () => {
                   <div key={r.id} className="p-4 space-y-3">
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-full bg-brand-500/10 text-brand-600 flex items-center justify-center shrink-0">
-                          <User className="w-4 h-4" />
+                        <div className="w-9 h-9 rounded-full bg-brand-500/10 text-brand-600 flex items-center justify-center shrink-0 overflow-hidden border border-brand-500/20">
+                          {r.employee.profilePhoto ? (
+                            <img
+                              src={r.employee.profilePhoto}
+                              alt={primaryName}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                (e.target as HTMLElement).style.display = 'none';
+                              }}
+                            />
+                          ) : (
+                            <User className="w-4 h-4" />
+                          )}
                         </div>
                         <div>
                           <div className="font-bold text-sm text-slate-900 dark:text-slate-100">
