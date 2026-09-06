@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { queryKeys } from '../lib/queryKeys';
 import apiClient from '../api/client';
@@ -9,21 +10,20 @@ import { Badge } from '../components/ui/Badge';
 import {
   Clock3,
   CalendarDays,
-  CalendarOff,
-  DoorOpen,
   CheckCircle2,
   AlertCircle,
   MapPin,
-  TrendingUp,
   ShieldCheck,
   ChevronRight,
   Sparkles,
-  Award,
+  Fingerprint,
+  LogIn,
+  LogOut,
+  Building2,
+  Navigation,
+  Palmtree,
   Calendar,
-  Hourglass,
-  QrCode,
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
 
 interface TodayAttendance {
   id?: string;
@@ -42,26 +42,120 @@ interface LeaveBalanceItem {
   remainingDays: number;
 }
 
+// Helper to extract the given/last name of the employee
+function getLastName(fullName?: string | null): string {
+  if (!fullName) return '';
+  const trimmed = fullName.trim();
+  if (!trimmed) return '';
+  const parts = trimmed.split(/\s+/);
+  return parts[parts.length - 1];
+}
+
 export const HomePage: React.FC = () => {
   const { user } = useAuth();
   const { t, i18n } = useTranslation();
-  const [liveWorkedTime, setLiveWorkedTime] = useState<string>('0h 0m');
-  const [workedPercentage, setWorkedPercentage] = useState<number>(0);
+  const isKhmer = !i18n.language?.startsWith('en');
 
-  const employeeName =
-    user?.employee?.firstName ||
-    user?.employee?.displayName?.split(' ')[0] ||
-    user?.email?.split('@')[0] ||
-    'Colleague';
+  // Live ticking clock for Cambodia timezone
+  const [liveDate, setLiveDate] = useState<Date>(new Date());
+  useEffect(() => {
+    const timer = setInterval(() => setLiveDate(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
-  const currentLang = i18n.language || 'km';
-  const todayFormatted = new Intl.DateTimeFormat(currentLang === 'km' ? 'km-KH' : 'en-US', {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric',
-  }).format(new Date());
+  // Compute Cambodia hour (0-23)
+  const cambodiaHour = useMemo(() => {
+    try {
+      const hourStr = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'Asia/Phnom_Penh',
+        hour: 'numeric',
+        hour12: false,
+      }).format(liveDate);
+      return parseInt(hourStr, 10);
+    } catch {
+      return liveDate.getHours();
+    }
+  }, [liveDate]);
 
-  // Fetch today's attendance record
+  // Context-aware dynamic greeting with customized vibrant time-of-day styling (no emojis or icons)
+  const { greetingText, greetingColor } = useMemo(() => {
+    if (cambodiaHour >= 5 && cambodiaHour < 12) {
+      // Morning (05:00 - 11:59): Warm Amber / Golden Sunrise
+      return {
+        greetingText: t('home.goodMorning', 'អរុណសួស្តី'),
+        greetingColor: 'text-amber-500 dark:text-amber-400',
+      };
+    } else if (cambodiaHour >= 12 && cambodiaHour < 18) {
+      // Afternoon (12:00 - 17:59): Vibrant Sky Blue / Cyan
+      return {
+        greetingText: t('home.goodAfternoon', 'ទិវាសួស្តី'),
+        greetingColor: 'text-sky-500 dark:text-sky-400',
+      };
+    } else if (cambodiaHour >= 18 && cambodiaHour < 22) {
+      // Evening (18:00 - 21:59): Twilight Indigo
+      return {
+        greetingText: t('home.goodEvening', 'សាយណ្ហសួស្តី'),
+        greetingColor: 'text-indigo-500 dark:text-indigo-400',
+      };
+    } else {
+      // Night (22:00 - 04:59): Cozy Violet / Purple
+      return {
+        greetingText: t('home.goodNight', 'រាត្រីសួស្តី'),
+        greetingColor: 'text-purple-500 dark:text-purple-400',
+      };
+    }
+  }, [cambodiaHour, t]);
+
+  // Short name: exclusively the last username (given name)
+  const shortEmployeeName = useMemo(() => {
+    if (isKhmer) {
+      const khmerFull =
+        user?.employee?.khmerName ||
+        user?.employee?.displayName ||
+        user?.email?.split('@')[0] ||
+        'បុគ្គលិក';
+      return getLastName(khmerFull) || 'បុគ្គលិក';
+    } else {
+      const latinFull =
+        user?.employee?.latinName ||
+        user?.employee?.displayName ||
+        user?.employee?.firstName ||
+        user?.email?.split('@')[0] ||
+        'Colleague';
+      return getLastName(latinFull) || 'Colleague';
+    }
+  }, [isKhmer, user]);
+
+  // Localized date header
+  const todayFormatted = useMemo(() => {
+    try {
+      return new Intl.DateTimeFormat(isKhmer ? 'km-KH' : 'en-US', {
+        timeZone: 'Asia/Phnom_Penh',
+        weekday: 'long',
+        month: 'long',
+        day: 'numeric',
+      }).format(liveDate);
+    } catch {
+      return liveDate.toLocaleDateString();
+    }
+  }, [isKhmer, liveDate]);
+
+  // Live Digital Time String
+  const digitalTimeStr = useMemo(() => {
+    try {
+      return liveDate.toLocaleTimeString('en-US', {
+        timeZone: 'Asia/Phnom_Penh',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true,
+      });
+    } catch {
+      return liveDate.toLocaleTimeString();
+    }
+  }, [liveDate]);
+
+  // 1. Fetch today's attendance record
   const { data: todayRecord } = useQuery<TodayAttendance>({
     queryKey: queryKeys.attendance.today,
     queryFn: async () => {
@@ -72,18 +166,7 @@ export const HomePage: React.FC = () => {
     refetchInterval: 30000,
   });
 
-  // Fetch monthly attendance history to calculate KPI stats
-  const { data: historyData } = useQuery({
-    queryKey: ['myHistorySummary'],
-    queryFn: async () => {
-      const now = new Date();
-      const res = await apiClient.get(`/attendance/my-history?year=${now.getFullYear()}&month=${now.getMonth() + 1}`);
-      return res.data.data;
-    },
-    staleTime: 60000,
-  });
-
-  // Fetch leave balances (Array of LeaveBalanceItem)
+  // 2. Fetch leave balances (for compact highlight pill)
   const { data: leaveBalances } = useQuery<LeaveBalanceItem[]>({
     queryKey: ['myLeaveBalances'],
     queryFn: async () => {
@@ -93,7 +176,7 @@ export const HomePage: React.FC = () => {
     staleTime: 60000,
   });
 
-  // Fetch location telemetry state
+  // 3. Fetch location telemetry state
   const { data: locData } = useQuery({
     queryKey: ['myLocationStatus'],
     queryFn: async () => {
@@ -107,45 +190,35 @@ export const HomePage: React.FC = () => {
   const isInside = locData?.lastLocation?.status === 'INSIDE_OFFICE';
   const distanceMeters = locData?.lastLocation?.distanceFromOffice;
 
-  // Live timer tick for active shift
+  // Live worked duration calculation
+  const [liveWorkedTime, setLiveWorkedTime] = useState<string>('0h 0m');
+  const [workedPercentage, setWorkedPercentage] = useState<number>(0);
+
   useEffect(() => {
-    const updateTime = () => {
-      if (todayRecord?.checkInAt && !todayRecord?.checkOutAt) {
-        const checkInTime = new Date(todayRecord.checkInAt).getTime();
-        const now = new Date().getTime();
-        const diffMinutes = Math.max(0, Math.floor((now - checkInTime) / 60000));
-        const hours = Math.floor(diffMinutes / 60);
-        const mins = diffMinutes % 60;
-        setLiveWorkedTime(`${hours}h ${mins}m`);
-        setWorkedPercentage(Math.min(100, Math.round((diffMinutes / 480) * 100)));
-      } else if (todayRecord?.workedMinutes) {
-        const hours = Math.floor(todayRecord.workedMinutes / 60);
-        const mins = todayRecord.workedMinutes % 60;
-        setLiveWorkedTime(`${hours}h ${mins}m`);
-        setWorkedPercentage(Math.min(100, Math.round((todayRecord.workedMinutes / 480) * 100)));
-      } else {
-        setLiveWorkedTime('0h 0m');
-        setWorkedPercentage(0);
-      }
-    };
+    if (todayRecord?.checkInAt && !todayRecord?.checkOutAt) {
+      const checkInTime = new Date(todayRecord.checkInAt).getTime();
+      const now = new Date().getTime();
+      const diffMinutes = Math.max(0, Math.floor((now - checkInTime) / 60000));
+      const hours = Math.floor(diffMinutes / 60);
+      const mins = diffMinutes % 60;
+      setLiveWorkedTime(`${hours}h ${mins}m`);
+      setWorkedPercentage(Math.min(100, Math.round((diffMinutes / 480) * 100)));
+    } else if (todayRecord?.workedMinutes) {
+      const hours = Math.floor(todayRecord.workedMinutes / 60);
+      const mins = todayRecord.workedMinutes % 60;
+      setLiveWorkedTime(`${hours}h ${mins}m`);
+      setWorkedPercentage(Math.min(100, Math.round((todayRecord.workedMinutes / 480) * 100)));
+    } else {
+      setLiveWorkedTime('0h 0m');
+      setWorkedPercentage(0);
+    }
+  }, [todayRecord, liveDate]);
 
-    updateTime();
-    const interval = setInterval(updateTime, 30000);
-    return () => clearInterval(interval);
-  }, [todayRecord]);
+  const isCheckedIn = Boolean(todayRecord?.checkInAt);
+  const isCheckedOut = Boolean(todayRecord?.checkOutAt);
+  const isCompletedToday = isCheckedIn && isCheckedOut;
 
-  const isCheckedIn = !!todayRecord?.checkInAt;
-  const isCheckedOut = !!todayRecord?.checkOutAt;
-
-  // Monthly stats calculations
-  const historyList: any[] = historyData?.records || [];
-  const presentDays = historyList.filter((r) => r.status === 'PRESENT' || r.status === 'LATE').length;
-  const onTimeDays = historyList.filter((r) => r.status === 'PRESENT').length;
-  const onTimeRate = presentDays > 0 ? Math.round((onTimeDays / presentDays) * 100) : 100;
-  const totalWorkedMins = historyList.reduce((acc, r) => acc + (r.workedMinutes || 0), 0);
-  const totalWorkedHours = Math.round(totalWorkedMins / 60);
-
-  // Fix NaNd bug: trace through leaveBalances array
+  // Annual Leave Remaining
   const annualBalanceObj = Array.isArray(leaveBalances)
     ? leaveBalances.find((b) => b.leaveType === 'ANNUAL')
     : null;
@@ -154,22 +227,23 @@ export const HomePage: React.FC = () => {
     : '15.0';
 
   return (
-    <div className="space-y-4 pb-2 animate-fade-in">
-      {/* 1. Greeting Header & Location Proximity Pill */}
-      <div className="flex items-start justify-between gap-3 pt-1">
-        <div className="min-w-0">
-          <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100 tracking-tight leading-snug">
-            {t('home.greeting', 'Hello')}, {employeeName}
+    <div className="space-y-4 pb-4 animate-fade-in max-w-lg mx-auto select-none">
+      {/* 1. Senior Executive Greeting Header (Clean, iconless single-line layout) */}
+      <div className="flex items-center justify-between gap-3 pt-1 px-0.5">
+        <div className="min-w-0 flex-1">
+          <h1 className="text-lg sm:text-xl font-black tracking-tight leading-tight truncate">
+            <span className={`${greetingColor} font-bold`}>{greetingText}, </span>
+            <span className="text-slate-900 dark:text-slate-100 font-black">{shortEmployeeName}</span>
           </h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400 font-normal mt-0.5">
+          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5 truncate">
             {todayFormatted}
           </p>
         </div>
 
-        {/* Location Status Pill */}
+        {/* Office Proximity Pill */}
         <Link to="/location-privacy" className="flex-shrink-0">
           <div
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-medium border transition-colors shadow-xs ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold border transition-all duration-200 shadow-2xs ${
               isLocationActive
                 ? isInside
                   ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/60'
@@ -178,273 +252,230 @@ export const HomePage: React.FC = () => {
             }`}
           >
             <span
-              className={`w-1.5 h-1.5 rounded-full ${
-                isLocationActive ? (isInside ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500') : 'bg-slate-400'
+              className={`w-2 h-2 rounded-full ${
+                isLocationActive
+                  ? isInside
+                    ? 'bg-emerald-500 animate-pulse'
+                    : 'bg-amber-500'
+                  : 'bg-slate-400'
               }`}
             />
-            <span className="font-medium">
+            <span>
               {isLocationActive
                 ? isInside
-                  ? `${t('status.INSIDE_OFFICE')} ${distanceMeters ? `(±${distanceMeters}m)` : ''}`
-                  : t('status.OUTSIDE_OFFICE')
-                : t('status.LOCATION_INACTIVE')}
+                  ? `${t('status.INSIDE_OFFICE', 'ក្នុងតំបន់')} ${distanceMeters ? `(±${distanceMeters}m)` : ''}`
+                  : t('status.OUTSIDE_OFFICE', 'ក្រៅតំបន់')
+                : t('status.LOCATION_INACTIVE', 'GPS អសកម្ម')}
             </span>
           </div>
         </Link>
       </div>
 
-      {/* 2. Today's Attendance Overview Card */}
-      <Card className="p-4 sm:p-5 border border-slate-100 dark:border-dark-border space-y-4">
+      {/* 2. Premium Hero Attendance & Punch Station Card */}
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-b from-white via-white to-slate-50/70 dark:from-dark-surface dark:via-dark-surface dark:to-dark-elevated border border-slate-200/80 dark:border-dark-border shadow-[0_8px_30px_rgb(0,0,0,0.05)] dark:shadow-none p-5 sm:p-6 space-y-4">
+        {/* Subtle Ambient Glow */}
+        <div className="absolute -top-16 -right-16 w-36 h-36 bg-brand-500/10 dark:bg-brand-500/15 rounded-full blur-3xl pointer-events-none" />
+
+        {/* Card Header: Live Cambodia Clock + Attendance Status Badge */}
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-brand-50 dark:bg-brand-950/60 text-brand-600 dark:text-brand-400 flex items-center justify-center">
-              <Clock3 className="w-5 h-5 stroke-[2]" />
-            </div>
-            <div>
-              <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                {t('home.todayAttendance', "Today's Attendance")}
-              </h2>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 font-normal">
-                {t('home.shiftHours', 'Shift 08:00 AM – 05:00 PM')}
-              </p>
+          <div className="space-y-0.5">
+            <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+              <Clock3 className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400" />
+              <span>{t('home.todayAttendance', 'វត្តមានថ្ងៃនេះ')}</span>
+            </span>
+            <div className="text-xl font-black text-slate-900 dark:text-slate-100 font-mono tracking-tight">
+              {digitalTimeStr}
             </div>
           </div>
 
           <Badge
             status={
-              isCheckedOut
+              isCompletedToday
                 ? todayRecord?.status || 'PRESENT'
                 : isCheckedIn
                 ? 'PRESENT'
                 : 'NOT_RECORDED'
             }
-            size="sm"
+            size="md"
           />
         </div>
 
-        {/* Punch Time Details Grid */}
-        <div className="grid grid-cols-2 gap-2.5">
-          <div className="bg-slate-50/80 dark:bg-dark-elevated/60 p-3 rounded-xl border border-slate-100 dark:border-dark-border/60">
-            <span className="text-[11px] font-normal text-slate-500 dark:text-slate-400 block mb-0.5">
-              {t('home.checkInTime', 'Check-In')}
-            </span>
-            <span className="text-base font-semibold text-slate-900 dark:text-slate-100 tabular-nums">
+        {/* Dual Punch Metrics Grid */}
+        <div className="grid grid-cols-2 gap-3">
+          {/* Check-In Metric */}
+          <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-dark-elevated/70 border border-slate-100 dark:border-dark-border/80 relative overflow-hidden">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                {t('home.checkInTime', 'ម៉ោងស្កេនចូល')}
+              </span>
+              <LogIn className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+            </div>
+            <div className="text-lg font-bold text-slate-900 dark:text-slate-100 font-mono tracking-tight">
               {todayRecord?.checkInAt
-                ? new Date(todayRecord.checkInAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                ? new Date(todayRecord.checkInAt).toLocaleTimeString([], {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })
                 : '— : —'}
-            </span>
+            </div>
             {todayRecord?.lateMinutes ? (
-              <span className="text-[10px] font-medium text-amber-600 dark:text-amber-400 block mt-0.5">
-                +{todayRecord.lateMinutes}m {t('home.lateLabel', 'Late')}
+              <span className="inline-block mt-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400">
+                +{todayRecord.lateMinutes}m {t('home.lateLabel', 'មកយឺត')}
               </span>
             ) : null}
           </div>
 
-          <div className="bg-slate-50/80 dark:bg-dark-elevated/60 p-3 rounded-xl border border-slate-100 dark:border-dark-border/60">
-            <span className="text-[11px] font-normal text-slate-500 dark:text-slate-400 block mb-0.5">
-              {t('home.checkOutTime', 'Check-Out')}
-            </span>
-            <span className="text-base font-semibold text-slate-900 dark:text-slate-100 tabular-nums">
+          {/* Check-Out Metric */}
+          <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-dark-elevated/70 border border-slate-100 dark:border-dark-border/80 relative overflow-hidden">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                {t('home.checkOutTime', 'ម៉ោងស្កេនចេញ')}
+              </span>
+              <LogOut className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400" />
+            </div>
+            <div className="text-lg font-bold text-slate-900 dark:text-slate-100 font-mono tracking-tight">
               {todayRecord?.checkOutAt
-                ? new Date(todayRecord.checkOutAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                ? new Date(todayRecord.checkOutAt).toLocaleTimeString([], {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })
                 : '— : —'}
-            </span>
-            <span className="text-[10px] text-slate-400 dark:text-slate-500 block mt-0.5 font-normal">
-              {isCheckedOut
-                ? t('home.completed', 'Completed')
+            </div>
+            <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium block mt-1">
+              {isCompletedToday
+                ? t('home.completed', 'បានបញ្ចប់')
                 : isCheckedIn
-                ? t('home.workingShift', 'Working Shift')
-                : t('home.awaitingPunch', 'Awaiting Punch')}
+                ? t('home.workingShift', 'កំពុងធ្វើការ')
+                : t('home.awaitingPunch', 'រង់ចាំការស្កេន')}
             </span>
           </div>
         </div>
 
-        {/* Live Progress Bar if checked in */}
+        {/* Live Work Progress Bar (Active during shift) */}
         {isCheckedIn && (
           <div className="space-y-1.5 pt-1">
             <div className="flex items-center justify-between text-xs">
-              <span className="text-slate-500 dark:text-slate-400 font-normal">
-                {t('home.workedDuration', 'Worked Duration')}
+              <span className="text-slate-500 dark:text-slate-400 font-medium">
+                {t('home.workedDuration', 'ម៉ោងធ្វើការសរុប')}
               </span>
-              <span className="font-semibold text-brand-600 dark:text-brand-400 tabular-nums">
+              <span className="font-bold text-brand-600 dark:text-brand-400 font-mono">
                 {liveWorkedTime} / 8h
               </span>
             </div>
-            <div className="w-full bg-slate-100 dark:bg-dark-elevated h-2 rounded-full overflow-hidden">
+            <div className="w-full bg-slate-100 dark:bg-dark-elevated h-2.5 rounded-full overflow-hidden p-0.5">
               <div
-                className="bg-brand-600 h-full rounded-full transition-all duration-500"
+                className="bg-gradient-to-r from-brand-600 to-emerald-500 h-full rounded-full transition-all duration-500 shadow-xs"
                 style={{ width: `${workedPercentage}%` }}
               />
             </div>
           </div>
         )}
 
-        {/* Prominent Instant Scan QR Punch Action */}
+        {/* Primary Instant Check-In / Check-Out Call to Action */}
         <Link
           to="/scan"
-          className="w-full py-3 px-4 bg-brand-600 hover:bg-brand-700 active:bg-brand-800 text-white rounded-xl font-semibold text-xs flex items-center justify-center gap-2 shadow-xs active:scale-[0.99] transition-all"
+          className={`w-full py-3.5 px-4 rounded-2xl font-bold text-sm flex items-center justify-center gap-2.5 transition-all duration-200 active:scale-[0.98] shadow-md ${
+            isCompletedToday
+              ? 'bg-slate-100 dark:bg-dark-elevated text-slate-600 dark:text-slate-300 hover:bg-slate-200'
+              : isCheckedIn
+              ? 'bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white shadow-orange-500/25'
+              : 'bg-gradient-to-r from-brand-600 to-blue-600 hover:from-brand-700 hover:to-blue-700 text-white shadow-brand-500/30 ring-2 ring-brand-500/20'
+          }`}
         >
-          <QrCode className="w-4 h-4 stroke-[2.2]" />
-          <span>{t('home.scanAttendance', 'Scan Attendance QR')}</span>
+          {isCompletedToday ? (
+            <>
+              <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+              <span>{t('attendance.alreadyCompleted', 'បានបំពេញវត្តមានថ្ងៃនេះរួចរាល់')}</span>
+            </>
+          ) : isCheckedIn ? (
+            <>
+              <Fingerprint className="w-5 h-5 animate-pulse" />
+              <span>{t('attendance.punchOutBtn', 'ចុច Check-Out ចេញពីធ្វើការ')}</span>
+            </>
+          ) : (
+            <>
+              <Fingerprint className="w-5 h-5 animate-pulse" />
+              <span>{t('attendance.punchInBtn', 'ចុច Check-In ចូលធ្វើការ')}</span>
+            </>
+          )}
         </Link>
-      </Card>
-
-      {/* 3. Monthly Metrics & Performance KPI Grid */}
-      <div className="space-y-2 pt-1">
-        <div className="flex items-center justify-between px-0.5">
-          <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-            {t('home.monthlyOverview', 'Monthly Overview')}
-          </h2>
-          <Link to="/attendance" className="text-xs font-medium text-brand-600 dark:text-brand-400 hover:underline">
-            {t('common.viewAll', 'View All')}
-          </Link>
-        </div>
-
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-          {/* Days Present */}
-          <Card padding="sm" className="p-3.5 border border-slate-100 dark:border-dark-border">
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-[11px] font-normal text-slate-500 dark:text-slate-400">
-                {t('home.present', 'Present')}
-              </span>
-              <div className="p-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400">
-                <CheckCircle2 className="w-3.5 h-3.5 stroke-[2]" />
-              </div>
-            </div>
-            <p className="text-xl font-bold text-slate-900 dark:text-slate-100 tabular-nums">
-              {presentDays} <span className="text-xs font-normal text-slate-400">{t('home.days', 'Days')}</span>
-            </p>
-          </Card>
-
-          {/* On-Time Rate */}
-          <Card padding="sm" className="p-3.5 border border-slate-100 dark:border-dark-border">
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-[11px] font-normal text-slate-500 dark:text-slate-400">
-                {t('home.onTime', 'On-Time')}
-              </span>
-              <div className="p-1 rounded-lg bg-brand-50 dark:bg-brand-950/50 text-brand-600 dark:text-brand-400">
-                <TrendingUp className="w-3.5 h-3.5 stroke-[2]" />
-              </div>
-            </div>
-            <p className="text-xl font-bold text-slate-900 dark:text-slate-100 tabular-nums">
-              {onTimeRate}%
-            </p>
-          </Card>
-
-          {/* Total Worked Hours */}
-          <Card padding="sm" className="p-3.5 border border-slate-100 dark:border-dark-border">
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-[11px] font-normal text-slate-500 dark:text-slate-400">
-                {t('home.totalHours', 'Total Hours')}
-              </span>
-              <div className="p-1 rounded-lg bg-purple-50 dark:bg-purple-950/50 text-purple-600 dark:text-purple-400">
-                <Hourglass className="w-3.5 h-3.5 stroke-[2]" />
-              </div>
-            </div>
-            <p className="text-xl font-bold text-slate-900 dark:text-slate-100 tabular-nums">
-              {totalWorkedHours}h
-            </p>
-          </Card>
-
-          {/* Annual Leave Available (Fixed NaNd bug) */}
-          <Card padding="sm" className="p-3.5 border border-slate-100 dark:border-dark-border">
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-[11px] font-normal text-slate-500 dark:text-slate-400">
-                {t('home.leaveBalance', 'Leave Balance')}
-              </span>
-              <div className="p-1 rounded-lg bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400">
-                <CalendarDays className="w-3.5 h-3.5 stroke-[2]" />
-              </div>
-            </div>
-            <p className="text-xl font-bold text-slate-900 dark:text-slate-100 tabular-nums">
-              {annualRemaining} <span className="text-xs font-normal text-slate-400">d</span>
-            </p>
-          </Card>
-        </div>
       </div>
 
-      {/* 4. Today's Working Schedule Timeline */}
-      <Card className="p-4 border border-slate-100 dark:border-dark-border space-y-3">
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-          {t('home.shiftSchedule', "Today's Shift Schedule")}
-        </h3>
+      {/* 3. Daily Shift Schedule Timeline Card (8:00 AM - 5:30 PM & Lunch 11:30 - 1:00 PM) */}
+      <Card className="p-4 sm:p-5 border border-slate-200/80 dark:border-dark-border rounded-3xl space-y-3.5 bg-white dark:bg-dark-surface">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-xl bg-brand-50 dark:bg-brand-950/60 text-brand-600 dark:text-brand-400 flex items-center justify-center">
+              <Calendar className="w-4 h-4" />
+            </div>
+            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300">
+              {t('home.shiftSchedule', 'កាលវិភាគការងារថ្ងៃនេះ')}
+            </h2>
+          </div>
+          <span className="text-[11px] font-semibold text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-brand-950/60 px-2.5 py-0.5 rounded-full border border-brand-200/60 dark:border-brand-800/40">
+            08:00 – 17:30
+          </span>
+        </div>
 
-        <div className="grid grid-cols-3 gap-2 text-center text-xs">
-          <div className="p-2.5 rounded-xl bg-slate-50/70 dark:bg-dark-elevated/50 border border-slate-100 dark:border-dark-border/60">
-            <span className="text-[10px] text-slate-400 dark:text-slate-500 block font-normal">
-              {t('home.morningStart', 'Morning Start')}
+        {/* 3-Step Workday Visual Timeline */}
+        <div className="grid grid-cols-3 gap-2 text-center">
+          {/* Step 1: Morning Start */}
+          <div className="p-3 rounded-2xl bg-slate-50 dark:bg-dark-elevated/60 border border-slate-100 dark:border-dark-border/60">
+            <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium block">
+              {t('home.morningStart', 'ចូលពេលព្រឹក')}
             </span>
-            <span className="font-semibold text-slate-800 dark:text-slate-200 tabular-nums mt-0.5 block">
+            <span className="font-bold text-slate-900 dark:text-slate-100 font-mono text-xs mt-1 block">
               08:00 AM
             </span>
           </div>
 
-          <div className="p-2.5 rounded-xl bg-slate-50/70 dark:bg-dark-elevated/50 border border-slate-100 dark:border-dark-border/60">
-            <span className="text-[10px] text-slate-400 dark:text-slate-500 block font-normal">
-              {t('home.lunchBreak', 'Lunch Break')}
+          {/* Step 2: Lunch Break */}
+          <div className="p-3 rounded-2xl bg-slate-50 dark:bg-dark-elevated/60 border border-slate-100 dark:border-dark-border/60">
+            <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium block">
+              {t('home.lunchBreak', 'សម្រាកថ្ងៃត្រង់')}
             </span>
-            <span className="font-semibold text-slate-800 dark:text-slate-200 tabular-nums mt-0.5 block">
-              12:00 – 13:00
+            <span className="font-bold text-slate-900 dark:text-slate-100 font-mono text-xs mt-1 block">
+              11:30 – 13:00
             </span>
           </div>
 
-          <div className="p-2.5 rounded-xl bg-slate-50/70 dark:bg-dark-elevated/50 border border-slate-100 dark:border-dark-border/60">
-            <span className="text-[10px] text-slate-400 dark:text-slate-500 block font-normal">
-              {t('home.shiftEnd', 'Shift End')}
+          {/* Step 3: Shift End */}
+          <div className="p-3 rounded-2xl bg-slate-50 dark:bg-dark-elevated/60 border border-slate-100 dark:border-dark-border/60">
+            <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium block">
+              {t('home.shiftEnd', 'ចេញពេលល្ងាច')}
             </span>
-            <span className="font-semibold text-slate-800 dark:text-slate-200 tabular-nums mt-0.5 block">
-              05:00 PM
+            <span className="font-bold text-slate-900 dark:text-slate-100 font-mono text-xs mt-1 block">
+              05:30 PM
             </span>
           </div>
         </div>
       </Card>
 
-      {/* 5. Self-Service Quick Action Portals */}
-      <div className="space-y-2 pt-1">
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 px-0.5">
-          {t('home.selfService', 'Quick Actions')}
-        </h2>
+      {/* 4. Compact Clean Leave Balance Highlight Bar */}
+      <Link to="/leave" className="block">
+        <div className="flex items-center justify-between p-3.5 px-4 rounded-2xl bg-gradient-to-r from-brand-50/70 via-white to-purple-50/70 dark:from-dark-elevated dark:via-dark-surface dark:to-dark-elevated border border-slate-200/80 dark:border-dark-border hover:border-brand-300 dark:hover:border-brand-700 transition-all shadow-2xs group">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-brand-500/10 text-brand-600 dark:text-brand-400 flex items-center justify-center">
+              <Palmtree className="w-4 h-4" />
+            </div>
+            <div>
+              <span className="text-xs font-bold text-slate-800 dark:text-slate-200 block">
+                {t('home.leaveBalance', 'ច្បាប់ប្រចាំឆ្នាំនៅសល់')}
+              </span>
+              <span className="text-[10px] text-slate-400 dark:text-slate-500">
+                {t('home.daysRemaining', 'សិទ្ធិឈប់សម្រាកដែលអាចប្រើបាន')}
+              </span>
+            </div>
+          </div>
 
-        <div className="grid grid-cols-2 gap-2.5">
-          <Link to="/leave">
-            <Card
-              padding="sm"
-              className="p-3.5 hover:border-slate-300 dark:hover:border-slate-700 transition-colors flex items-center gap-3 border border-slate-100 dark:border-dark-border"
-            >
-              <div className="p-2.5 rounded-xl bg-brand-50 dark:bg-brand-950/60 text-brand-600 dark:text-brand-400 flex-shrink-0">
-                <CalendarOff className="w-4 h-4 stroke-[2]" />
-              </div>
-              <div className="space-y-0.5 min-w-0">
-                <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 block truncate">
-                  {t('home.applyLeave', 'Apply Leave')}
-                </span>
-                <span className="text-[10px] text-slate-400 dark:text-slate-500 font-normal block truncate">
-                  {annualRemaining} {t('home.daysRemaining', 'days left')}
-                </span>
-              </div>
-            </Card>
-          </Link>
-
-          <Link to="/out">
-            <Card
-              padding="sm"
-              className="p-3.5 hover:border-slate-300 dark:hover:border-slate-700 transition-colors flex items-center gap-3 border border-slate-100 dark:border-dark-border"
-            >
-              <div className="p-2.5 rounded-xl bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 flex-shrink-0">
-                <DoorOpen className="w-4 h-4 stroke-[2]" />
-              </div>
-              <div className="space-y-0.5 min-w-0">
-                <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 block truncate">
-                  {t('home.outPermission', 'Out Permission')}
-                </span>
-                <span className="text-[10px] text-slate-400 dark:text-slate-500 font-normal block truncate">
-                  {t('home.outPermissionDesc', 'Temporary exit')}
-                </span>
-              </div>
-            </Card>
-          </Link>
+          <div className="flex items-center gap-2">
+            <span className="text-base font-black text-brand-600 dark:text-brand-400 font-mono">
+              {annualRemaining} <span className="text-xs font-normal text-slate-400">{t('home.days', 'ថ្ងៃ')}</span>
+            </span>
+            <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
+          </div>
         </div>
-      </div>
+      </Link>
     </div>
   );
 };

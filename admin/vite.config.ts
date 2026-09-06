@@ -4,7 +4,7 @@ import path from 'path';
 
 export default defineConfig({
   define: {
-    __APP_VERSION__: JSON.stringify(process.env.npm_package_version || '1.1.0'),
+    __APP_VERSION__: JSON.stringify(process.env.npm_package_version || '1.2.0'),
     __BUILD_DATE__: JSON.stringify(new Date().toISOString().split('T')[0]),
   },
   plugins: [react()],

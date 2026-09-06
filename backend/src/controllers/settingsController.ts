@@ -46,10 +46,15 @@ export class SettingsController {
       maxGpsAccuracyMeters,
       qrExpirationSeconds,
       qrExpiresInSeconds,
+      workStartTime,
+      workEndTime,
+      breakStartTime,
+      breakEndTime,
       lateGracePeriodMinutes,
       earlyLeaveGraceMinutes,
       checkInAllowedBeforeMinutes,
       checkOutAllowedAfterMinutes,
+      checkInMethod,
     } = req.body;
 
     const previous = await prisma.companySettings.findUnique({ where: { id: 'default' } });
@@ -68,6 +73,10 @@ export class SettingsController {
         allowedRadiusMeters: allowedRadiusMeters !== undefined ? parseFloat(allowedRadiusMeters) : undefined,
         gpsAccuracyThresholdMeters: finalAccuracy !== undefined ? parseFloat(finalAccuracy) : undefined,
         qrExpirationSeconds: finalQrExp !== undefined ? parseInt(finalQrExp, 10) : undefined,
+        workStartTime: workStartTime !== undefined ? String(workStartTime) : undefined,
+        workEndTime: workEndTime !== undefined ? String(workEndTime) : undefined,
+        breakStartTime: breakStartTime !== undefined ? (breakStartTime ? String(breakStartTime) : null) : undefined,
+        breakEndTime: breakEndTime !== undefined ? (breakEndTime ? String(breakEndTime) : null) : undefined,
         lateGracePeriodMinutes:
           lateGracePeriodMinutes !== undefined ? parseInt(lateGracePeriodMinutes, 10) : undefined,
         earlyLeaveGraceMinutes:
@@ -76,6 +85,7 @@ export class SettingsController {
           checkInAllowedBeforeMinutes !== undefined ? parseInt(checkInAllowedBeforeMinutes, 10) : undefined,
         checkOutAllowedAfterMinutes:
           checkOutAllowedAfterMinutes !== undefined ? parseInt(checkOutAllowedAfterMinutes, 10) : undefined,
+        checkInMethod: checkInMethod !== undefined ? String(checkInMethod) : undefined,
       },
       create: {
         id: 'default',
@@ -87,9 +97,36 @@ export class SettingsController {
         allowedRadiusMeters: allowedRadiusMeters ? parseFloat(allowedRadiusMeters) : 100,
         gpsAccuracyThresholdMeters: finalAccuracy ? parseFloat(finalAccuracy) : 50,
         qrExpirationSeconds: finalQrExp ? parseInt(finalQrExp, 10) : 60,
-        lateGracePeriodMinutes: lateGracePeriodMinutes ? parseInt(lateGracePeriodMinutes, 10) : 10,
+        workStartTime: workStartTime || '08:00',
+        workEndTime: workEndTime || '17:30',
+        breakStartTime: breakStartTime !== undefined ? breakStartTime : '11:30',
+        breakEndTime: breakEndTime !== undefined ? breakEndTime : '13:00',
+        lateGracePeriodMinutes: lateGracePeriodMinutes !== undefined ? parseInt(lateGracePeriodMinutes, 10) : 0,
+        checkInMethod: checkInMethod ? String(checkInMethod) : 'BOTH',
       },
     });
+
+    // Synchronize default schedule days if work hours were updated
+    if (workStartTime || workEndTime || breakStartTime !== undefined || breakEndTime !== undefined) {
+      try {
+        const defaultSchedule = await prisma.schedule.findFirst({
+          where: { isDefault: true },
+        });
+        if (defaultSchedule) {
+          await prisma.scheduleDay.updateMany({
+            where: { scheduleId: defaultSchedule.id, isWorkingDay: true },
+            data: {
+              startTime: workStartTime || undefined,
+              endTime: workEndTime || undefined,
+              breakStartTime: breakStartTime !== undefined ? (breakStartTime ? String(breakStartTime) : null) : undefined,
+              breakEndTime: breakEndTime !== undefined ? (breakEndTime ? String(breakEndTime) : null) : undefined,
+            },
+          });
+        }
+      } catch (scheduleSyncErr) {
+        console.warn('Failed to sync schedule days with company settings:', scheduleSyncErr);
+      }
+    }
 
     await createAuditLog({
       actorId: req.user!.userId,

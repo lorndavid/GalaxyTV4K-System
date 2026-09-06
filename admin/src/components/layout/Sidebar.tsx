@@ -137,6 +137,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
               <LogOut className="w-4 h-4" />
             </button>
           </div>
+          <div className="mt-2.5 px-1.5 flex items-center justify-between text-[10px] text-slate-400 dark:text-slate-500 font-mono">
+            <span>Galaxy TV4K HR</span>
+            <span className="font-semibold text-slate-500 dark:text-slate-400 bg-slate-200/60 dark:bg-slate-800/80 px-1.5 py-0.5 rounded">
+              v{typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '1.2.0'}
+            </span>
+          </div>
         </div>
       </aside>
 

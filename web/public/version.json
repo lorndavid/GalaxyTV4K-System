@@ -1,10 +1,11 @@
 {
-  "version": "1.1.0",
-  "build": "20260903.01",
-  "releaseDate": "2026-09-03",
+  "version": "1.2.0",
+  "build": "20260907.01",
+  "releaseDate": "2026-09-07",
   "releaseNotes": [
-    "Production PWA auto-update notification system",
-    "Universal camera QR scanner with automatic fallback",
-    "Redesigned Employee Profile & Settings with 5 color themes"
+    "Enterprise Shift Timing & 08:01 Strict Late Attendance Rule",
+    "Smart Check-In Window (Opens 07:00 AM) & Check-In Mode Switch (QR / Zone)",
+    "MinIO Profile Photo Upload with Local Fallback & Multi-Daily Replacement",
+    "Khmer Native Name Extraction & Cambodian Time-of-Day Greetings"
   ]
 }

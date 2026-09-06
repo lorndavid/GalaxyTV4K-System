@@ -247,6 +247,90 @@ export class TelegramService {
   }
 
   /**
+   * Helper: Derive work days from study day
+   */
+  public static getWorkDaysFromStudyDay(studyDay?: string | null): string {
+    if (!studyDay || !studyDay.trim() || studyDay.includes('គ្មាន') || studyDay.includes('None')) {
+      return 'ចន្ទ - សៅរ៍ (ពេញម៉ោង)';
+    }
+    const dayMap = [
+      { name: 'ចន្ទ', en: 'Mon' },
+      { name: 'អង្គារ', en: 'Tue' },
+      { name: 'ពុធ', en: 'Wed' },
+      { name: 'ព្រហ', en: 'Thu' },
+      { name: 'សុក្រ', en: 'Fri' },
+      { name: 'សៅរ៍', en: 'Sat' },
+      { name: 'អាទិត្យ', en: 'Sun' },
+    ];
+    const s = studyDay.trim();
+    const workDays = dayMap.filter((d) => !s.includes(d.name));
+    if (workDays.length === 0) return 'គ្មាន';
+    return workDays.map((d) => d.name).join(' - ');
+  }
+
+  /**
+   * Employee Information & Work/Study Schedule Update Notification
+   */
+  public static async notifyEmployeeUpdated(data: {
+    employeeName: string;
+    employeeCode: string;
+    department?: string | null;
+    position?: string | null;
+    status: string;
+    studyDay?: string | null;
+    workDays?: string | null;
+    changedFields?: string[];
+    updatedBy?: string | null;
+  }): Promise<void> {
+    const timeStr = new Date().toLocaleTimeString('en-US', {
+      timeZone: 'Asia/Phnom_Penh',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+    });
+    const dateStr = new Date().toLocaleDateString('en-GB', {
+      timeZone: 'Asia/Phnom_Penh',
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    });
+
+    const statusBadge =
+      data.status === 'ACTIVE'
+        ? '🟢 សកម្ម (ACTIVE)'
+        : data.status === 'SUSPENDED'
+        ? '🟠 ផ្អាកបណ្តោះអាសន្ន (SUSPENDED)'
+        : '🔴 អសកម្ម (INACTIVE)';
+
+    const studyDayText = data.studyDay && data.studyDay.trim() && !data.studyDay.includes('គ្មាន')
+      ? data.studyDay.trim()
+      : 'គ្មាន / ពេញម៉ោង (None / Full-time)';
+    const calculatedWorkDays = data.workDays || this.getWorkDaysFromStudyDay(data.studyDay);
+
+    const changedSummary = data.changedFields && data.changedFields.length > 0
+      ? `📝 <b>ផ្នែកកែប្រែ:</b> ${data.changedFields.join(', ')}`
+      : '';
+
+    const msg = [
+      `🔔 <b>បច្ចុប្បន្នភាពបុគ្គលិក / Employee Updated</b>`,
+      `━━━━━━━━━━━━━━━━━━`,
+      `👤 <b>ឈ្មោះ:</b> ${data.employeeName} (<code>${data.employeeCode}</code>)`,
+      data.department ? `🏢 <b>ផ្នែក:</b> ${data.department}` : '',
+      data.position ? `💼 <b>តួនាទី:</b> ${data.position}` : '',
+      `🎓 <b>ថ្ងៃរៀន:</b> ${studyDayText}`,
+      `🛠 <b>ថ្ងៃធ្វើការ:</b> ${calculatedWorkDays}`,
+      `⚡ <b>ស្ថានភាព:</b> ${statusBadge}`,
+      changedSummary,
+      data.updatedBy ? `👨‍💻 <b>កែប្រែដោយ:</b> ${data.updatedBy}` : '',
+      `⏰ <b>កាលបរិច្ឆេទ:</b> ${dateStr} ${timeStr}`,
+    ]
+      .filter(Boolean)
+      .join('\n');
+
+    await this.broadcastMessage(msg, 'system');
+  }
+
+  /**
    * Helper: Convert Arabic digits to Khmer digits
    */
   public static toKhmerDigits(num: number | string): string {

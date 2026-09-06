@@ -21,7 +21,8 @@
     "inactive": "អសកម្ម",
     "copied": "បានចម្លងរួចរាល់",
     "save": "រក្សាទុកការផ្លាស់ប្តូរ",
-    "close": "បិទ"
+    "close": "បិទ",
+    "checkIn": "វត្តមាន"
   },
   "auth": {
     "welcome": "ប្រព័ន្ធ Galaxy TV4K",
@@ -36,9 +37,13 @@
   },
   "home": {
     "greeting": "សួស្តី",
+    "goodMorning": "អរុណសួស្តី",
+    "goodAfternoon": "ទិវាសួស្តី",
+    "goodEvening": "សាយណ្ហសួស្តី",
+    "goodNight": "រាត្រីសួស្តី",
     "todayShift": "វេនការងារថ្ងៃនេះ",
     "todayAttendance": "វត្តមានថ្ងៃនេះ",
-    "shiftHours": "វេន 08:00 ព្រឹក – 05:00 ល្ងាច",
+    "shiftHours": "វេន 08:00 ព្រឹក – 05:30 ល្ងាច",
     "checkInTime": "ម៉ោងស្កេនចូល",
     "checkOutTime": "ម៉ោងស្កេនចេញ",
     "lateLabel": "មកយឺត",
@@ -101,7 +106,19 @@
     "gpsUnavailable": "មិនអាចកំណត់ទីតាំងរបស់អ្នកបានទេ។ សូមបើកទីតាំង (GPS) ហើយព្យាយាមម្តងទៀត។",
     "qrNotFoundInPhoto": "រកមិនឃើញកូដ QR ត្រឹមត្រូវក្នុងរូបភាពនេះទេ។",
     "permissionDeniedTitle": "ត្រូវការសិទ្ធិប្រើកាមេរ៉ា",
-    "scanFailedTitle": "ការជូនដំណឹងវត្តមាន"
+    "scanFailedTitle": "ការជូនដំណឹងវត្តមាន",
+    "oneClickCheckIn": "ចុចកត់ត្រាវត្តមាន",
+    "qrScanTab": "ស្កេនកូដ QR",
+    "punchInBtn": "ចុច Check-In ចូលធ្វើការ",
+    "punchOutBtn": "ចុច Check-Out ចេញពីធ្វើការ",
+    "alreadyCompleted": "បានបំពេញវត្តមានថ្ងៃនេះរួចរាល់",
+    "insideOfficeZone": "ស្ថិតក្នុងតំបន់ការិយាល័យ",
+    "outsideOfficeZone": "នៅក្រៅតំបន់ការិយាល័យ",
+    "distanceFromOffice": "ចម្ងាយ {{meters}}m ពីការិយាល័យ",
+    "officeZonePerimeter": "រង្វង់កំណត់ {{radius}}m",
+    "approachOfficeNotice": "សូមចូលទៅជិតបរិវេណការិយាល័យ ដើម្បីអាចកត់ត្រាវត្តមានបាន។",
+    "clickToRecordDesc": "អ្នកស្ថិតនៅក្នុងបរិវេណការិយាល័យរួចរាល់ហើយ សូមចុចប៊ូតុងខាងក្រោមដើម្បីកត់ត្រាវត្តមាន។",
+    "clockTitle": "ម៉ោងកម្ពុជាបច្ចុប្បន្ន"
   },
   "leave": {
     "title": "ការគ្រប់គ្រងការសុំច្បាប់",

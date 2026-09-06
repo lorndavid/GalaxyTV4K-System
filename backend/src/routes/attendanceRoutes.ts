@@ -12,6 +12,7 @@ router.get('/stream', AttendanceController.stream);
 // Employee scan endpoint (supports /scan and /record)
 router.post('/scan', requireEmployee, AttendanceController.scan);
 router.post('/record', requireEmployee, AttendanceController.scan);
+router.post('/zone-checkin', requireEmployee, AttendanceController.zoneCheckIn);
 
 // Employee view today status & history
 router.get('/my-today', requireEmployee, AttendanceController.getMyToday);

@@ -10,7 +10,7 @@ import { BottomNav } from './BottomNav';
 import { ThemeToggle } from '../ui/ThemeToggle';
 import { LanguageSwitcher } from '../ui/LanguageSwitcher';
 import { AvatarUploadModal } from '../profile/AvatarUploadModal';
-import { WifiOff, Camera } from 'lucide-react';
+import { WifiOff } from 'lucide-react';
 
 export const EmployeeLayout: React.FC = () => {
   const { isAuthenticated, isLoading, user } = useAuth();
@@ -33,7 +33,9 @@ export const EmployeeLayout: React.FC = () => {
     return <Navigate to="/login" replace />;
   }
 
-  const employeeName = user?.employee?.displayName || user?.email?.split('@')[0] || 'Employee';
+  const employeeName = isKhmer
+    ? (user?.employee?.khmerName || user?.employee?.displayName || user?.email?.split('@')[0] || 'បុគ្គលិក')
+    : (user?.employee?.latinName || user?.employee?.displayName || user?.email?.split('@')[0] || 'Employee');
   const profilePhoto = user?.employee?.profilePhoto;
 
   const getInitials = (text: string) => {
@@ -80,22 +82,13 @@ export const EmployeeLayout: React.FC = () => {
                   </span>
                 )}
               </div>
-              <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-brand-600 text-white flex items-center justify-center shadow-xs ring-2 ring-white dark:ring-dark-surface">
-                <Camera className="w-2.5 h-2.5" />
-              </div>
             </button>
 
-            {/* Clean Employee Name & Active Status (Removed EMP-001 • ព័ត៌មានសង្គម) */}
+            {/* Clean Employee Name */}
             <div className="min-w-0 flex-1">
               <p className="text-sm font-bold text-slate-900 dark:text-slate-100 leading-tight truncate">
                 {employeeName}
               </p>
-              <div className="flex items-center gap-1.5 mt-0.5">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
-                  {isKhmer ? 'សកម្មក្នុងប្រព័ន្ធ' : 'Active Online'}
-                </span>
-              </div>
             </div>
           </div>
 

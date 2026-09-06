@@ -86,6 +86,79 @@ export class AttendanceController {
     }
   }
 
+  /**
+   * Endpoint for Employee 1-Click In-Zone Check-In / Check-Out.
+   */
+  static async zoneCheckIn(req: AuthenticatedRequest, res: Response) {
+    const employeeId = req.user?.employeeId;
+    if (!employeeId) {
+      return sendError(res, 'EMPLOYEE_REQUIRED', 'Only registered employees can submit attendance.', 403);
+    }
+
+    const { latitude, longitude, accuracy } = req.body;
+
+    if (typeof latitude !== 'number' || typeof longitude !== 'number' || typeof accuracy !== 'number') {
+      return sendError(res, 'INVALID_GPS', 'Accurate GPS coordinates and accuracy reading are required.', 400);
+    }
+
+    try {
+      const result = await AttendanceService.processZoneCheckIn({
+        employeeId,
+        latitude,
+        longitude,
+        accuracy,
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent'],
+      });
+
+      // Asynchronously trigger Telegram notification without blocking response
+      const employee = await prisma.employee.findUnique({ where: { id: employeeId } });
+      if (employee) {
+        if (result.action === 'CHECK_IN') {
+          TelegramService.notifyCheckIn({
+            employeeName: employee.displayName,
+            employeeCode: employee.employeeCode,
+            time: new Date(result.attendance.checkInAt).toLocaleTimeString('en-US', {
+              hour: '2-digit',
+              minute: '2-digit',
+              timeZone: 'Asia/Phnom_Penh',
+            }),
+            isLate: result.details.status === 'LATE',
+            lateMinutes: result.details.lateMinutes,
+            isInsideOffice: true,
+            distanceMeters: result.details.distanceFromOfficeMeters,
+            accuracyMeters: result.details.accuracyMeters,
+          }).catch((err) => console.error('[Telegram] Check-in notification error:', err));
+        } else if (result.action === 'CHECK_OUT') {
+          const hours = Math.floor(result.details.workedMinutes / 60);
+          const mins = result.details.workedMinutes % 60;
+          TelegramService.notifyCheckOut({
+            employeeName: employee.displayName,
+            employeeCode: employee.employeeCode,
+            time: new Date(result.attendance.checkOutAt).toLocaleTimeString('en-US', {
+              hour: '2-digit',
+              minute: '2-digit',
+              timeZone: 'Asia/Phnom_Penh',
+            }),
+            workedDuration: `${hours}h ${mins}m`,
+            isInsideOffice: true,
+            distanceMeters: result.details.distanceFromOfficeMeters,
+          }).catch((err) => console.error('[Telegram] Check-out notification error:', err));
+        }
+      }
+
+      return sendSuccess(res, result);
+    } catch (err: any) {
+      return sendError(
+        res,
+        err.code || 'ATTENDANCE_ERROR',
+        err.message || 'Failed to process attendance.',
+        err.status || 400,
+        err.details
+      );
+    }
+  }
+
   static async getMyToday(req: AuthenticatedRequest, res: Response) {
     const employeeId = req.user?.employeeId;
     if (!employeeId) {

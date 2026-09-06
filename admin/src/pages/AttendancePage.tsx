@@ -601,11 +601,6 @@ export const AttendancePage: React.FC = () => {
                               <div className="font-bold text-slate-900 dark:text-slate-100 text-sm">
                                 {primaryName}
                               </div>
-                              {secondaryName && (
-                                <div className="text-[11px] text-slate-400 font-medium">
-                                  {secondaryName}
-                                </div>
-                              )}
                             </div>
                           </div>
                         </td>
@@ -764,11 +759,6 @@ export const AttendancePage: React.FC = () => {
                           <div className="font-bold text-sm text-slate-900 dark:text-slate-100">
                             {primaryName}
                           </div>
-                          {secondaryName && (
-                            <div className="text-xs text-slate-400 font-medium">
-                              {secondaryName}
-                            </div>
-                          )}
                         </div>
                       </div>
 

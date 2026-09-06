@@ -1,7 +1,7 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Home, Clock3, CalendarDays, User, QrCode } from 'lucide-react';
+import { Home, Clock3, CalendarDays, User, Fingerprint } from 'lucide-react';
 
 export const BottomNav: React.FC = () => {
   const { t } = useTranslation();
@@ -63,7 +63,7 @@ export const BottomNav: React.FC = () => {
             )}
           </NavLink>
 
-          {/* 3. Center Elevated Direct Camera QR Scan Action */}
+          {/* 3. Center Elevated Attendance Check-In Action */}
           <div className="flex flex-col items-center justify-center relative -top-5 pointer-events-auto">
             <NavLink
               to="/scan"
@@ -72,12 +72,12 @@ export const BottomNav: React.FC = () => {
                   isActive ? 'ring-2 ring-brand-500 ring-offset-2 scale-105 shadow-brand-500/40 shadow-xl' : ''
                 }`
               }
-              aria-label="Scan attendance QR code"
+              aria-label="Attendance Check-In"
             >
-              <QrCode className="w-7 h-7 stroke-[2.2px]" />
+              <Fingerprint className="w-7 h-7 stroke-[2.2px]" />
             </NavLink>
             <span className="text-[10px] font-semibold text-slate-700 dark:text-slate-300 mt-0.5">
-              {t('common.qrScan', 'QR Scan')}
+              {t('common.checkIn', 'វត្តមាន')}
             </span>
           </div>
 

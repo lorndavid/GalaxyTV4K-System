@@ -30,6 +30,12 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSidebar }) => {
             <span className="w-1.5 h-1.5 rounded-full bg-success-500 animate-pulse" />
             Live Server
           </span>
+          <span
+            title="System Version"
+            className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-slate-100 dark:bg-dark-elevated text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-dark-border shadow-2xs"
+          >
+            v{typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '1.2.0'}
+          </span>
         </div>
       </div>
 

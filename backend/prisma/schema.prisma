@@ -372,7 +372,11 @@ model CompanySettings {
   allowedRadiusMeters             Float    @default(100.0)
   gpsAccuracyThresholdMeters      Float    @default(50.0)
   qrExpirationSeconds             Int      @default(60)
-  lateGracePeriodMinutes          Int      @default(10)
+  workStartTime                   String   @default("08:00")
+  workEndTime                     String   @default("17:30")
+  breakStartTime                  String?  @default("11:30")
+  breakEndTime                    String?  @default("13:00")
+  lateGracePeriodMinutes          Int      @default(0)
   earlyLeaveGraceMinutes          Int      @default(0)
   checkInAllowedBeforeMinutes     Int      @default(60)
   checkOutAllowedAfterMinutes     Int      @default(120)
@@ -384,6 +388,7 @@ model CompanySettings {
   telegramAttendanceNotifications Boolean  @default(true)
   telegramLocationNotifications   Boolean  @default(false)
   telegramDailySummary            Boolean  @default(false)
+  checkInMethod                   String   @default("BOTH") // BOTH | ZONE_CLICK | QR_SCAN
   updatedAt                       DateTime @updatedAt
 }
 

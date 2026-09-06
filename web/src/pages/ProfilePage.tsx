@@ -112,8 +112,12 @@ export const ProfilePage: React.FC = () => {
 
       {/* Profile Header Card */}
       <ProfileHeader
-        displayName={emp?.displayName || user?.email?.split('@')[0] || 'Employee'}
-        latinName={emp?.latinName}
+        displayName={
+          currentLang === 'km'
+            ? (emp?.khmerName || emp?.displayName || user?.email?.split('@')[0] || 'បុគ្គលិក')
+            : (emp?.latinName || emp?.displayName || user?.email?.split('@')[0] || 'Employee')
+        }
+        latinName={currentLang === 'km' ? emp?.latinName : emp?.khmerName}
         employeeCode={emp?.employeeCode || 'EMP-001'}
         position={emp?.position || 'Employee'}
         departmentName={emp?.department?.name || 'General Department'}

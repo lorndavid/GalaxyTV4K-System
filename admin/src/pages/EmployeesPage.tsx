@@ -1,10 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import apiClient from '../api/client';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
-import { Badge } from '../components/ui/Badge';
 import { Modal } from '../components/common/Modal';
 import { Skeleton } from '../components/ui/Skeleton';
 import { EmptyState } from '../components/ui/EmptyState';
@@ -16,16 +15,13 @@ import {
   KeyRound,
   Edit2,
   CheckCircle2,
-  Building2,
-  Clock,
-  Mail,
   Phone,
   GraduationCap,
-  Calendar,
   Briefcase,
-  UserCheck,
   Trash2,
   Sparkles,
+  ArrowUpDown,
+  Filter,
 } from 'lucide-react';
 
 interface Employee {
@@ -49,13 +45,164 @@ interface Employee {
   user?: { id: string; email: string; status: string };
 }
 
+// 7-day structure for Khmer week
+const KHMER_WEEK_DAYS = [
+  { key: 'ចន្ទ', en: 'Mon', index: 1 },
+  { key: 'អង្គារ', en: 'Tue', index: 2 },
+  { key: 'ពុធ', en: 'Wed', index: 3 },
+  { key: 'ព្រហ', en: 'Thu', index: 4 },
+  { key: 'សុក្រ', en: 'Fri', index: 5 },
+  { key: 'សៅរ៍', en: 'Sat', index: 6 },
+  { key: 'អាទិត្យ', en: 'Sun', index: 0 },
+];
+
+const STUDY_PRESETS = [
+  { label: 'សុក្រ - សៅរ៍ - អាទិត្យ (Fri - Sun)', value: 'សុក្រ-សៅរ៍-អាទិត្យ' },
+  { label: 'ព្រហ - សុក្រ (Thu - Fri)', value: 'ព្រហ-សុក្រ' },
+  { label: 'ចន្ទ - អង្គារ (Mon - Tue)', value: 'ចន្ទ-អង្គារ' },
+  { label: 'សៅរ៍ - អាទិត្យ (Sat - Sun)', value: 'សៅរ៍-អាទិត្យ' },
+  { label: 'គ្មាន / ធ្វើការពេញម៉ោង (Full Work)', value: 'គ្មាន' },
+];
+
+function computeWorkDays(studyDay?: string | null): string {
+  if (!studyDay || !studyDay.trim() || studyDay.includes('គ្មាន') || studyDay.includes('None')) {
+    return 'ចន្ទ - សៅរ៍ (ពេញម៉ោង)';
+  }
+  const s = studyDay.trim();
+  const workDays = KHMER_WEEK_DAYS.filter((d) => !s.includes(d.key));
+  if (workDays.length === 0) return 'គ្មាន';
+  return workDays.map((d) => d.key).join(' - ');
+}
+
+function isStudyDayToday(studyDay?: string | null): boolean {
+  if (!studyDay) return false;
+  const s = studyDay.trim();
+  const todayIndex = new Date().getDay(); // 0: Sun, 1: Mon, ...
+  if (todayIndex === 0 && s.includes('អាទិត្យ')) return true;
+  if (todayIndex === 1 && s.includes('ចន្ទ')) return true;
+  if (todayIndex === 2 && s.includes('អង្គារ')) return true;
+  if (todayIndex === 3 && s.includes('ពុធ')) return true;
+  if (todayIndex === 4 && (s.includes('ព្រហ') || s.includes('ព្រហស្បតិ៍'))) return true;
+  if (todayIndex === 5 && s.includes('សុក្រ')) return true;
+  if (todayIndex === 6 && s.includes('សៅរ៍')) return true;
+  return false;
+}
+
+interface ScheduleDaySelectorProps {
+  value: string;
+  onChange: (val: string) => void;
+}
+
+const ScheduleDaySelector: React.FC<ScheduleDaySelectorProps> = ({ value, onChange }) => {
+  const currentDays = useMemo(() => {
+    if (!value || value.includes('គ្មាន')) return [];
+    return KHMER_WEEK_DAYS.filter((d) => value.includes(d.key)).map((d) => d.key);
+  }, [value]);
+
+  const toggleDay = (key: string) => {
+    let next: string[];
+    if (currentDays.includes(key)) {
+      next = currentDays.filter((k) => k !== key);
+    } else {
+      next = [...currentDays, key];
+    }
+    if (next.length === 0) {
+      onChange('គ្មាន');
+    } else {
+      const ordered = KHMER_WEEK_DAYS.filter((d) => next.includes(d.key)).map((d) => d.key);
+      onChange(ordered.join('-'));
+    }
+  };
+
+  const workDaysText = useMemo(() => computeWorkDays(value), [value]);
+
+  return (
+    <div className="space-y-2.5 p-3 rounded-2xl bg-slate-50 dark:bg-dark-elevated/70 border border-slate-200 dark:border-dark-border">
+      <div className="flex items-center justify-between">
+        <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+          កាលវិភាគថ្ងៃរៀន & ថ្ងៃធ្វើការ (Work & Study Schedule)
+        </label>
+        <span className="text-[10px] text-slate-400 font-medium">ចុចលើថ្ងៃដើម្បីជ្រើសរើស</span>
+      </div>
+
+      {/* Quick Presets */}
+      <div className="flex flex-wrap gap-1.5">
+        {STUDY_PRESETS.map((preset) => {
+          const isSelected =
+            value === preset.value ||
+            (preset.value === 'គ្មាន' && (!value || value.includes('គ្មាន')));
+          return (
+            <button
+              key={preset.value}
+              type="button"
+              onClick={() => onChange(preset.value)}
+              className={`px-2 py-1 rounded-lg text-[11px] font-semibold transition-all cursor-pointer ${
+                isSelected
+                  ? 'bg-brand-600 text-white shadow-xs'
+                  : 'bg-white dark:bg-dark-surface text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-dark-border hover:bg-slate-100 dark:hover:bg-slate-800'
+              }`}
+            >
+              {preset.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* 7 Days Toggle Pills */}
+      <div className="grid grid-cols-7 gap-1 pt-1">
+        {KHMER_WEEK_DAYS.map((day) => {
+          const isStudy = currentDays.includes(day.key);
+          return (
+            <button
+              key={day.key}
+              type="button"
+              onClick={() => toggleDay(day.key)}
+              className={`py-2 px-1 rounded-xl text-center transition-all cursor-pointer border flex flex-col items-center justify-center ${
+                isStudy
+                  ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs ring-2 ring-indigo-300 dark:ring-indigo-900'
+                  : 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/60 hover:bg-emerald-100'
+              }`}
+            >
+              <span className="text-[11px] font-bold leading-tight">{day.key}</span>
+              <span className="text-[9px] opacity-80 uppercase tracking-tighter">{day.en}</span>
+              <span className="text-[8px] font-semibold mt-0.5 px-1 py-0.2 rounded bg-black/10 dark:bg-white/10">
+                {isStudy ? 'រៀន' : 'ធ្វើការ'}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Summary live badges */}
+      <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-t border-slate-200/60 dark:border-dark-border text-[11px]">
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className="text-slate-500 dark:text-slate-400 font-medium">🎓 ថ្ងៃរៀន:</span>
+          <span className="font-bold text-indigo-600 dark:text-indigo-400">
+            {value && !value.includes('គ្មាន') ? value : 'គ្មាន (ពេញម៉ោង)'}
+          </span>
+        </div>
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className="text-slate-500 dark:text-slate-400 font-medium">🛠 ថ្ងៃធ្វើការ:</span>
+          <span className="font-bold text-emerald-600 dark:text-emerald-400">{workDaysText}</span>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export const EmployeesPage: React.FC = () => {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { showToast } = useToast();
+
+  // Filters & Sorting state
   const [searchTerm, setSearchTerm] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [dutyFilter, setDutyFilter] = useState<'ALL' | 'WORK_TODAY' | 'STUDY_TODAY'>('ALL');
+  const [studyPresetFilter, setStudyPresetFilter] = useState('');
+  const [sortBy, setSortBy] = useState<'code' | 'name' | 'dept' | 'study' | 'status'>('code');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
   // Modals
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -67,13 +214,13 @@ export const EmployeesPage: React.FC = () => {
   const [newPassword, setNewPassword] = useState('');
   const [resetSuccessMsg, setResetSuccessMsg] = useState('');
 
-  // Form states with the 8 requested fields
+  // Form states with the requested fields
   const [formData, setFormData] = useState({
     khmerName: '',
     latinName: '',
     gender: 'ប្រុស',
     skill: '',
-    studyDay: 'ច័ន្ទ - សុក្រ (Mon - Fri)',
+    studyDay: 'សុក្រ-សៅរ៍-អាទិត្យ',
     phone: '',
     position: '',
     departmentId: '',
@@ -101,24 +248,17 @@ export const EmployeesPage: React.FC = () => {
     },
   });
 
-  const { data: schedules } = useQuery<Array<{ id: string; name: string }>>({
-    queryKey: ['schedules'],
-    queryFn: async () => {
-      const res = await apiClient.get('/schedules');
-      return res.data.data;
-    },
-  });
-
   // Mutations
   const createMutation = useMutation({
     mutationFn: async (payload: typeof formData) => {
-      return await apiClient.post('/admin/employees', payload);
+      const res = await apiClient.post('/admin/employees', payload);
+      return res.data.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['employees'] });
       setIsAddModalOpen(false);
       resetForm();
-      showToast('Employee account created successfully.');
+      showToast('បុគ្គលិកថ្មីត្រូវបានបង្កើតដោយជោគជ័យ (Employee created successfully)');
     },
     onError: (err: any) => {
       showToast(err?.response?.data?.error?.message || 'Failed to create employee.', 'error');
@@ -126,31 +266,18 @@ export const EmployeesPage: React.FC = () => {
   });
 
   const updateMutation = useMutation({
-    mutationFn: async ({ id, payload }: { id: string; payload: Partial<typeof formData> }) => {
-      return await apiClient.put(`/admin/employees/${id}`, payload);
+    mutationFn: async ({ id, payload }: { id: string; payload: typeof formData }) => {
+      const res = await apiClient.put(`/admin/employees/${id}`, payload);
+      return res.data.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['employees'] });
       setIsEditModalOpen(false);
       setSelectedEmployee(null);
-      showToast('Employee details updated successfully.');
+      showToast('ព័ត៌មានបុគ្គលិក និងកាលវិភាគត្រូវបានកែប្រែ (Employee & schedule updated successfully)');
     },
     onError: (err: any) => {
       showToast(err?.response?.data?.error?.message || 'Failed to update employee.', 'error');
-    },
-  });
-
-  const resetPwdMutation = useMutation({
-    mutationFn: async ({ id, password }: { id: string; password?: string }) => {
-      const res = await apiClient.post(`/admin/employees/${id}/reset-password`, {
-        newPassword: password || undefined,
-      });
-      return res.data.data;
-    },
-    onSuccess: (data) => {
-      setResetSuccessMsg(`Password successfully reset to: ${data.temporaryPassword || newPassword}`);
-      queryClient.invalidateQueries({ queryKey: ['employees'] });
-      showToast('Password reset successfully.');
     },
   });
 
@@ -161,30 +288,39 @@ export const EmployeesPage: React.FC = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['employees'] });
-      queryClient.invalidateQueries({ queryKey: ['adminDashboard'] });
       setEmployeeToDelete(null);
-      showToast(t('employees.deleteSuccess', 'Employee and related records deleted successfully.'));
+      showToast('បុគ្គលិកត្រូវបានលុបចេញពីប្រព័ន្ធ (Employee deleted successfully)');
     },
     onError: (err: any) => {
-      showToast(
-        err?.response?.data?.error?.message ||
-          t('employees.deleteFailed', 'Failed to delete employee.'),
-        'error'
-      );
+      showToast(err?.response?.data?.error?.message || 'Failed to delete employee.', 'error');
+    },
+  });
+
+  const resetPwdMutation = useMutation({
+    mutationFn: async ({ id, password }: { id: string; password?: string }) => {
+      const res = await apiClient.post(`/admin/employees/${id}/reset-password`, { password });
+      return res.data.data;
+    },
+    onSuccess: (data) => {
+      setResetSuccessMsg(`New Password: ${data.temporaryPassword}`);
+      showToast('ពាក្យសម្ងាត់ត្រូវបានប្តូរដោយជោគជ័យ (Password reset successfully)');
+    },
+    onError: (err: any) => {
+      showToast(err?.response?.data?.error?.message || 'Failed to reset password.', 'error');
     },
   });
 
   const importOfficialMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiClient.post('/admin/employees/seed-official');
+      const res = await apiClient.post('/admin/seed-employees');
       return res.data.data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['employees'] });
-      queryClient.invalidateQueries({ queryKey: ['departments'] });
-      queryClient.invalidateQueries({ queryKey: ['adminDashboard'] });
       setIsImportModalOpen(false);
-      showToast('✓ Successfully imported all 20 official employees with galaxytv@@ passwords!');
+      showToast(
+        `នាំចូលជោគជ័យ! បុគ្គលិកចំនួន ${data?.totalImported || 20} នាក់ត្រូវបានធ្វើបច្ចុប្បន្នភាព។`
+      );
     },
     onError: (err: any) => {
       showToast(err?.response?.data?.error?.message || 'Failed to import employees.', 'error');
@@ -197,7 +333,7 @@ export const EmployeesPage: React.FC = () => {
       latinName: '',
       gender: 'ប្រុស',
       skill: '',
-      studyDay: 'ច័ន្ទ - សុក្រ (Mon - Fri)',
+      studyDay: 'សុក្រ-សៅរ៍-អាទិត្យ',
       phone: '',
       position: '',
       departmentId: '',
@@ -216,7 +352,7 @@ export const EmployeesPage: React.FC = () => {
       latinName: emp.latinName || '',
       gender: emp.gender || 'ប្រុស',
       skill: emp.skill || '',
-      studyDay: emp.studyDay || 'ច័ន្ទ - សុក្រ (Mon - Fri)',
+      studyDay: emp.studyDay || 'គ្មាន',
       phone: emp.phone || '',
       position: emp.position || '',
       departmentId: emp.department?.id || '',
@@ -236,21 +372,105 @@ export const EmployeesPage: React.FC = () => {
     setIsResetPwdModalOpen(true);
   };
 
-  const filteredEmployees = (employees || []).filter((emp) => {
-    const matchesSearch =
-      (emp.khmerName && emp.khmerName.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (emp.latinName && emp.latinName.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      emp.displayName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      emp.employeeCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (emp.skill && emp.skill.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (emp.phone && emp.phone.includes(searchTerm)) ||
-      emp.position.toLowerCase().includes(searchTerm.toLowerCase());
+  // KPIs
+  const stats = useMemo(() => {
+    const list = employees || [];
+    const total = list.length;
+    const studyingToday = list.filter((e) => isStudyDayToday(e.studyDay)).length;
+    const workingToday = total - studyingToday;
+    const active = list.filter((e) => e.status === 'ACTIVE').length;
+    return { total, workingToday, studyingToday, active };
+  }, [employees]);
 
-    const matchesDept = !departmentFilter || emp.department?.id === departmentFilter;
-    const matchesStatus = !statusFilter || emp.status === statusFilter;
+  // Filtering and Sorting
+  const filteredEmployees = useMemo(() => {
+    let list = employees || [];
 
-    return matchesSearch && matchesDept && matchesStatus;
-  });
+    // Search query
+    if (searchTerm.trim()) {
+      const q = searchTerm.toLowerCase().trim();
+      list = list.filter((emp) => {
+        const kh = (emp.khmerName || '').toLowerCase();
+        const lat = (emp.latinName || '').toLowerCase();
+        const disp = (emp.displayName || '').toLowerCase();
+        const code = (emp.employeeCode || '').toLowerCase();
+        const phone = (emp.phone || '').toLowerCase();
+        const skill = (emp.skill || '').toLowerCase();
+        const pos = (emp.position || '').toLowerCase();
+        const dept = (emp.department?.name || '').toLowerCase();
+        const study = (emp.studyDay || '').toLowerCase();
+        return (
+          kh.includes(q) ||
+          lat.includes(q) ||
+          disp.includes(q) ||
+          code.includes(q) ||
+          phone.includes(q) ||
+          skill.includes(q) ||
+          pos.includes(q) ||
+          dept.includes(q) ||
+          study.includes(q)
+        );
+      });
+    }
+
+    // Department filter
+    if (departmentFilter) {
+      list = list.filter((e) => e.department?.id === departmentFilter);
+    }
+
+    // Status filter
+    if (statusFilter) {
+      list = list.filter((e) => e.status === statusFilter);
+    }
+
+    // Duty today filter
+    if (dutyFilter === 'STUDY_TODAY') {
+      list = list.filter((e) => isStudyDayToday(e.studyDay));
+    } else if (dutyFilter === 'WORK_TODAY') {
+      list = list.filter((e) => !isStudyDayToday(e.studyDay));
+    }
+
+    // Study Schedule Preset filter
+    if (studyPresetFilter) {
+      if (studyPresetFilter === 'NONE') {
+        list = list.filter((e) => !e.studyDay || e.studyDay.includes('គ្មាន'));
+      } else {
+        list = list.filter((e) => e.studyDay?.includes(studyPresetFilter));
+      }
+    }
+
+    // Sort
+    return [...list].sort((a, b) => {
+      let comparison = 0;
+      if (sortBy === 'code') {
+        comparison = (a.employeeCode || '').localeCompare(b.employeeCode || '');
+      } else if (sortBy === 'name') {
+        const nameA = a.khmerName || a.displayName || '';
+        const nameB = b.khmerName || b.displayName || '';
+        comparison = nameA.localeCompare(nameB, 'km');
+      } else if (sortBy === 'dept') {
+        const deptA = a.department?.name || '';
+        const deptB = b.department?.name || '';
+        comparison = deptA.localeCompare(deptB);
+      } else if (sortBy === 'study') {
+        const studyA = a.studyDay || '';
+        const studyB = b.studyDay || '';
+        comparison = studyA.localeCompare(studyB);
+      } else if (sortBy === 'status') {
+        comparison = (a.status || '').localeCompare(b.status || '');
+      }
+      return sortOrder === 'asc' ? comparison : -comparison;
+    });
+  }, [
+    employees,
+    searchTerm,
+    departmentFilter,
+    statusFilter,
+    dutyFilter,
+    studyPresetFilter,
+    sortBy,
+    sortOrder,
+  ]);
 
   return (
     <div className="space-y-6">
@@ -258,14 +478,17 @@ export const EmployeesPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">
-            {t('employees.title', 'Employee Directory')}
+            {t('employees.title', 'ការគ្រប់គ្រងបុគ្គលិក (Staff Directory & Schedules)')}
           </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-            {t('employees.subtitle', 'Manage staff profiles, specializations, schedules, and account access')}
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+            {t(
+              'employees.subtitle',
+              'Manage staff profiles, work and study day shifts, positions, and live account status'
+            )}
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2 flex-wrap">
           <Button
             variant="secondary"
             icon={Sparkles}
@@ -273,7 +496,7 @@ export const EmployeesPage: React.FC = () => {
             className="border-brand-300 dark:border-brand-800 text-brand-700 dark:text-brand-300 bg-brand-50/70 dark:bg-brand-950/40 hover:bg-brand-100 dark:hover:bg-brand-900/50 font-semibold"
             onClick={() => setIsImportModalOpen(true)}
           >
-            {t('employees.importOfficial', 'Import All 20 Staff (នាំចូលបុគ្គលិកទាំងអស់)')}
+            {t('employees.importOfficial', 'Import All 20 Staff (នាំចូលបុគ្គលិក)')}
           </Button>
 
           <Button
@@ -290,13 +513,79 @@ export const EmployeesPage: React.FC = () => {
         </div>
       </div>
 
+      {/* KPI Stats Overview Cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <Card className="p-3.5 bg-gradient-to-br from-slate-50 to-white dark:from-dark-elevated dark:to-dark border border-slate-200/80 dark:border-dark-border rounded-2xl shadow-2xs">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
+              បុគ្គលិកសរុប (Total Staff)
+            </span>
+            <Users className="w-4 h-4 text-slate-400" />
+          </div>
+          <div className="mt-2 flex items-baseline gap-1">
+            <span className="text-2xl font-black text-slate-900 dark:text-slate-100 font-mono">
+              {stats.total}
+            </span>
+            <span className="text-xs text-slate-400">នាក់</span>
+          </div>
+        </Card>
+
+        <Card className="p-3.5 bg-gradient-to-br from-emerald-50/70 to-white dark:from-emerald-950/20 dark:to-dark border border-emerald-200/80 dark:border-emerald-800/60 rounded-2xl shadow-2xs">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-emerald-800 dark:text-emerald-300">
+              ធ្វើការថ្ងៃនេះ (Work Duty Today)
+            </span>
+            <Briefcase className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+          </div>
+          <div className="mt-2 flex items-baseline gap-1">
+            <span className="text-2xl font-black text-emerald-700 dark:text-emerald-300 font-mono">
+              {stats.workingToday}
+            </span>
+            <span className="text-xs text-emerald-600 dark:text-emerald-400">នាក់</span>
+          </div>
+        </Card>
+
+        <Card className="p-3.5 bg-gradient-to-br from-indigo-50/70 to-white dark:from-indigo-950/20 dark:to-dark border border-indigo-200/80 dark:border-indigo-800/60 rounded-2xl shadow-2xs">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-indigo-800 dark:text-indigo-300">
+              រៀនថ្ងៃនេះ (Study Session Today)
+            </span>
+            <GraduationCap className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+          </div>
+          <div className="mt-2 flex items-baseline gap-1">
+            <span className="text-2xl font-black text-indigo-700 dark:text-indigo-300 font-mono">
+              {stats.studyingToday}
+            </span>
+            <span className="text-xs text-indigo-600 dark:text-indigo-400">នាក់</span>
+          </div>
+        </Card>
+
+        <Card className="p-3.5 bg-gradient-to-br from-blue-50/70 to-white dark:from-blue-950/20 dark:to-dark border border-blue-200/80 dark:border-blue-800/60 rounded-2xl shadow-2xs">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-blue-800 dark:text-blue-300">
+              ស្ថានភាពសកម្ម (Active Status)
+            </span>
+            <CheckCircle2 className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+          </div>
+          <div className="mt-2 flex items-baseline gap-1">
+            <span className="text-2xl font-black text-blue-700 dark:text-blue-300 font-mono">
+              {stats.active}
+            </span>
+            <span className="text-xs text-blue-600 dark:text-blue-400">នាក់</span>
+          </div>
+        </Card>
+      </div>
+
       {/* Search & Filter Controls */}
-      <Card padding="sm" className="flex flex-col md:flex-row items-stretch md:items-center gap-3 border border-slate-200 dark:border-dark-border">
+      <Card
+        padding="sm"
+        className="flex flex-col md:flex-row items-stretch md:items-center gap-3 border border-slate-200 dark:border-dark-border"
+      >
         <div className="relative flex-1">
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
-            placeholder="Search by ឈ្មោះ, ឡាតាំង, ជំនាញ, លេខទូរសព្ទ, Code..."
+            placeholder="ស្វែងរកតាម ឈ្មោះ, ឡាតាំង, ជំនាញ, កូដ, ថ្ងៃរៀន..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full pl-9 pr-4 py-2 text-xs bg-slate-50 dark:bg-dark-elevated border border-slate-200 dark:border-dark-border rounded-xl text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500"
@@ -304,12 +593,64 @@ export const EmployeesPage: React.FC = () => {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          {/* Duty Today Filter Tabs */}
+          <div className="flex items-center bg-slate-100 dark:bg-dark-elevated p-1 rounded-xl border border-slate-200 dark:border-dark-border">
+            <button
+              type="button"
+              onClick={() => setDutyFilter('ALL')}
+              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                dutyFilter === 'ALL'
+                  ? 'bg-white dark:bg-dark-surface text-slate-900 dark:text-slate-100 shadow-xs'
+                  : 'text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              ទាំងអស់ (All)
+            </button>
+            <button
+              type="button"
+              onClick={() => setDutyFilter('WORK_TODAY')}
+              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                dutyFilter === 'WORK_TODAY'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40'
+              }`}
+            >
+              💼 ធ្វើការថ្ងៃនេះ ({stats.workingToday})
+            </button>
+            <button
+              type="button"
+              onClick={() => setDutyFilter('STUDY_TODAY')}
+              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                dutyFilter === 'STUDY_TODAY'
+                  ? 'bg-indigo-600 text-white shadow-xs'
+                  : 'text-indigo-700 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/40'
+              }`}
+            >
+              🎓 រៀនថ្ងៃនេះ ({stats.studyingToday})
+            </button>
+          </div>
+
+          {/* Study Schedule Filter */}
+          <select
+            value={studyPresetFilter}
+            onChange={(e) => setStudyPresetFilter(e.target.value)}
+            className="px-3 py-2 text-xs bg-slate-50 dark:bg-dark-elevated border border-slate-200 dark:border-dark-border text-slate-900 dark:text-slate-100 rounded-xl focus:ring-2 focus:ring-brand-500 focus:outline-none font-medium"
+          >
+            <option value="">គ្រប់កាលវិភាគថ្ងៃរៀន (All Study Shifts)</option>
+            <option value="សុក្រ-សៅរ៍-អាទិត្យ">សុក្រ-សៅរ៍-អាទិត្យ (Fri-Sun)</option>
+            <option value="ព្រហ-សុក្រ">ព្រហ-សុក្រ (Thu-Fri)</option>
+            <option value="ចន្ទ-អង្គារ">ចន្ទ-អង្គារ (Mon-Tue)</option>
+            <option value="សៅរ៍-អាទិត្យ">សៅរ៍-អាទិត្យ (Sat-Sun)</option>
+            <option value="NONE">គ្មានថ្ងៃរៀន / ពេញម៉ោង (Full-Time)</option>
+          </select>
+
+          {/* Department Filter */}
           <select
             value={departmentFilter}
             onChange={(e) => setDepartmentFilter(e.target.value)}
             className="px-3 py-2 text-xs bg-slate-50 dark:bg-dark-elevated border border-slate-200 dark:border-dark-border text-slate-900 dark:text-slate-100 rounded-xl focus:ring-2 focus:ring-brand-500 focus:outline-none font-medium"
           >
-            <option value="">{t('common.all', 'All')} {t('employees.department', 'Departments')}</option>
+            <option value="">{t('common.all', 'All')} ផ្នែក (Departments)</option>
             {departments?.map((d) => (
               <option key={d.id} value={d.id}>
                 {d.name}
@@ -317,21 +658,49 @@ export const EmployeesPage: React.FC = () => {
             ))}
           </select>
 
+          {/* Status Filter */}
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
             className="px-3 py-2 text-xs bg-slate-50 dark:bg-dark-elevated border border-slate-200 dark:border-dark-border text-slate-900 dark:text-slate-100 rounded-xl focus:ring-2 focus:ring-brand-500 focus:outline-none font-medium"
           >
-            <option value="">{t('common.all', 'All')} {t('common.status', 'Statuses')}</option>
-            <option value="ACTIVE">{t('common.active', 'Active')}</option>
-            <option value="INACTIVE">{t('common.inactive', 'Inactive')}</option>
-            <option value="SUSPENDED">Suspended</option>
+            <option value="">{t('common.all', 'All')} ស្ថានភាព (Statuses)</option>
+            <option value="ACTIVE">🟢 {t('common.active', 'Active')}</option>
+            <option value="INACTIVE">🔴 {t('common.inactive', 'Inactive')}</option>
+            <option value="SUSPENDED">🟠 Suspended</option>
           </select>
+
+          {/* Sort By */}
+          <div className="flex items-center gap-1 bg-slate-50 dark:bg-dark-elevated border border-slate-200 dark:border-dark-border rounded-xl px-2 py-1">
+            <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as any)}
+              className="bg-transparent text-xs text-slate-900 dark:text-slate-100 focus:outline-none font-medium"
+            >
+              <option value="code">តម្រៀបតាម: អត្តលេខ (Code)</option>
+              <option value="name">តម្រៀបតាម: ឈ្មោះ (Name)</option>
+              <option value="dept">តម្រៀបតាម: ផ្នែក (Department)</option>
+              <option value="study">តម្រៀបតាម: ថ្ងៃរៀន (Study Day)</option>
+              <option value="status">តម្រៀបតាម: ស្ថានភាព (Status)</option>
+            </select>
+            <button
+              type="button"
+              onClick={() => setSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'))}
+              className="text-[10px] font-bold px-1 py-0.5 rounded bg-slate-200/60 dark:bg-dark-border text-slate-600 dark:text-slate-300"
+              title="Reverse Order"
+            >
+              {sortOrder.toUpperCase()}
+            </button>
+          </div>
         </div>
       </Card>
 
-      {/* Main Table & Mobile Cards */}
-      <Card padding="none" className="overflow-hidden border border-slate-200 dark:border-dark-border shadow-xs">
+      {/* Main Table */}
+      <Card
+        padding="none"
+        className="overflow-hidden border border-slate-200 dark:border-dark-border shadow-xs"
+      >
         {isLoading ? (
           <div className="p-6 space-y-4">
             <Skeleton className="h-12 w-full" />
@@ -341,8 +710,8 @@ export const EmployeesPage: React.FC = () => {
         ) : filteredEmployees.length === 0 ? (
           <EmptyState
             icon={Users}
-            title="No employees found"
-            description="No staff profiles match the current filter or search criteria."
+            title="រកមិនឃើញបុគ្គលិកទេ (No employees found)"
+            description="គ្មានបុគ្គលិកត្រូវគ្នានឹងការស្វែងរក ឬតម្រងដែលបានជ្រើសរើសទេ។"
             actionLabel={t('employees.addEmployee', 'Add Employee')}
             onAction={() => {
               resetForm();
@@ -354,156 +723,167 @@ export const EmployeesPage: React.FC = () => {
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-50 dark:bg-dark-elevated border-b border-slate-200 dark:border-dark-border text-slate-700 dark:text-slate-300 font-bold uppercase tracking-wider select-none">
                 <tr>
-                  <th className="py-3.5 px-4">{t('employees.khmerName', 'ឈ្មោះ')}</th>
-                  <th className="py-3.5 px-3">{t('employees.latinName', 'ឡាតាំង')}</th>
-                  <th className="py-3.5 px-3">{t('employees.gender', 'ភេទ')}</th>
-                  <th className="py-3.5 px-3">{t('employees.skill', 'ជំនាញ')}</th>
-                  <th className="py-3.5 px-3">{t('employees.studyDay', 'ថ្ងៃរៀន')}</th>
-                  <th className="py-3.5 px-3">{t('employees.phone', 'លេខទូរសព្ទ')}</th>
-                  <th className="py-3.5 px-3">{t('employees.position', 'តួនាទី')}</th>
-                  <th className="py-3.5 px-3">{t('employees.department', 'ផ្នែកការងារ')}</th>
+                  <th className="py-3.5 px-4">{t('employees.khmerName', 'ឈ្មោះ & កូដ')}</th>
+                  <th className="py-3.5 px-3">{t('employees.latinName', 'ឡាតាំង & ភេទ')}</th>
+                  <th className="py-3.5 px-3">ផ្នែក & តួនាទី (Dept & Role)</th>
+                  <th className="py-3.5 px-3">🎓 ថ្ងៃរៀន (Study Shift)</th>
+                  <th className="py-3.5 px-3">🛠 ថ្ងៃធ្វើការ (Work Days)</th>
+                  <th className="py-3.5 px-3">វេនថ្ងៃនេះ (Today's Duty)</th>
                   <th className="py-3.5 px-3">{t('common.status', 'ស្ថានភាព')}</th>
                   <th className="py-3.5 px-4 text-right">{t('common.actions', 'សកម្មភាព')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-dark-border font-medium">
-                {filteredEmployees.map((emp) => (
-                  <tr
-                    key={emp.id}
-                    className="hover:bg-slate-50/70 dark:hover:bg-dark-elevated/50 transition-colors"
-                  >
-                    {/* 1. ឈ្មោះ (Khmer Name) */}
-                    <td className="py-3.5 px-4">
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-full bg-brand-50 dark:bg-brand-950/60 text-brand-600 dark:text-brand-400 font-bold text-xs flex items-center justify-center flex-shrink-0 border border-brand-200/60 dark:border-brand-800/40 overflow-hidden">
-                          {emp.profilePhoto ? (
-                            <img
-                              src={emp.profilePhoto}
-                              alt={emp.khmerName || emp.displayName}
-                              className="w-full h-full object-cover"
-                              onError={(e) => {
-                                (e.target as HTMLElement).style.display = 'none';
-                              }}
-                            />
-                          ) : (
-                            (emp.khmerName || emp.displayName).charAt(0)
-                          )}
+                {filteredEmployees.map((emp) => {
+                  const isStudyingToday = isStudyDayToday(emp.studyDay);
+                  const workDaysText = computeWorkDays(emp.studyDay);
+                  return (
+                    <tr
+                      key={emp.id}
+                      className="hover:bg-slate-50/70 dark:hover:bg-dark-elevated/50 transition-colors"
+                    >
+                      {/* 1. ឈ្មោះ & Code */}
+                      <td className="py-3.5 px-4">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-full bg-brand-50 dark:bg-brand-950/60 text-brand-600 dark:text-brand-400 font-bold text-xs flex items-center justify-center flex-shrink-0 border border-brand-200/60 dark:border-brand-800/40 overflow-hidden">
+                            {emp.profilePhoto ? (
+                              <img
+                                src={emp.profilePhoto}
+                                alt={emp.khmerName || emp.displayName}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  (e.target as HTMLElement).style.display = 'none';
+                                }}
+                              />
+                            ) : (
+                              (emp.khmerName || emp.displayName).charAt(0)
+                            )}
+                          </div>
+                          <div>
+                            <p className="font-bold text-slate-900 dark:text-slate-100 font-sans">
+                              {emp.khmerName || emp.displayName}
+                            </p>
+                            <span className="text-[10px] font-mono text-slate-400">
+                              {emp.employeeCode}
+                            </span>
+                          </div>
                         </div>
-                        <div>
-                          <p className="font-bold text-slate-900 dark:text-slate-100 font-sans">
-                            {emp.khmerName || emp.displayName}
-                          </p>
-                          <span className="text-[10px] font-mono text-slate-400">
-                            {emp.employeeCode}
+                      </td>
+
+                      {/* 2. ឡាតាំង & ភេទ */}
+                      <td className="py-3.5 px-3 text-slate-700 dark:text-slate-300">
+                        <div className="font-semibold">{emp.latinName || emp.displayName || '—'}</div>
+                        <span className="text-[10px] text-slate-400">{emp.gender || 'ប្រុស'}</span>
+                      </td>
+
+                      {/* 3. ផ្នែក & តួនាទី */}
+                      <td className="py-3.5 px-3 text-slate-800 dark:text-slate-200">
+                        <div className="font-semibold text-slate-900 dark:text-slate-100">
+                          {emp.department?.name || 'General'}
+                        </div>
+                        <div className="text-[10px] text-slate-400">{emp.position || 'Staff'}</div>
+                      </td>
+
+                      {/* 4. 🎓 ថ្ងៃរៀន (Study Shift) */}
+                      <td className="py-3.5 px-3">
+                        {emp.studyDay && !emp.studyDay.includes('គ្មាន') ? (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/40 px-2.5 py-1 rounded-xl border border-indigo-200 dark:border-indigo-800/60">
+                            <GraduationCap className="w-3.5 h-3.5" />
+                            {emp.studyDay}
                           </span>
+                        ) : (
+                          <span className="inline-flex items-center text-[10px] font-medium text-slate-400 bg-slate-100 dark:bg-dark-elevated px-2 py-0.5 rounded-lg">
+                            ពេញម៉ោង (Full-Time)
+                          </span>
+                        )}
+                      </td>
+
+                      {/* 5. 🛠 ថ្ងៃធ្វើការ (Work Days) */}
+                      <td className="py-3.5 px-3">
+                        <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/30 px-2.5 py-1 rounded-xl border border-emerald-200 dark:border-emerald-800/60">
+                          <Briefcase className="w-3.5 h-3.5" />
+                          {workDaysText}
+                        </span>
+                      </td>
+
+                      {/* 6. វេនថ្ងៃនេះ (Today's Duty) */}
+                      <td className="py-3.5 px-3">
+                        {isStudyingToday ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-800 animate-pulse">
+                            🎓 រៀនថ្ងៃនេះ (Studying)
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
+                            💼 ធ្វើការថ្ងៃនេះ (Working)
+                          </span>
+                        )}
+                      </td>
+
+                      {/* 7. ស្ថានភាព (Status) */}
+                      <td className="py-3.5 px-3">
+                        <span
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                            emp.status === 'ACTIVE'
+                              ? 'bg-success-50 dark:bg-success-950/40 text-success-700 dark:text-success-400 border border-success-200 dark:border-success-800/60'
+                              : emp.status === 'SUSPENDED'
+                              ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800/60'
+                              : 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-800/60'
+                          }`}
+                        >
+                          <span
+                            className={`w-1.5 h-1.5 rounded-full ${
+                              emp.status === 'ACTIVE'
+                                ? 'bg-success-500'
+                                : emp.status === 'SUSPENDED'
+                                ? 'bg-amber-500'
+                                : 'bg-rose-500'
+                            }`}
+                          />
+                          {emp.status}
+                        </span>
+                      </td>
+
+                      {/* 8. សកម្មភាព (Actions) */}
+                      <td className="py-3.5 px-4 text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <button
+                            onClick={() => openEdit(emp)}
+                            className="p-1.5 text-slate-500 hover:text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-950/40 rounded-lg transition-colors cursor-pointer"
+                            title={t('common.edit', 'Edit')}
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => openResetPwd(emp)}
+                            className="p-1.5 text-slate-500 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/40 rounded-lg transition-colors cursor-pointer"
+                            title={t('employees.resetPassword', 'Reset Password')}
+                          >
+                            <KeyRound className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => setEmployeeToDelete(emp)}
+                            className="p-1.5 text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition-colors cursor-pointer"
+                            title={t('common.delete', 'Delete')}
+                            aria-label="Delete Employee"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
                         </div>
-                      </div>
-                    </td>
-
-                    {/* 2. ឡាតាំង (Latin Name) */}
-                    <td className="py-3.5 px-3 text-slate-700 dark:text-slate-300 font-semibold">
-                      {emp.latinName || emp.displayName || '—'}
-                    </td>
-
-                    {/* 3. ភេទ (Gender) */}
-                    <td className="py-3.5 px-3">
-                      <span className="inline-block px-2 py-0.5 rounded-md text-[11px] font-semibold bg-slate-100 dark:bg-dark-elevated text-slate-700 dark:text-slate-300">
-                        {emp.gender || 'ប្រុស'}
-                      </span>
-                    </td>
-
-                    {/* 4. ជំនាញ (Skill) */}
-                    <td className="py-3.5 px-3">
-                      <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 px-2 py-0.5 rounded-md border border-blue-200/50 dark:border-blue-800/40">
-                        <GraduationCap className="w-3 h-3" />
-                        {emp.skill || 'General'}
-                      </span>
-                    </td>
-
-                    {/* 5. ថ្ងៃរៀន (Study Day / Shift) */}
-                    <td className="py-3.5 px-3 text-slate-600 dark:text-slate-400 text-[11px]">
-                      <div className="flex items-center gap-1 font-mono">
-                        <Calendar className="w-3 h-3 text-slate-400 flex-shrink-0" />
-                        <span>{emp.studyDay || 'Mon - Fri'}</span>
-                      </div>
-                    </td>
-
-                    {/* 6. លេខទូរសព្ទ (Phone Number) */}
-                    <td className="py-3.5 px-3 text-slate-800 dark:text-slate-200 font-mono text-xs">
-                      {emp.phone ? (
-                        <div className="flex items-center gap-1">
-                          <Phone className="w-3 h-3 text-slate-400" />
-                          <span>{emp.phone}</span>
-                        </div>
-                      ) : (
-                        <span className="text-slate-400">—</span>
-                      )}
-                    </td>
-
-                    {/* 7. តួនាទី (Role / Position) */}
-                    <td className="py-3.5 px-3 text-slate-800 dark:text-slate-200 font-medium">
-                      <div className="flex items-center gap-1">
-                        <Briefcase className="w-3 h-3 text-slate-400" />
-                        <span>{emp.position || 'Staff'}</span>
-                      </div>
-                    </td>
-
-                    {/* 8. ផ្នែកការងារ (Department) */}
-                    <td className="py-3.5 px-3 text-slate-600 dark:text-slate-400">
-                      <span className="inline-flex items-center gap-1 text-slate-700 dark:text-slate-300 font-medium">
-                        <Building2 className="w-3 h-3 text-slate-400" />
-                        {emp.department?.name || 'General'}
-                      </span>
-                    </td>
-
-                    {/* 9. Status */}
-                    <td className="py-3.5 px-3">
-                      <Badge
-                        status={emp.status === 'ACTIVE' ? 'APPROVED' : 'REJECTED'}
-                        size="sm"
-                      />
-                    </td>
-
-                    {/* Actions */}
-                    <td className="py-3.5 px-4 text-right">
-                      <div className="flex items-center justify-end gap-1.5">
-                        <button
-                          onClick={() => openEdit(emp)}
-                          className="p-1.5 text-slate-500 hover:text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-950/40 rounded-lg transition-colors"
-                          title={t('common.edit', 'Edit')}
-                        >
-                          <Edit2 className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={() => openResetPwd(emp)}
-                          className="p-1.5 text-slate-500 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/40 rounded-lg transition-colors"
-                          title={t('employees.resetPassword', 'Reset Password')}
-                        >
-                          <KeyRound className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={() => setEmployeeToDelete(emp)}
-                          className="p-1.5 text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition-colors"
-                          title={t('common.delete', 'Delete')}
-                          aria-label="Delete Employee"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         )}
       </Card>
 
-      {/* MODAL: ADD EMPLOYEE (Clean 8-field responsive layout) */}
+      {/* MODAL: ADD EMPLOYEE */}
       <Modal
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
-        title={t('employees.addEmployee', 'បន្ថែមបុគ្គលិកថ្មី')}
+        title={t('employees.addEmployee', 'បន្ថែមបុគ្គលិកថ្មី (New Staff)')}
       >
         <form
           onSubmit={(e) => {
@@ -543,7 +923,7 @@ export const EmployeesPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Row 2: ភេទ (Gender) & ជំនាញ (Skill) */}
+          {/* Row 2: ភេទ & ជំនាញ */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
@@ -569,26 +949,19 @@ export const EmployeesPage: React.FC = () => {
                 value={formData.skill}
                 onChange={(e) => setFormData({ ...formData, skill: e.target.value })}
                 className="w-full px-3 py-2 bg-white dark:bg-dark-elevated border border-slate-200 dark:border-dark-border rounded-xl text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-500"
-                placeholder="ឧ. Video Editor, Graphic Design, Frontend, HR..."
+                placeholder="ឧ. Mobile Developer, Accounting..."
               />
             </div>
           </div>
 
-          {/* Row 3: ថ្ងៃរៀន (Study Day) & លេខទូរសព្ទ (Phone Number) */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-                {t('employees.studyDay', 'ថ្ងៃរៀន (Study Days / Shift)')}
-              </label>
-              <input
-                type="text"
-                value={formData.studyDay}
-                onChange={(e) => setFormData({ ...formData, studyDay: e.target.value })}
-                className="w-full px-3 py-2 bg-white dark:bg-dark-elevated border border-slate-200 dark:border-dark-border rounded-xl text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-500"
-                placeholder="ឧ. ច័ន្ទ - សុក្រ (Mon - Fri) ឬ វេនព្រឹក"
-              />
-            </div>
+          {/* Interactive Work & Study Day Selector */}
+          <ScheduleDaySelector
+            value={formData.studyDay}
+            onChange={(val) => setFormData({ ...formData, studyDay: val })}
+          />
 
+          {/* Row 3: លេខទូរសព្ទ & អ៊ីមែល */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
                 {t('employees.phone', 'លេខទូរសព្ទ (Phone Number)')}
@@ -601,9 +974,22 @@ export const EmployeesPage: React.FC = () => {
                 placeholder="012 345 678"
               />
             </div>
+
+            <div>
+              <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                {t('employees.email', 'អ៊ីមែល (Email)')}
+              </label>
+              <input
+                type="email"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                className="w-full px-3 py-2 bg-white dark:bg-dark-elevated border border-slate-200 dark:border-dark-border rounded-xl text-slate-900 dark:text-slate-100 font-mono focus:outline-none focus:ring-2 focus:ring-brand-500"
+                placeholder="sokha@galaxytv4k.com"
+              />
+            </div>
           </div>
 
-          {/* Row 4: តួនាទី (Role / Position) & ផ្នែកការងារ (Department) */}
+          {/* Row 4: តួនាទី & ផ្នែកការងារ */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
@@ -615,7 +1001,7 @@ export const EmployeesPage: React.FC = () => {
                 value={formData.position}
                 onChange={(e) => setFormData({ ...formData, position: e.target.value })}
                 className="w-full px-3 py-2 bg-white dark:bg-dark-elevated border border-slate-200 dark:border-dark-border rounded-xl text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-500"
-                placeholder="ឧ. Senior Officer, Designer, Specialist..."
+                placeholder="ឧ. Software Engineer"
               />
             </div>
 
@@ -692,7 +1078,7 @@ export const EmployeesPage: React.FC = () => {
         <Modal
           isOpen={isEditModalOpen}
           onClose={() => setIsEditModalOpen(false)}
-          title={t('employees.editEmployee', 'កែប្រែព័ត៌មានបុគ្គលិក')}
+          title={t('employees.editEmployee', 'កែប្រែព័ត៌មានបុគ្គលិក & កាលវិភាគ')}
         >
           <form
             onSubmit={(e) => {
@@ -708,7 +1094,7 @@ export const EmployeesPage: React.FC = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  {t('employees.khmerName', 'ឈ្មោះ')} *
+                  {t('employees.khmerName', 'ឈ្មោះ (Khmer Name)')} *
                 </label>
                 <input
                   type="text"
@@ -721,7 +1107,7 @@ export const EmployeesPage: React.FC = () => {
 
               <div>
                 <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  {t('employees.latinName', 'ឡាតាំង')} *
+                  {t('employees.latinName', 'ឡាតាំង (Latin Name)')} *
                 </label>
                 <input
                   type="text"
@@ -737,7 +1123,7 @@ export const EmployeesPage: React.FC = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  {t('employees.gender', 'ភេទ')}
+                  {t('employees.gender', 'ភេទ (Gender)')}
                 </label>
                 <select
                   value={formData.gender}
@@ -752,7 +1138,7 @@ export const EmployeesPage: React.FC = () => {
 
               <div>
                 <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  {t('employees.skill', 'ជំនាញ')}
+                  {t('employees.skill', 'ជំនាញ (Skill)')}
                 </label>
                 <input
                   type="text"
@@ -763,28 +1149,34 @@ export const EmployeesPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Row 3: ថ្ងៃរៀន & លេខទូរសព្ទ */}
+            {/* Interactive Work & Study Day Selector */}
+            <ScheduleDaySelector
+              value={formData.studyDay}
+              onChange={(val) => setFormData({ ...formData, studyDay: val })}
+            />
+
+            {/* Row 3: លេខទូរសព្ទ & អ៊ីមែល */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  {t('employees.studyDay', 'ថ្ងៃរៀន')}
-                </label>
-                <input
-                  type="text"
-                  value={formData.studyDay}
-                  onChange={(e) => setFormData({ ...formData, studyDay: e.target.value })}
-                  className="w-full px-3 py-2 bg-white dark:bg-dark-elevated border border-slate-200 dark:border-dark-border rounded-xl text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-500"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  {t('employees.phone', 'លេខទូរសព្ទ')}
+                  {t('employees.phone', 'លេខទូរសព្ទ (Phone)')}
                 </label>
                 <input
                   type="tel"
                   value={formData.phone}
                   onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  className="w-full px-3 py-2 bg-white dark:bg-dark-elevated border border-slate-200 dark:border-dark-border rounded-xl text-slate-900 dark:text-slate-100 font-mono focus:outline-none focus:ring-2 focus:ring-brand-500"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  {t('employees.email', 'អ៊ីមែល (Email)')}
+                </label>
+                <input
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   className="w-full px-3 py-2 bg-white dark:bg-dark-elevated border border-slate-200 dark:border-dark-border rounded-xl text-slate-900 dark:text-slate-100 font-mono focus:outline-none focus:ring-2 focus:ring-brand-500"
                 />
               </div>
@@ -794,7 +1186,7 @@ export const EmployeesPage: React.FC = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  {t('employees.position', 'តួនាទី')} *
+                  {t('employees.position', 'តួនាទី (Position)')} *
                 </label>
                 <input
                   type="text"
@@ -807,7 +1199,7 @@ export const EmployeesPage: React.FC = () => {
 
               <div>
                 <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-                  {t('employees.department', 'ផ្នែកការងារ')}
+                  {t('employees.department', 'ផ្នែកការងារ (Department)')}
                 </label>
                 <select
                   value={formData.departmentId}
@@ -827,16 +1219,16 @@ export const EmployeesPage: React.FC = () => {
             {/* Row 5: ស្ថានភាព (Status) */}
             <div>
               <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">
-                {t('common.status', 'ស្ថានភាព')}
+                {t('common.status', 'ស្ថានភាពគណនីបុគ្គលិក (Employee Status)')} *
               </label>
               <select
                 value={formData.status}
                 onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                className="w-full px-3 py-2 bg-white dark:bg-dark-elevated border border-slate-200 dark:border-dark-border rounded-xl text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-500"
+                className="w-full px-3 py-2 bg-white dark:bg-dark-elevated border border-slate-200 dark:border-dark-border rounded-xl text-slate-900 dark:text-slate-100 font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500"
               >
-                <option value="ACTIVE">{t('common.active', 'Active')}</option>
-                <option value="INACTIVE">{t('common.inactive', 'Inactive')}</option>
-                <option value="SUSPENDED">Suspended</option>
+                <option value="ACTIVE">🟢 សកម្ម (ACTIVE) - Full Access & Attendance</option>
+                <option value="SUSPENDED">🟠 ផ្អាកបណ្តោះអាសន្ន (SUSPENDED)</option>
+                <option value="INACTIVE">🔴 អសកម្ម (INACTIVE) - Deactivated</option>
               </select>
             </div>
 
@@ -855,7 +1247,7 @@ export const EmployeesPage: React.FC = () => {
                 size="md"
                 isLoading={updateMutation.isPending}
               >
-                {t('common.save', 'រក្សាទុក')}
+                {t('common.save', 'រក្សាទុក (Save All Changes)')}
               </Button>
             </div>
           </form>
@@ -886,7 +1278,9 @@ export const EmployeesPage: React.FC = () => {
             ) : (
               <>
                 <p className="text-slate-600 dark:text-slate-400">
-                  Reset account credentials for <strong>{selectedEmployee.khmerName || selectedEmployee.displayName}</strong> ({selectedEmployee.email}).
+                  Reset account credentials for{' '}
+                  <strong>{selectedEmployee.khmerName || selectedEmployee.displayName}</strong> (
+                  {selectedEmployee.email}).
                 </p>
 
                 <div>
@@ -944,7 +1338,8 @@ export const EmployeesPage: React.FC = () => {
               </div>
               <div className="space-y-1">
                 <p className="font-bold text-sm text-rose-900 dark:text-rose-100">
-                  {employeeToDelete.khmerName || employeeToDelete.displayName} ({employeeToDelete.employeeCode})
+                  {employeeToDelete.khmerName || employeeToDelete.displayName} (
+                  {employeeToDelete.employeeCode})
                 </p>
                 <p className="text-xs text-rose-700 dark:text-rose-300 leading-relaxed">
                   {t(

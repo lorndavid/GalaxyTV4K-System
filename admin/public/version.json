@@ -1,0 +1,12 @@
+{
+  "version": "1.2.0",
+  "build": "20260907.01",
+  "releaseDate": "2026-09-07",
+  "appName": "Galaxy TV4K HR Admin",
+  "releaseNotes": [
+    "Enterprise Shift Timing & 08:01 Strict Late Attendance Rule",
+    "Dual Check-In Methods: Zone Geofenced Button and Dynamic QR Code",
+    "MinIO Employee Profile Avatars & Management",
+    "Live Shift Status & Check-In Window Control"
+  ]
+}

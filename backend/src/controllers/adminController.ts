@@ -6,6 +6,7 @@ import { AuthenticatedRequest } from '../middlewares/auth.js';
 import { ReportService } from '../services/reportService.js';
 import { EmployeeStatus, UserRole, UserStatus, ActorType } from '@prisma/client';
 import { createAuditLog } from '../utils/audit.js';
+import { TelegramService } from '../services/telegramService.js';
 
 export class AdminController {
   static async getDashboard(req: AuthenticatedRequest, res: Response) {
@@ -206,6 +207,11 @@ export class AdminController {
 
     const finalDisplayName = khmerName?.trim() || latinName?.trim() || displayName?.trim();
 
+    const existing = await prisma.employee.findUnique({
+      where: { id },
+      include: { department: true },
+    });
+
     const updated = await prisma.$transaction(async (tx) => {
       const emp = await tx.employee.update({
         where: { id },
@@ -258,6 +264,50 @@ export class AdminController {
 
       return emp;
     });
+
+    // Detect changed fields and notify Telegram asynchronously
+    const changedFields: string[] = [];
+    if (studyDay !== undefined && studyDay?.trim() !== (existing?.studyDay || '').trim()) {
+      changedFields.push('ថ្ងៃរៀន (Study Day)');
+    }
+    if (status !== undefined && status !== existing?.status) {
+      changedFields.push('ស្ថានភាព (Status)');
+    }
+    if (position !== undefined && position?.trim() !== (existing?.position || '').trim()) {
+      changedFields.push('តួនាទី (Position)');
+    }
+    if (departmentId !== undefined && departmentId !== existing?.departmentId) {
+      changedFields.push('ផ្នែក (Department)');
+    }
+    if (khmerName !== undefined && khmerName?.trim() !== (existing?.khmerName || '').trim()) {
+      changedFields.push('ឈ្មោះ (Name)');
+    }
+    if (phone !== undefined && phone?.trim() !== (existing?.phone || '').trim()) {
+      changedFields.push('លេខទូរសព្ទ (Phone)');
+    }
+
+    if (changedFields.length > 0) {
+      prisma.employee
+        .findUnique({
+          where: { id },
+          include: { department: true },
+        })
+        .then((fullEmp) => {
+          if (fullEmp) {
+            TelegramService.notifyEmployeeUpdated({
+              employeeName: fullEmp.khmerName || fullEmp.displayName || 'Employee',
+              employeeCode: fullEmp.employeeCode,
+              department: fullEmp.department?.name,
+              position: fullEmp.position,
+              status: fullEmp.status,
+              studyDay: fullEmp.studyDay,
+              changedFields,
+              updatedBy: req.user?.email || 'Admin',
+            }).catch((err) => console.error('[Telegram] notifyEmployeeUpdated error:', err));
+          }
+        })
+        .catch(() => {});
+    }
 
     return sendSuccess(res, updated);
   }

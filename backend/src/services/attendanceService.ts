@@ -15,6 +15,7 @@ import {
   getCurrentDateInTimezone,
   getCurrentTimeInTimezone,
   getDayOfWeekEnum,
+  parseTimeToMinutes,
   calculateLateMinutes,
   calculateEarlyLeaveMinutes,
   calculateWorkedMinutes,
@@ -27,6 +28,15 @@ const attendanceSseClients = new Set<Response>();
 export interface ScanAttendanceInput {
   employeeId: string;
   token: string;
+  latitude: number;
+  longitude: number;
+  accuracy: number;
+  ipAddress?: string;
+  userAgent?: string;
+}
+
+export interface ZoneCheckInInput {
+  employeeId: string;
   latitude: number;
   longitude: number;
   accuracy: number;
@@ -295,10 +305,27 @@ export class AttendanceService {
         let lateMinutes = 0;
 
         if (scheduleDay && scheduleDay.isWorkingDay) {
+          const startTime = scheduleDay.startTime || settings.workStartTime || '08:00';
+          const startMinutes = parseTimeToMinutes(startTime);
+          const currentMinutes = parseTimeToMinutes(currentTimeStr);
+          const allowedBefore = settings.checkInAllowedBeforeMinutes ?? 60;
+          const earliestMinutes = Math.max(0, startMinutes - allowedBefore);
+
+          if (currentMinutes < earliestMinutes) {
+            const openH = Math.floor(earliestMinutes / 60).toString().padStart(2, '0');
+            const openM = (earliestMinutes % 60).toString().padStart(2, '0');
+            const openTimeStr = `${openH}:${openM}`;
+            throw {
+              code: 'CHECK_IN_NOT_OPEN_YET',
+              message: `ការកត់ត្រាវត្តមានចូលមិនទាន់បើកនៅឡើយទេ។ បើកចាប់ពីម៉ោង ${openTimeStr} ព្រឹកតទៅ (Check-in opens at ${openTimeStr}).`,
+              status: 400,
+            };
+          }
+
           lateMinutes = calculateLateMinutes(
             currentTimeStr,
-            scheduleDay.startTime,
-            settings.lateGracePeriodMinutes
+            startTime,
+            settings.lateGracePeriodMinutes ?? 0
           );
           if (lateMinutes > 0) {
             attendanceStatus = AttendanceStatus.LATE;
@@ -446,19 +473,23 @@ export class AttendanceService {
 
       // Calculate Early Leave & Total Worked Minutes
       let earlyLeaveMinutes = 0;
+      const endTime = (scheduleDay && scheduleDay.endTime) || settings.workEndTime || '17:30';
       if (scheduleDay && scheduleDay.isWorkingDay) {
         earlyLeaveMinutes = calculateEarlyLeaveMinutes(
           currentTimeStr,
-          scheduleDay.endTime,
-          settings.earlyLeaveGraceMinutes
+          endTime,
+          settings.earlyLeaveGraceMinutes ?? 0
         );
       }
+
+      const breakStart = (scheduleDay && scheduleDay.breakStartTime) || settings.breakStartTime || '11:30';
+      const breakEnd = (scheduleDay && scheduleDay.breakEndTime) || settings.breakEndTime || '13:00';
 
       const workedMinutes = calculateWorkedMinutes(
         existingAttendance.checkInAt,
         now,
-        scheduleDay?.breakStartTime,
-        scheduleDay?.breakEndTime
+        breakStart,
+        breakEnd
       );
 
       // Determine updated status
@@ -519,6 +550,369 @@ export class AttendanceService {
         action: 'CHECK_OUT',
         attendance: updatedAttendance,
         message: `Checked out successfully at ${currentTimeStr}! Total worked: ${hours}h ${mins}m.`,
+        details: {
+          distanceFromOfficeMeters: geo.distanceMeters,
+          accuracyMeters: accuracy,
+          status: finalStatus,
+          lateMinutes: updatedAttendance.lateMinutes,
+          earlyLeaveMinutes,
+          workedMinutes,
+        },
+      };
+    });
+
+    // Broadcast Real-Time Attendance Event to Admin and Employee Streams
+    AttendanceService.broadcastAttendanceEvent({
+      type: 'ATTENDANCE_RECORDED',
+      action: result.action,
+      attendance: result.attendance,
+      details: result.details,
+      recordedAt: now.toISOString(),
+    });
+
+    return result;
+  }
+
+  /**
+   * 1-Click In-Zone Check-In / Check-Out for verified office perimeter.
+   * Admin-configurable policy: Requires being inside office geofence.
+   */
+  static async processZoneCheckIn({
+    employeeId,
+    latitude,
+    longitude,
+    accuracy,
+    ipAddress,
+    userAgent,
+  }: ZoneCheckInInput): Promise<AttendanceResult> {
+    const now = new Date();
+
+    // 1. Fetch Company Settings
+    let settings = await prisma.companySettings.findUnique({
+      where: { id: 'default' },
+    });
+
+    if (!settings) {
+      settings = await prisma.companySettings.create({
+        data: { id: 'default' },
+      });
+    }
+
+    // Verify method policy
+    if (settings.checkInMethod === 'QR_SCAN') {
+      throw {
+        code: 'QR_SCAN_REQUIRED',
+        message: 'ការិយាល័យតម្រូវឱ្យស្កេន QR Code ដើម្បីកត់ត្រាវត្តមាន។ (Office attendance policy requires scanning QR Code).',
+        status: 403,
+      };
+    }
+
+    // 2. Derive Current Time in Configured Timezone (Phnom Penh)
+    const timezone = settings.timezone || 'Asia/Phnom_Penh';
+    const todayDateStr = getCurrentDateInTimezone(timezone, now);
+    const currentTimeStr = getCurrentTimeInTimezone(timezone, now);
+    const dayOfWeek = getDayOfWeekEnum(now, timezone);
+
+    // 3. Geofence & GPS Anti-Spoofing Validation
+    const geo = validateGeofence(
+      latitude,
+      longitude,
+      accuracy,
+      settings.latitude,
+      settings.longitude,
+      settings.allowedRadiusMeters,
+      settings.gpsAccuracyThresholdMeters
+    );
+
+    if (!geo.isAccuracyAcceptable) {
+      throw {
+        code: 'GPS_ACCURACY_TOO_LOW',
+        message: `GPS accuracy is too low (±${Math.round(accuracy)}m). Allowed maximum is ±${settings.gpsAccuracyThresholdMeters}m. Please ensure GPS/Location is in high-accuracy mode and try again.`,
+        status: 400,
+        details: { accuracy, threshold: settings.gpsAccuracyThresholdMeters },
+      };
+    }
+
+    if (!geo.isWithinGeofence) {
+      throw {
+        code: 'OUTSIDE_GEOFENCE',
+        message: `អ្នកនៅក្រៅតំបន់ការិយាល័យ (${Math.round(geo.distanceMeters)}m ពីការិយាល័យ)។ ចម្ងាយអនុញ្ញាតគឺ ${settings.allowedRadiusMeters}m។ (You are outside the company attendance perimeter (${Math.round(geo.distanceMeters)}m away). Maximum allowed distance is ${settings.allowedRadiusMeters}m).`,
+        status: 400,
+        details: { distance: geo.distanceMeters, allowedRadius: settings.allowedRadiusMeters },
+      };
+    }
+
+    // 4. Atomic Execution inside Prisma Transaction
+    const result = await prisma.$transaction<AttendanceResult>(async (tx) => {
+      const employee = await tx.employee.findUnique({
+        where: { id: employeeId },
+        include: {
+          schedule: {
+            include: { days: true },
+          },
+          user: true,
+        },
+      });
+
+      if (!employee) {
+        throw { code: 'EMPLOYEE_NOT_FOUND', message: 'Employee profile not found.', status: 404 };
+      }
+
+      if (employee.status !== EmployeeStatus.ACTIVE) {
+        throw {
+          code: 'EMPLOYEE_INACTIVE',
+          message: 'Your employee account is suspended or inactive.',
+          status: 403,
+        };
+      }
+
+      // Check for Approved Leave
+      const approvedLeave = await tx.leaveRequest.findFirst({
+        where: {
+          employeeId: employee.id,
+          status: RequestStatus.APPROVED,
+          startDate: { lte: todayDateStr },
+          endDate: { gte: todayDateStr },
+        },
+      });
+
+      if (approvedLeave) {
+        throw {
+          code: 'LEAVE_APPROVED',
+          message: `You have an approved leave (${approvedLeave.type}) for today. Attendance recording is disabled.`,
+          status: 400,
+        };
+      }
+
+      let schedule = employee.schedule;
+      if (!schedule) {
+        schedule = await tx.schedule.findFirst({
+          where: { isDefault: true },
+          include: { days: true },
+        });
+      }
+
+      const scheduleDay = schedule?.days.find((d) => d.dayOfWeek === dayOfWeek);
+
+      const existingAttendance = await tx.attendance.findUnique({
+        where: {
+          employeeId_date: {
+            employeeId: employee.id,
+            date: todayDateStr,
+          },
+        },
+      });
+
+      // Branch 1: CHECK-IN
+      if (!existingAttendance) {
+        let attendanceStatus: AttendanceStatus = AttendanceStatus.PRESENT;
+        let lateMinutes = 0;
+
+        if (scheduleDay && scheduleDay.isWorkingDay) {
+          const startTime = scheduleDay.startTime || settings.workStartTime || '08:00';
+          const startMinutes = parseTimeToMinutes(startTime);
+          const currentMinutes = parseTimeToMinutes(currentTimeStr);
+          const allowedBefore = settings.checkInAllowedBeforeMinutes ?? 60;
+          const earliestMinutes = Math.max(0, startMinutes - allowedBefore);
+
+          if (currentMinutes < earliestMinutes) {
+            const openH = Math.floor(earliestMinutes / 60).toString().padStart(2, '0');
+            const openM = (earliestMinutes % 60).toString().padStart(2, '0');
+            const openTimeStr = `${openH}:${openM}`;
+            throw {
+              code: 'CHECK_IN_NOT_OPEN_YET',
+              message: `ការកត់ត្រាវត្តមានចូលមិនទាន់បើកនៅឡើយទេ។ បើកចាប់ពីម៉ោង ${openTimeStr} ព្រឹកតទៅ (Check-in opens at ${openTimeStr}).`,
+              status: 400,
+            };
+          }
+
+          lateMinutes = calculateLateMinutes(
+            currentTimeStr,
+            startTime,
+            settings.lateGracePeriodMinutes ?? 0
+          );
+          if (lateMinutes > 0) {
+            attendanceStatus = AttendanceStatus.LATE;
+          }
+        } else {
+          attendanceStatus = AttendanceStatus.REST_DAY;
+        }
+
+        const attendance = await tx.attendance.create({
+          data: {
+            employeeId: employee.id,
+            scheduleId: schedule?.id || null,
+            date: todayDateStr,
+            checkInAt: now,
+            checkInLatitude: latitude,
+            checkInLongitude: longitude,
+            checkInAccuracy: accuracy,
+            checkInDistanceMeters: geo.distanceMeters,
+            status: attendanceStatus,
+            lateMinutes,
+            notes: '1-Click In-Zone Check-In',
+            ipAddress,
+            userAgent,
+          },
+        });
+
+        await createAuditLog(
+          {
+            actorId: employee.user?.id || null,
+            actorType: ActorType.EMPLOYEE,
+            action: 'ATTENDANCE_CHECK_IN',
+            entityType: 'Attendance',
+            entityId: attendance.id,
+            metadata: {
+              date: todayDateStr,
+              time: currentTimeStr,
+              method: 'ZONE_CLICK',
+              status: attendanceStatus,
+              lateMinutes,
+              distanceMeters: geo.distanceMeters,
+            },
+            ipAddress,
+            userAgent,
+          },
+          tx
+        );
+
+        return {
+          action: 'CHECK_IN',
+          attendance,
+          message:
+            attendanceStatus === AttendanceStatus.LATE
+              ? `បានកត់ត្រាវត្តមានចូលធ្វើការនៅម៉ោង ${currentTimeStr} (យឺត ${lateMinutes} នាទី)។`
+              : `បានកត់ត្រាវត្តមានចូលធ្វើការដោយជោគជ័យនៅម៉ោង ${currentTimeStr}! សូមបំពេញការងារប្រកបដោយភាពរីករាយ។`,
+          details: {
+            distanceFromOfficeMeters: geo.distanceMeters,
+            accuracyMeters: accuracy,
+            status: attendanceStatus,
+            lateMinutes,
+            earlyLeaveMinutes: 0,
+            workedMinutes: 0,
+          },
+        };
+      }
+
+      // Branch 2: CHECK-OUT
+      if (existingAttendance.checkInAt && existingAttendance.checkOutAt) {
+        const checkOutDiffMs = now.getTime() - new Date(existingAttendance.checkOutAt).getTime();
+        if (checkOutDiffMs < 60 * 1000) {
+          return {
+            action: 'CHECK_OUT',
+            attendance: existingAttendance,
+            message: `Check-out already confirmed for today at ${currentTimeStr}.`,
+            details: {
+              distanceFromOfficeMeters: geo.distanceMeters,
+              accuracyMeters: accuracy,
+              status: existingAttendance.status,
+              lateMinutes: existingAttendance.lateMinutes,
+              earlyLeaveMinutes: existingAttendance.earlyLeaveMinutes,
+              workedMinutes: existingAttendance.workedMinutes,
+            },
+          };
+        }
+        throw {
+          code: 'ALREADY_CHECKED_OUT',
+          message: 'អ្នកបានកត់ត្រាវត្តមានចេញ (Check-out) រួចរាល់ហើយសម្រាប់ថ្ងៃនេះ។',
+          status: 400,
+        };
+      }
+
+      // Guard B: Idempotent confirmation if within 60s
+      if (existingAttendance.checkInAt && !existingAttendance.checkOutAt) {
+        const checkInDiffMs = now.getTime() - new Date(existingAttendance.checkInAt).getTime();
+        if (checkInDiffMs < 60 * 1000) {
+          return {
+            action: 'CHECK_IN',
+            attendance: existingAttendance,
+            message: `Check-in already confirmed at ${currentTimeStr}. Have a great day!`,
+            details: {
+              distanceFromOfficeMeters: geo.distanceMeters,
+              accuracyMeters: accuracy,
+              status: existingAttendance.status,
+              lateMinutes: existingAttendance.lateMinutes,
+              earlyLeaveMinutes: 0,
+              workedMinutes: 0,
+            },
+          };
+        }
+      }
+
+      let earlyLeaveMinutes = 0;
+      const endTime = (scheduleDay && scheduleDay.endTime) || settings.workEndTime || '17:30';
+      if (scheduleDay && scheduleDay.isWorkingDay) {
+        earlyLeaveMinutes = calculateEarlyLeaveMinutes(
+          currentTimeStr,
+          endTime,
+          settings.earlyLeaveGraceMinutes ?? 0
+        );
+      }
+
+      const breakStart = (scheduleDay && scheduleDay.breakStartTime) || settings.breakStartTime || '11:30';
+      const breakEnd = (scheduleDay && scheduleDay.breakEndTime) || settings.breakEndTime || '13:00';
+
+      const workedMinutes = calculateWorkedMinutes(
+        existingAttendance.checkInAt!,
+        now,
+        breakStart,
+        breakEnd
+      );
+
+      let finalStatus = existingAttendance.status;
+      if (finalStatus !== AttendanceStatus.LATE && earlyLeaveMinutes > 0) {
+        finalStatus = AttendanceStatus.EARLY_LEAVE;
+      }
+
+      const updatedAttendance = await tx.attendance.update({
+        where: { id: existingAttendance.id },
+        data: {
+          checkOutAt: now,
+          checkOutLatitude: latitude,
+          checkOutLongitude: longitude,
+          checkOutAccuracy: accuracy,
+          checkOutDistanceMeters: geo.distanceMeters,
+          status: finalStatus,
+          earlyLeaveMinutes,
+          workedMinutes,
+          notes: existingAttendance.notes
+            ? `${existingAttendance.notes} | 1-Click Check-Out`
+            : '1-Click Check-Out',
+        },
+      });
+
+      await createAuditLog(
+        {
+          actorId: employee.user?.id || null,
+          actorType: ActorType.EMPLOYEE,
+          action: 'ATTENDANCE_CHECK_OUT',
+          entityType: 'Attendance',
+          entityId: updatedAttendance.id,
+          metadata: {
+            date: todayDateStr,
+            time: currentTimeStr,
+            method: 'ZONE_CLICK',
+            workedMinutes,
+            earlyLeaveMinutes,
+            distanceMeters: geo.distanceMeters,
+          },
+          ipAddress,
+          userAgent,
+        },
+        tx
+      );
+
+      const hours = Math.floor(workedMinutes / 60);
+      const mins = workedMinutes % 60;
+
+      return {
+        action: 'CHECK_OUT',
+        attendance: updatedAttendance,
+        message:
+          earlyLeaveMinutes > 0
+            ? `បានកត់ត្រាចេញពីការងារនៅម៉ោង ${currentTimeStr} (ចេញមុនម៉ោង ${earlyLeaveMinutes} នាទី)។ រយៈពេលបំពេញការងារសរុប: ${hours}ម៉ោង ${mins}នាទី។`
+            : `បានកត់ត្រាចេញពីការងារដោយជោគជ័យនៅម៉ោង ${currentTimeStr}! រយៈពេលបំពេញការងារសរុប: ${hours}ម៉ោង ${mins}នាទី។`,
         details: {
           distanceFromOfficeMeters: geo.distanceMeters,
           accuracyMeters: accuracy,

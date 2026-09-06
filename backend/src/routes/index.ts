@@ -44,8 +44,8 @@ router.get('/version', (_req, res) => {
   res.json({
     success: true,
     data: {
-      version: process.env.APP_VERSION || '1.1.0',
-      buildDate: '2026-09-06',
+      version: process.env.APP_VERSION || '1.2.0',
+      buildDate: '2026-09-07',
       appName: 'Galaxy TV4K HR System',
       description: 'Official Attendance, QR Tracking & Telegram Automation',
     },

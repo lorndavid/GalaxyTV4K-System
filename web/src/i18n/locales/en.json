@@ -21,7 +21,8 @@
     "inactive": "Inactive",
     "copied": "Copied to clipboard",
     "save": "Save Changes",
-    "close": "Close"
+    "close": "Close",
+    "checkIn": "Check-In"
   },
   "auth": {
     "welcome": "Galaxy TV4K Portal",
@@ -35,10 +36,14 @@
     "demoAccount": "Sample Account"
   },
   "home": {
-    "greeting": "Good day",
+    "greeting": "Good Day",
+    "goodMorning": "Good Morning",
+    "goodAfternoon": "Good Afternoon",
+    "goodEvening": "Good Evening",
+    "goodNight": "Good Night",
     "todayShift": "Today's Shift",
     "todayAttendance": "Today's Attendance",
-    "shiftHours": "Shift 08:00 AM – 05:00 PM",
+    "shiftHours": "Shift 08:00 AM – 05:30 PM",
     "checkInTime": "Check-In Time",
     "checkOutTime": "Check-Out Time",
     "lateLabel": "Late",
@@ -101,7 +106,19 @@
     "gpsUnavailable": "We couldn't determine your location. Please turn on GPS/Location and try again.",
     "qrNotFoundInPhoto": "Could not find a valid QR code in the uploaded image.",
     "permissionDeniedTitle": "Camera Access Required",
-    "scanFailedTitle": "Attendance Notice"
+    "scanFailedTitle": "Attendance Notice",
+    "oneClickCheckIn": "1-Click Check-In",
+    "qrScanTab": "Scan QR Code",
+    "punchInBtn": "Click to Check-In",
+    "punchOutBtn": "Click to Check-Out",
+    "alreadyCompleted": "Attendance Completed for Today",
+    "insideOfficeZone": "Inside Office Zone",
+    "outsideOfficeZone": "Outside Office Zone",
+    "distanceFromOffice": "{{meters}}m from office",
+    "officeZonePerimeter": "Perimeter: {{radius}}m",
+    "approachOfficeNotice": "Please move closer to the office premises to record attendance.",
+    "clickToRecordDesc": "You are verified inside the office zone. Tap the button below to record your punch.",
+    "clockTitle": "Current Cambodia Time"
   },
   "leave": {
     "title": "Leave Management",
