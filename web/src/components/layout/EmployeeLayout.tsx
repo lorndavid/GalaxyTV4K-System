@@ -49,7 +49,7 @@ export const EmployeeLayout: React.FC = () => {
   const initials = getInitials(employeeName);
 
   return (
-    <div className="min-h-screen bg-slate-100/70 dark:bg-dark-bg flex flex-col justify-between transition-colors duration-150">
+    <div className="min-h-screen bg-white dark:bg-dark-bg flex flex-col justify-between transition-colors duration-150">
       <div className="max-w-md w-full mx-auto min-h-screen bg-white dark:bg-dark-surface flex flex-col border-x border-slate-200/80 dark:border-dark-border pb-28 shadow-xs">
         {/* Offline Notice Banner */}
         {!isOnline && (
@@ -59,8 +59,8 @@ export const EmployeeLayout: React.FC = () => {
           </div>
         )}
 
-        {/* Top App Bar Header - Replaced static logo with interactive Profile Avatar */}
-        <header className="min-h-[4.25rem] py-3 bg-white/95 dark:bg-dark-surface/95 backdrop-blur-md border-b border-slate-100 dark:border-dark-border px-4 sm:px-5 flex items-center justify-between sticky top-0 z-30 pt-[calc(env(safe-area-inset-top)+0.625rem)] transition-colors duration-150">
+        {/* Top App Bar Header - Pure white in light mode, dark surface in dark mode */}
+        <header className="min-h-[4.25rem] py-3 bg-white dark:bg-dark-surface border-b border-slate-100 dark:border-dark-border px-4 sm:px-5 flex items-center justify-between sticky top-0 z-30 pt-[calc(env(safe-area-inset-top)+0.625rem)] transition-colors duration-150">
           <div className="flex items-center gap-3 min-w-0 flex-1 pr-2">
             {/* Clickable Profile Avatar Button (Replaces Logo) */}
             <button

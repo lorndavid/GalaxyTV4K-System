@@ -68,7 +68,7 @@ export const BottomNav: React.FC = () => {
             <NavLink
               to="/scan"
               className={({ isActive }) =>
-                `w-14 h-14 rounded-full bg-gradient-to-tr from-brand-600 to-blue-500 hover:from-brand-700 hover:to-blue-600 text-white flex flex-col items-center justify-center shadow-lg shadow-brand-500/25 border-4 border-slate-50 dark:border-dark-bg transition-all duration-200 active:scale-90 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 ${
+                `w-14 h-14 rounded-full bg-gradient-to-tr from-brand-600 to-blue-500 hover:from-brand-700 hover:to-blue-600 text-white flex flex-col items-center justify-center shadow-lg shadow-brand-500/25 border-4 border-white dark:border-dark-surface transition-all duration-200 active:scale-90 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2 ${
                   isActive ? 'ring-2 ring-brand-500 ring-offset-2 scale-105 shadow-brand-500/40 shadow-xl' : ''
                 }`
               }

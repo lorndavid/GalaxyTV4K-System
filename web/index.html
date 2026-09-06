@@ -6,8 +6,9 @@
     <link rel="apple-touch-icon" href="/logo.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>Galaxy TV4K — Employee Attendance</title>
-    <meta name="description" content="Galaxy TV4K employee attendance, QR punch, and leave management application" />
-    <meta name="theme-color" content="#2563EB" />
+    <meta name="theme-color" content="#FFFFFF" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#FFFFFF" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#111827" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
@@ -83,11 +84,16 @@
           } else {
             document.documentElement.classList.remove('dark');
           }
+          var themeColor = isDark ? '#111827' : '#FFFFFF';
+          var metas = document.querySelectorAll('meta[name="theme-color"]');
+          metas.forEach(function(m) {
+            m.setAttribute('content', themeColor);
+          });
         } catch (e) {}
       })();
     </script>
   </head>
-  <body class="bg-slate-50 dark:bg-dark-bg text-slate-900 dark:text-slate-100 font-sans antialiased selection:bg-brand-600 selection:text-white overscroll-none transition-colors duration-150">
+  <body class="bg-white dark:bg-dark-bg text-slate-900 dark:text-slate-100 font-sans antialiased selection:bg-brand-600 selection:text-white overscroll-none transition-colors duration-150">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

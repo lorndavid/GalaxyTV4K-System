@@ -174,6 +174,20 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
         root.classList.remove('dark');
         setEffectiveTheme('light');
       }
+
+      // Keep mobile status bar / browser tab clean white in light mode and deep dark in dark mode
+      const themeColor = isDark ? '#111827' : '#FFFFFF';
+      const metaThemes = document.querySelectorAll('meta[name="theme-color"]');
+      if (metaThemes.length > 0) {
+        metaThemes.forEach((meta) => {
+          meta.setAttribute('content', themeColor);
+        });
+      }
+
+      const appleStatusBar = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
+      if (appleStatusBar) {
+        appleStatusBar.setAttribute('content', isDark ? 'black-translucent' : 'default');
+      }
     };
 
     applyTheme();
@@ -200,11 +214,13 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({ c
     root.style.setProperty('--color-primary-soft', definition.soft);
     root.style.setProperty('--color-primary-foreground', '#FFFFFF');
 
-    // Update meta theme-color for browser tab / mobile status bar
-    const metaTheme = document.querySelector('meta[name="theme-color"]');
-    if (metaTheme) {
-      metaTheme.setAttribute('content', definition.primary);
-    }
+    // Keep meta theme-color strictly aligned with light/dark page background (never override with accent green/blue)
+    const isDark = root.classList.contains('dark');
+    const themeColor = isDark ? '#111827' : '#FFFFFF';
+    const metaThemes = document.querySelectorAll('meta[name="theme-color"]');
+    metaThemes.forEach((meta) => {
+      meta.setAttribute('content', themeColor);
+    });
   }, [colorTheme]);
 
   // Synchronize Typography with CSS variables
