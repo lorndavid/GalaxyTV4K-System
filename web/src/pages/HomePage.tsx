@@ -228,14 +228,14 @@ export const HomePage: React.FC = () => {
 
   return (
     <div className="space-y-4 pb-4 animate-fade-in max-w-lg mx-auto select-none">
-      {/* 1. Senior Executive Greeting Header (Clean, iconless single-line layout) */}
+      {/* 1. Senior Executive Greeting Header (Clean, iconless small single-line layout) */}
       <div className="flex items-center justify-between gap-3 pt-1 px-0.5">
         <div className="min-w-0 flex-1">
-          <h1 className="text-lg sm:text-xl font-black tracking-tight leading-tight truncate">
-            <span className={`${greetingColor} font-bold`}>{greetingText}, </span>
-            <span className="text-slate-900 dark:text-slate-100 font-black">{shortEmployeeName}</span>
+          <h1 className="text-sm sm:text-base font-bold tracking-tight leading-tight truncate">
+            <span className={`${greetingColor}`}>{greetingText}, </span>
+            <span className="text-slate-900 dark:text-slate-100 font-extrabold">{shortEmployeeName}</span>
           </h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-0.5 truncate">
+          <p className="text-[11px] text-slate-400 dark:text-slate-400 font-medium mt-0.5 truncate">
             {todayFormatted}
           </p>
         </div>

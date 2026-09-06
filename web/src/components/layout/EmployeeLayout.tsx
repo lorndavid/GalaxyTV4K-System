@@ -84,11 +84,11 @@ export const EmployeeLayout: React.FC = () => {
               </div>
             </button>
 
-            {/* Clean Employee Name */}
+            {/* Header Title near Profile Avatar: Galaxy TV4K */}
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-bold text-slate-900 dark:text-slate-100 leading-tight truncate">
-                {employeeName}
-              </p>
+              <span className="text-sm sm:text-base font-black text-slate-900 dark:text-slate-100 tracking-tight leading-none select-none">
+                Galaxy TV4K
+              </span>
             </div>
           </div>
 
