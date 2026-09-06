@@ -400,21 +400,37 @@ async function main() {
     });
 
     // Upsert User account
-    await prisma.user.upsert({
-      where: { email: empData.email.toLowerCase() },
-      update: {
-        employeeId: employee.id,
-        role: UserRole.EMPLOYEE,
-        status: UserStatus.ACTIVE,
-      },
-      create: {
-        email: empData.email.toLowerCase(),
-        passwordHash: employeePasswordHash,
-        role: UserRole.EMPLOYEE,
-        status: UserStatus.ACTIVE,
-        employeeId: employee.id,
+    const existingUser = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { employeeId: employee.id },
+          { email: empData.email.toLowerCase() },
+        ],
       },
     });
+
+    if (existingUser) {
+      await prisma.user.update({
+        where: { id: existingUser.id },
+        data: {
+          email: empData.email.toLowerCase(),
+          employeeId: employee.id,
+          role: UserRole.EMPLOYEE,
+          status: UserStatus.ACTIVE,
+          passwordHash: employeePasswordHash,
+        },
+      });
+    } else {
+      await prisma.user.create({
+        data: {
+          email: empData.email.toLowerCase(),
+          passwordHash: employeePasswordHash,
+          role: UserRole.EMPLOYEE,
+          status: UserStatus.ACTIVE,
+          employeeId: employee.id,
+        },
+      });
+    }
 
     // Upsert Leave Balance
     await prisma.leaveBalance.upsert({
