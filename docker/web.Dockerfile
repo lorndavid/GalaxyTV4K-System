@@ -20,8 +20,8 @@ server {
     index index.html;
     client_max_body_size 25M;
 
-    location /api/ {
-        proxy_pass http://backend:4000/api/;
+    location /api {
+        proxy_pass http://backend:4000;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection 'upgrade';
