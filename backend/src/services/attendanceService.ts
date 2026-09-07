@@ -22,6 +22,8 @@ import {
 } from '../utils/time.js';
 import { createAuditLog } from '../utils/audit.js';
 
+import { detectVpnOrProxy, detectFakeGps } from '../utils/security.js';
+
 // Active SSE client connections for real-time live attendance stream
 const attendanceSseClients = new Set<Response>();
 
@@ -33,6 +35,8 @@ export interface ScanAttendanceInput {
   accuracy: number;
   ipAddress?: string;
   userAgent?: string;
+  isMocked?: boolean;
+  headers?: Record<string, any>;
 }
 
 export interface ZoneCheckInInput {
@@ -42,6 +46,8 @@ export interface ZoneCheckInInput {
   accuracy: number;
   ipAddress?: string;
   userAgent?: string;
+  isMocked?: boolean;
+  headers?: Record<string, any>;
 }
 
 export interface AttendanceResult {
@@ -95,7 +101,7 @@ export class AttendanceService {
    * Runs in an isolated database transaction to guarantee ACID integrity.
    */
   static async processAttendanceScan(input: ScanAttendanceInput): Promise<AttendanceResult> {
-    const { employeeId, token, latitude, longitude, accuracy, ipAddress, userAgent } = input;
+    const { employeeId, token, latitude, longitude, accuracy, ipAddress, userAgent, isMocked, headers } = input;
 
     // 1. Hash the incoming token
     const tokenHash = QrService.hashToken(token.trim());
@@ -121,6 +127,41 @@ export class AttendanceService {
 
     const timezone = settings.timezone || 'Asia/Phnom_Penh';
     const now = new Date();
+
+    // 2.2 Third-Party VPN / Proxy Detection
+    const vpnCheck = detectVpnOrProxy(headers);
+    if (vpnCheck.isVpn) {
+      throw {
+        code: 'VPN_DETECTED',
+        message: vpnCheck.reason,
+        status: 403,
+      };
+    }
+
+    // 2.3 Fake GPS & Mock Location Detection
+    const prevLocation = await prisma.employeeLocation.findFirst({
+      where: { employeeId },
+      orderBy: { recordedAt: 'desc' },
+      select: { latitude: true, longitude: true, recordedAt: true },
+    });
+
+    const fakeGpsCheck = detectFakeGps({
+      latitude,
+      longitude,
+      accuracy,
+      isMocked,
+      prevLocation,
+      currentTime: now,
+    });
+
+    if (fakeGpsCheck.isFakeGps) {
+      throw {
+        code: fakeGpsCheck.isSpeedAnomaly ? 'GPS_ANOMALY_SPOOFING' : 'FAKE_GPS_DETECTED',
+        message: fakeGpsCheck.reason,
+        status: 403,
+      };
+    }
+
     const todayDateStr = getCurrentDateInTimezone(timezone, now);
     const currentTimeStr = getCurrentTimeInTimezone(timezone, now);
     const dayOfWeek = getDayOfWeekEnum(now, timezone);
@@ -584,10 +625,23 @@ export class AttendanceService {
     accuracy,
     ipAddress,
     userAgent,
+    isMocked,
+    headers,
   }: ZoneCheckInInput): Promise<AttendanceResult> {
     const now = new Date();
 
-    // 1. Fetch Company Settings
+    // 1. Coordinate Bounds & Sanity Validation
+    if (typeof latitude !== 'number' || isNaN(latitude) || latitude < -90 || latitude > 90) {
+      throw { code: 'INVALID_COORDINATES', message: 'Latitude must be a valid number between -90 and 90.', status: 400 };
+    }
+    if (typeof longitude !== 'number' || isNaN(longitude) || longitude < -180 || longitude > 180) {
+      throw { code: 'INVALID_COORDINATES', message: 'Longitude must be a valid number between -180 and 180.', status: 400 };
+    }
+    if (typeof accuracy !== 'number' || isNaN(accuracy) || accuracy < 0) {
+      throw { code: 'INVALID_ACCURACY', message: 'GPS accuracy must be a non-negative number.', status: 400 };
+    }
+
+    // 2. Fetch Company Settings
     let settings = await prisma.companySettings.findUnique({
       where: { id: 'default' },
     });
@@ -607,7 +661,41 @@ export class AttendanceService {
       };
     }
 
-    // 2. Derive Current Time in Configured Timezone (Phnom Penh)
+    // 2.1 Third-Party VPN / Proxy Detection
+    const vpnCheck = detectVpnOrProxy(headers);
+    if (vpnCheck.isVpn) {
+      throw {
+        code: 'VPN_DETECTED',
+        message: vpnCheck.reason,
+        status: 403,
+      };
+    }
+
+    // 2.2 Fake GPS & Mock Location Detection
+    const prevLocation = await prisma.employeeLocation.findFirst({
+      where: { employeeId },
+      orderBy: { recordedAt: 'desc' },
+      select: { latitude: true, longitude: true, recordedAt: true },
+    });
+
+    const fakeGpsCheck = detectFakeGps({
+      latitude,
+      longitude,
+      accuracy,
+      isMocked,
+      prevLocation,
+      currentTime: now,
+    });
+
+    if (fakeGpsCheck.isFakeGps) {
+      throw {
+        code: fakeGpsCheck.isSpeedAnomaly ? 'GPS_ANOMALY_SPOOFING' : 'FAKE_GPS_DETECTED',
+        message: fakeGpsCheck.reason,
+        status: 403,
+      };
+    }
+
+    // 2.3 Derive Current Time in Configured Timezone (Phnom Penh)
     const timezone = settings.timezone || 'Asia/Phnom_Penh';
     const todayDateStr = getCurrentDateInTimezone(timezone, now);
     const currentTimeStr = getCurrentTimeInTimezone(timezone, now);

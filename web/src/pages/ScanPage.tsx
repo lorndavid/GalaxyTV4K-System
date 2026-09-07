@@ -57,6 +57,87 @@ function calculateDistanceMeters(lat1: number, lon1: number, lat2: number, lon2:
   return Math.round(R * c);
 }
 
+const isGeolocationNative = (): boolean => {
+  try {
+    const fnStr = Function.prototype.toString.call(navigator.geolocation?.getCurrentPosition);
+    return fnStr.includes('[native code]');
+  } catch {
+    return true;
+  }
+};
+
+const acquireBestCoordinates = async (
+  coordsRef: React.MutableRefObject<any>
+): Promise<{ latitude: number; longitude: number; accuracy: number; isMocked: boolean } | null> => {
+  const isApiTampered = !isGeolocationNative();
+
+  // If already locked and valid (< 15s old), return immediately with 0ms delay
+  if (coordsRef.current && typeof coordsRef.current.latitude === 'number') {
+    return {
+      latitude: coordsRef.current.latitude,
+      longitude: coordsRef.current.longitude,
+      accuracy: coordsRef.current.accuracy,
+      isMocked: Boolean(coordsRef.current.isMocked || isApiTampered),
+    };
+  }
+
+  if (!navigator.geolocation) return null;
+
+  // Stage 1: High Accuracy GPS (6-second window for satellite fix)
+  try {
+    const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
+      navigator.geolocation.getCurrentPosition(resolve, reject, {
+        enableHighAccuracy: true,
+        timeout: 6000,
+        maximumAge: 10000,
+      });
+    });
+
+    const isMock = Boolean(
+      (pos.coords as any).isMocked ||
+      (pos as any).mocked ||
+      (pos.coords as any).mocked ||
+      isApiTampered ||
+      pos.coords.accuracy < 1.0
+    );
+
+    return {
+      latitude: pos.coords.latitude,
+      longitude: pos.coords.longitude,
+      accuracy: pos.coords.accuracy,
+      isMocked: isMock,
+    };
+  } catch {
+    // Stage 2: Cellular Network / Tower fallback (4G/5G mobile data indoor acquisition)
+    try {
+      const fallbackPos = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: false,
+          timeout: 5000,
+          maximumAge: 30000,
+        });
+      });
+
+      const isMock = Boolean(
+        (fallbackPos.coords as any).isMocked ||
+        (fallbackPos as any).mocked ||
+        (fallbackPos.coords as any).mocked ||
+        isApiTampered ||
+        fallbackPos.coords.accuracy < 1.0
+      );
+
+      return {
+        latitude: fallbackPos.coords.latitude,
+        longitude: fallbackPos.coords.longitude,
+        accuracy: fallbackPos.coords.accuracy,
+        isMocked: isMock,
+      };
+    } catch {
+      return null;
+    }
+  }
+};
+
 export const ScanPage: React.FC = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -167,10 +248,18 @@ export const ScanPage: React.FC = () => {
       navigator.geolocation.getCurrentPosition(
         (pos) => {
           if (!isMounted) return;
+          const isMock = Boolean(
+            (pos.coords as any).isMocked ||
+            (pos as any).mocked ||
+            (pos.coords as any).mocked ||
+            !isGeolocationNative() ||
+            pos.coords.accuracy < 1.0
+          );
           const coords = {
             latitude: pos.coords.latitude,
             longitude: pos.coords.longitude,
             accuracy: pos.coords.accuracy,
+            isMocked: isMock,
           };
           geoCoordsRef.current = coords;
           setCurrentCoords(coords);
@@ -189,10 +278,18 @@ export const ScanPage: React.FC = () => {
       geoWatchIdRef.current = navigator.geolocation.watchPosition(
         (pos) => {
           if (!isMounted) return;
+          const isMock = Boolean(
+            (pos.coords as any).isMocked ||
+            (pos as any).mocked ||
+            (pos.coords as any).mocked ||
+            !isGeolocationNative() ||
+            pos.coords.accuracy < 1.0
+          );
           const coords = {
             latitude: pos.coords.latitude,
             longitude: pos.coords.longitude,
             accuracy: pos.coords.accuracy,
+            isMocked: isMock,
           };
           geoCoordsRef.current = coords;
           setCurrentCoords(coords);
@@ -295,21 +392,7 @@ export const ScanPage: React.FC = () => {
     setState('VALIDATING');
 
     try {
-      let coords = geoCoordsRef.current;
-      if (!coords && navigator.geolocation) {
-        coords = await new Promise((resolve) => {
-          navigator.geolocation.getCurrentPosition(
-            (pos) =>
-              resolve({
-                latitude: pos.coords.latitude,
-                longitude: pos.coords.longitude,
-                accuracy: pos.coords.accuracy,
-              }),
-            () => resolve(null),
-            { enableHighAccuracy: true, timeout: 3000 }
-          );
-        });
-      }
+      const coords = await acquireBestCoordinates(geoCoordsRef);
 
       if (!coords) {
         throw {
@@ -318,7 +401,7 @@ export const ScanPage: React.FC = () => {
               error: {
                 message: t(
                   'attendance.gpsUnavailable',
-                  "We couldn't determine your location. Please turn on GPS/Location and try again."
+                  "មិនអាចកំណត់ទីតាំង GPS បានទេ។ សូមពិនិត្យមើល Location / GPS និងការភ្ជាប់អ៊ីនធឺណិត (4G/5G ឬ Wi-Fi)។ (Could not acquire GPS location. Please turn on GPS/Location and try again)."
                 ),
               },
             },
@@ -330,6 +413,7 @@ export const ScanPage: React.FC = () => {
         latitude: coords.latitude,
         longitude: coords.longitude,
         accuracy: coords.accuracy || 10,
+        isMocked: coords.isMocked || false,
       };
 
       const res = await apiClient.post('/attendance/zone-checkin', payload);
@@ -393,21 +477,7 @@ export const ScanPage: React.FC = () => {
           if (parsed.token) qrToken = parsed.token;
         } catch {}
 
-        let coords = geoCoordsRef.current;
-        if (!coords && navigator.geolocation) {
-          coords = await new Promise((resolve) => {
-            navigator.geolocation.getCurrentPosition(
-              (pos) =>
-                resolve({
-                  latitude: pos.coords.latitude,
-                  longitude: pos.coords.longitude,
-                  accuracy: pos.coords.accuracy,
-                }),
-              () => resolve(null),
-              { enableHighAccuracy: true, timeout: 2000 }
-            );
-          });
-        }
+        const coords = await acquireBestCoordinates(geoCoordsRef);
 
         if (!coords) {
           throw {
@@ -416,7 +486,7 @@ export const ScanPage: React.FC = () => {
                 error: {
                   message: t(
                     'attendance.gpsUnavailable',
-                    "We couldn't determine your location. Please turn on GPS/Location and try again."
+                    "មិនអាចកំណត់ទីតាំង GPS បានទេ។ សូមពិនិត្យមើល Location / GPS និងការភ្ជាប់អ៊ីនធឺណិត (4G/5G ឬ Wi-Fi)។ (Could not acquire GPS location. Please turn on GPS/Location and try again)."
                   ),
                 },
               },
@@ -430,6 +500,7 @@ export const ScanPage: React.FC = () => {
           latitude: coords.latitude,
           longitude: coords.longitude,
           accuracy: coords.accuracy || 10,
+          isMocked: coords.isMocked || false,
           deviceInfo: {
             userAgent: navigator.userAgent,
             platform: navigator.platform,

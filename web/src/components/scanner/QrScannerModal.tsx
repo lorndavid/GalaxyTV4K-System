@@ -69,12 +69,19 @@ export const QrScannerModal: React.FC<QrScannerModalProps> = ({
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
+        const isMock = Boolean(
+          (position.coords as any).isMocked ||
+          (position as any).mocked ||
+          (position.coords as any).mocked ||
+          position.coords.accuracy < 1.0
+        );
         const coords = {
           latitude: position.coords.latitude,
           longitude: position.coords.longitude,
           accuracy: position.coords.accuracy,
+          isMocked: isMock,
         };
-        setGeoCoordinates(coords);
+        setGeoCoordinates(coords as any);
         setLocationStatus(`Location acquired (±${Math.round(coords.accuracy)}m)`);
         setStage('SCANNING');
         startCamera();
@@ -157,6 +164,7 @@ export const QrScannerModal: React.FC<QrScannerModalProps> = ({
         latitude: geoCoordinates?.latitude,
         longitude: geoCoordinates?.longitude,
         accuracy: geoCoordinates?.accuracy,
+        isMocked: Boolean((geoCoordinates as any)?.isMocked),
         deviceInfo: {
           userAgent: navigator.userAgent,
           platform: navigator.platform,

@@ -10,6 +10,8 @@ const locationUpdateSchema = z.object({
   longitude: z.number().min(-180).max(180),
   accuracy: z.number().min(0).max(50000),
   recordedAt: z.string().optional(),
+  isMocked: z.boolean().optional(),
+  mocked: z.boolean().optional(),
 });
 
 export class LocationController {
@@ -27,6 +29,17 @@ export class LocationController {
       const parsed = locationUpdateSchema.safeParse(req.body);
       if (!parsed.success) {
         res.status(400).json({ success: false, error: { message: 'Invalid location coordinates or accuracy.', details: parsed.error.format() } });
+        return;
+      }
+
+      if (parsed.data.isMocked || parsed.data.mocked || parsed.data.accuracy < 1.0) {
+        res.status(403).json({
+          success: false,
+          error: {
+            code: 'FAKE_GPS_DETECTED',
+            message: 'ប្រព័ន្ធបានរកឃើញការប្រើប្រាស់ Fake GPS ឬ Mock Location។ (Fake GPS / Mock Location detected.)',
+          },
+        });
         return;
       }
 

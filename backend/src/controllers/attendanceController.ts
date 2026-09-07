@@ -16,7 +16,7 @@ export class AttendanceController {
       return sendError(res, 'EMPLOYEE_REQUIRED', 'Only registered employees can submit attendance.', 403);
     }
 
-    const { token, qrToken, latitude, longitude, accuracy } = req.body;
+    const { token, qrToken, latitude, longitude, accuracy, isMocked, mocked } = req.body;
     const actualToken = token || qrToken;
 
     if (!actualToken || typeof actualToken !== 'string') {
@@ -36,6 +36,8 @@ export class AttendanceController {
         accuracy,
         ipAddress: req.ip,
         userAgent: req.headers['user-agent'],
+        isMocked: Boolean(isMocked || mocked),
+        headers: req.headers,
       });
 
       // Asynchronously trigger Telegram notification without blocking response
@@ -95,7 +97,7 @@ export class AttendanceController {
       return sendError(res, 'EMPLOYEE_REQUIRED', 'Only registered employees can submit attendance.', 403);
     }
 
-    const { latitude, longitude, accuracy } = req.body;
+    const { latitude, longitude, accuracy, isMocked, mocked } = req.body;
 
     if (typeof latitude !== 'number' || typeof longitude !== 'number' || typeof accuracy !== 'number') {
       return sendError(res, 'INVALID_GPS', 'Accurate GPS coordinates and accuracy reading are required.', 400);
@@ -109,6 +111,8 @@ export class AttendanceController {
         accuracy,
         ipAddress: req.ip,
         userAgent: req.headers['user-agent'],
+        isMocked: Boolean(isMocked || mocked),
+        headers: req.headers,
       });
 
       // Asynchronously trigger Telegram notification without blocking response

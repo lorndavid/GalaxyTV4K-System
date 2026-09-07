@@ -54,11 +54,17 @@ export const useLocationTracker = (
     setIsSending(true);
 
     try {
+      const isMock = Boolean(
+        (coords as any).isMocked ||
+        (coords as any).mocked ||
+        coords.accuracy < 1.0
+      );
       await apiClient.post('/location/update', {
         latitude: coords.latitude,
         longitude: coords.longitude,
         accuracy: coords.accuracy,
         recordedAt: new Date().toISOString(),
+        isMocked: isMock,
       });
       setLastSentAt(new Date());
     } catch (err) {
