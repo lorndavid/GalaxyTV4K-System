@@ -11,8 +11,8 @@ export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const { login } = useAuth();
   const { t } = useTranslation();
-  const [email, setEmail] = useState('admin@company.com');
-  const [password, setPassword] = useState('Admin@123456');
+  const [email, setEmail] = useState('admin@galaxytv4k.com');
+  const [password, setPassword] = useState('galaxytv@@');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [justFilled, setJustFilled] = useState(false);
@@ -36,8 +36,8 @@ export const LoginPage: React.FC = () => {
   };
 
   const handleAutofillDemo = () => {
-    setEmail('admin@company.com');
-    setPassword('Admin@123456');
+    setEmail('admin@galaxytv4k.com');
+    setPassword('galaxytv@@');
     setJustFilled(true);
     setTimeout(() => setJustFilled(false), 2000);
   };
@@ -168,7 +168,7 @@ export const LoginPage: React.FC = () => {
               </div>
 
               <p className="text-[11px] text-slate-500 dark:text-slate-400 font-mono tracking-tight select-all">
-                admin@company.com • Admin@123456
+                admin@galaxytv4k.com • galaxytv@@
               </p>
             </div>
           </div>
