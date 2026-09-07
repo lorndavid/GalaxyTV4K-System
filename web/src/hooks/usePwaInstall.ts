@@ -13,9 +13,18 @@ export const usePwaInstall = () => {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isInstallable, setIsInstallable] = useState<boolean>(false);
   const [isInstalled, setIsInstalled] = useState<boolean>(false);
+  const [isIos, setIsIos] = useState<boolean>(false);
+  const [isAndroid, setIsAndroid] = useState<boolean>(false);
 
   useEffect(() => {
-    // Check if running in standalone mode (already installed)
+    // Detect OS
+    const ua = window.navigator.userAgent.toLowerCase();
+    const ios = /iphone|ipad|ipod/.test(ua);
+    const android = /android/.test(ua);
+    setIsIos(ios);
+    setIsAndroid(android);
+
+    // Check if running in standalone mode (already installed on home screen)
     const isStandalone =
       window.matchMedia('(display-mode: standalone)').matches ||
       (window.navigator as any).standalone === true;
@@ -53,5 +62,5 @@ export const usePwaInstall = () => {
     return outcome === 'accepted';
   };
 
-  return { isInstallable, isInstalled, installApp };
+  return { isInstallable, isInstalled, isIos, isAndroid, installApp };
 };

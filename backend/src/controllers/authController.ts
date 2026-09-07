@@ -1,11 +1,12 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 import { prisma } from '../utils/prisma.js';
 import { generateToken } from '../utils/jwt.js';
 import { sendSuccess, sendError } from '../utils/apiResponse.js';
 import { AuthenticatedRequest } from '../middlewares/auth.js';
 import { createAuditLog } from '../utils/audit.js';
-import { ActorType, UserStatus } from '@prisma/client';
+import { ActorType, UserRole, UserStatus } from '@prisma/client';
 
 export class AuthController {
   static async login(req: Request, res: Response) {
@@ -59,12 +60,40 @@ export class AuthController {
       }
 
       const tokenExpiresIn = rememberMe === false ? '24h' : '30d';
+      const sessionId = crypto.randomUUID();
+      const expiresAt = new Date(Date.now() + (rememberMe === false ? 24 * 60 * 60 * 1000 : 30 * 24 * 60 * 60 * 1000));
+
+      // Strictly enforce single device login for employees
+      if (user.role === UserRole.EMPLOYEE) {
+        try {
+          // Invalidate all previous device sessions for this employee
+          await prisma.session.deleteMany({
+            where: { userId: user.id },
+          });
+
+          // Create the single active session for this device
+          await prisma.session.create({
+            data: {
+              id: sessionId,
+              userId: user.id,
+              tokenHash: crypto.createHash('sha256').update(sessionId).digest('hex'),
+              expiresAt,
+              ipAddress: req.ip,
+              userAgent: (req.headers['user-agent'] as string) || 'Unknown Device',
+            },
+          });
+        } catch (sessErr) {
+          console.warn('[AuthController] Single-device session management warning:', sessErr);
+        }
+      }
+
       const token = generateToken(
         {
           userId: user.id,
           email: user.email,
           role: user.role,
           employeeId: user.employeeId,
+          sessionId,
         },
         tokenExpiresIn
       );

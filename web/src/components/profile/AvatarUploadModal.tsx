@@ -12,6 +12,46 @@ interface AvatarUploadModalProps {
   onClose: () => void;
 }
 
+// Client-side image compression to downscale 5MB-15MB phone camera photos to ~150KB JPEG
+function compressImage(file: File, maxDim = 800, quality = 0.85): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = reject;
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = reject;
+      img.onload = () => {
+        let width = img.width;
+        let height = img.height;
+
+        if (width > maxDim || height > maxDim) {
+          if (width > height) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          } else {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          resolve(reader.result as string);
+          return;
+        }
+
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.src = reader.result as string;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
 export const AvatarUploadModal: React.FC<AvatarUploadModalProps> = ({ isOpen, onClose }) => {
   const { t, i18n } = useTranslation();
   const isKhmer = !i18n.language?.startsWith('en');
@@ -22,6 +62,7 @@ export const AvatarUploadModal: React.FC<AvatarUploadModalProps> = ({ isOpen, on
   const [selectedBase64, setSelectedBase64] = useState<string | null>(null);
   const [isLoadingQuota, setIsLoadingQuota] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [isCompressing, setIsCompressing] = useState(false);
   const [quota, setQuota] = useState<{
     uploadsToday: number;
     maxDailyUploads: number;
@@ -57,7 +98,7 @@ export const AvatarUploadModal: React.FC<AvatarUploadModalProps> = ({ isOpen, on
     }
   }, [isOpen, user?.employee?.profilePhoto]);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -66,18 +107,29 @@ export const AvatarUploadModal: React.FC<AvatarUploadModalProps> = ({ isOpen, on
       return;
     }
 
-    if (file.size > 5 * 1024 * 1024) {
-      showToast(isKhmer ? 'ទំហំរូបភាពត្រូវតែតូចជាង 5MB' : 'Image size must be under 5MB', 'error');
+    // Allow up to 15MB since canvas will compress it
+    if (file.size > 15 * 1024 * 1024) {
+      showToast(isKhmer ? 'ទំហំរូបភាពត្រូវតែតូចជាង 15MB' : 'Image size must be under 15MB', 'error');
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      const base64 = reader.result as string;
-      setPreviewUrl(base64);
-      setSelectedBase64(base64);
-    };
-    reader.readAsDataURL(file);
+    try {
+      setIsCompressing(true);
+      const compressedBase64 = await compressImage(file, 800, 0.85);
+      setPreviewUrl(compressedBase64);
+      setSelectedBase64(compressedBase64);
+    } catch (compErr) {
+      console.error('Image compression failed:', compErr);
+      const reader = new FileReader();
+      reader.onload = () => {
+        const base64 = reader.result as string;
+        setPreviewUrl(base64);
+        setSelectedBase64(base64);
+      };
+      reader.readAsDataURL(file);
+    } finally {
+      setIsCompressing(false);
+    }
   };
 
   const handleUpload = async () => {
@@ -112,7 +164,10 @@ export const AvatarUploadModal: React.FC<AvatarUploadModalProps> = ({ isOpen, on
     } catch (err: any) {
       const msg =
         err?.response?.data?.error?.message ||
-        (isKhmer ? 'មិនអាចប្តូររូបភាពបានទេ' : 'Failed to update profile photo');
+        err?.response?.data?.message ||
+        (err?.response?.status === 413
+          ? (isKhmer ? 'រូបភាពធំពេក សូមជ្រើសរើសរូបភាពផ្សេង' : 'Image is too large')
+          : (isKhmer ? 'មិនអាចប្តូររូបភាពបានទេ' : 'Failed to update profile photo'));
       showToast(msg, 'error');
       fetchQuota();
     } finally {

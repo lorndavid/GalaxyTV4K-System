@@ -75,6 +75,8 @@ services:
       MINIO_BUCKET: ${MINIO_BUCKET:-system-hr-avatars}
     ports:
       - "127.0.0.1:4000:4000"
+    volumes:
+      - uploads_data:/app/uploads
     logging:
       driver: "json-file"
       options:
@@ -117,4 +119,6 @@ volumes:
   postgres_data:
     driver: local
   minio_data:
+    driver: local
+  uploads_data:
     driver: local

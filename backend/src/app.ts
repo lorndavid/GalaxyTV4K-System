@@ -10,8 +10,8 @@ import apiRouter from './routes/index.js';
 
 export const app = express();
 
-// Trust Nginx reverse proxy
-app.set('trust proxy', 1);
+// Trust reverse proxy & Cloudflare Tunnel
+app.set('trust proxy', true);
 
 // Attach unique Request ID for logging and tracing
 app.use((req: Request, res: Response, next) => {

@@ -55,6 +55,22 @@ export async function authenticate(
     const safeUser = { ...user };
     delete (safeUser as any).passwordHash;
 
+    // For employees, enforce strictly 1 active device session
+    if (user.role === UserRole.EMPLOYEE && decoded.sessionId) {
+      const activeSession = await prisma.session.findUnique({
+        where: { id: decoded.sessionId },
+      });
+
+      if (!activeSession || activeSession.expiresAt < new Date()) {
+        return sendError(
+          res,
+          'DEVICE_LOGGED_OUT',
+          'គណនីរបស់អ្នកត្រូវបានចូលប្រើនៅលើឧបករណ៍ផ្សេងទៀត។ សូមចូលម្តងទៀតប្រសិនបើនេះជាអ្នក។ (Your account has been signed in on another device.)',
+          401
+        );
+      }
+    }
+
     req.user = {
       userId: user.id,
       email: user.email,

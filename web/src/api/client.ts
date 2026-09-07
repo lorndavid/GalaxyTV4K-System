@@ -23,6 +23,9 @@ apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
+      if (error.response?.data?.error?.code === 'DEVICE_LOGGED_OUT') {
+        sessionStorage.setItem('system_hr_device_logged_out', 'true');
+      }
       localStorage.removeItem('system_hr_employee_token');
       localStorage.removeItem('system_hr_employee_user');
       sessionStorage.removeItem('system_hr_employee_token');

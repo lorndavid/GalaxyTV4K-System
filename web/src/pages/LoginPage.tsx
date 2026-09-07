@@ -19,7 +19,13 @@ export const LoginPage: React.FC = () => {
   const [rememberMe, setRememberMe] = useState(() => {
     return localStorage.getItem('system_hr_remember_me') !== 'false';
   });
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(() => {
+    if (sessionStorage.getItem('system_hr_device_logged_out') === 'true') {
+      sessionStorage.removeItem('system_hr_device_logged_out');
+      return 'គណនីរបស់អ្នកត្រូវបានចូលប្រើនៅលើឧបករណ៍ផ្សេងទៀត។ សូមចូលម្តងទៀតប្រសិនបើនេះជាអ្នក។ (Your account was signed in on another device.)';
+    }
+    return null;
+  });
   const [isLoading, setIsLoading] = useState(false);
   const [justFilled, setJustFilled] = useState(false);
 

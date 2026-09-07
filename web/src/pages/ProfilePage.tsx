@@ -11,6 +11,8 @@ import { ConfirmationModal } from '../components/settings/ConfirmationModal';
 import { ChangePasswordModal } from '../components/settings/ChangePasswordModal';
 import { ActiveSessionsModal } from '../components/settings/ActiveSessionsModal';
 import { AvatarUploadModal } from '../components/profile/AvatarUploadModal';
+import { InstallGuideModal } from '../components/pwa/InstallGuideModal';
+import { usePwaInstall } from '../hooks/usePwaInstall';
 import {
   User,
   Mail,
@@ -31,6 +33,8 @@ import {
   BookOpen,
   Settings as SettingsIcon,
   Camera,
+  Smartphone,
+  Download,
 } from 'lucide-react';
 
 export const ProfilePage: React.FC = () => {
@@ -38,16 +42,19 @@ export const ProfilePage: React.FC = () => {
   const { t, i18n } = useTranslation();
   const { user, logout } = useAuth();
   const { theme, currentColor, khmerFont, englishFont } = usePreferences();
+  const { isInstallable, isInstalled, isIos, installApp } = usePwaInstall();
 
   const [activeTab, setActiveTab] = useState<'profile' | 'settings'>('profile');
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
   const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+  const [isInstallModalOpen, setIsInstallModalOpen] = useState(false);
   const [isSessionsModalOpen, setIsSessionsModalOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const emp = user?.employee;
   const currentLang = i18n.language || 'km';
+  const isKhmer = currentLang === 'km';
 
   const handleToggleLanguage = () => {
     const nextLang = currentLang === 'km' ? 'en' : 'km';
@@ -279,6 +286,22 @@ export const ProfilePage: React.FC = () => {
               value={englishFont}
               onClick={() => navigate('/settings/typography')}
             />
+
+            {!isInstalled && (
+              <SettingsRow
+                icon={Smartphone}
+                title={isKhmer ? 'ដំឡើងលើអេក្រង់ដើម' : 'Add to Home Screen'}
+                description={isKhmer ? 'ដំឡើងជា App លើទូរស័ព្ទ' : 'Install as full PWA app'}
+                value={isKhmer ? 'ដំឡើង' : 'Install'}
+                onClick={() => {
+                  if (isInstallable) {
+                    installApp();
+                  } else {
+                    setIsInstallModalOpen(true);
+                  }
+                }}
+              />
+            )}
           </SettingsSection>
 
           {/* Section 4: Security & Sign Out */}
@@ -297,16 +320,19 @@ export const ProfilePage: React.FC = () => {
               value="1 Device"
               onClick={() => setIsSessionsModalOpen(true)}
             />
-
-            <SettingsRow
-              icon={LogOut}
-              title={t('common.signOut', 'Sign Out')}
-              description="Sign out from this device"
-              destructive={true}
-              showChevron={false}
-              onClick={() => setIsLogoutModalOpen(true)}
-            />
           </SettingsSection>
+
+          {/* Prominent Red Sign Out Action Button */}
+          <div className="pt-1">
+            <button
+              type="button"
+              onClick={() => setIsLogoutModalOpen(true)}
+              className="w-full py-3.5 px-4 rounded-2xl bg-rose-50 hover:bg-rose-100 active:scale-[0.99] dark:bg-rose-950/30 dark:hover:bg-rose-950/50 border border-rose-200/80 dark:border-rose-900/50 text-rose-700 dark:text-rose-400 font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-2xs cursor-pointer"
+            >
+              <LogOut className="w-4 h-4 stroke-[2.2]" />
+              <span>{isKhmer ? 'ចាកចេញពីគណនី (Sign Out)' : 'Sign Out of Account'}</span>
+            </button>
+          </div>
         </div>
       ) : (
         /* Settings Tab View */
@@ -409,6 +435,14 @@ export const ProfilePage: React.FC = () => {
       <AvatarUploadModal
         isOpen={isAvatarModalOpen}
         onClose={() => setIsAvatarModalOpen(false)}
+      />
+
+      <InstallGuideModal
+        isOpen={isInstallModalOpen}
+        onClose={() => setIsInstallModalOpen(false)}
+        isIos={isIos}
+        isInstallable={isInstallable}
+        onNativeInstall={installApp}
       />
     </div>
   );

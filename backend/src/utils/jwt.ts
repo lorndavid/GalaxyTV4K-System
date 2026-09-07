@@ -7,6 +7,7 @@ export interface JwtPayload {
   email: string;
   role: UserRole;
   employeeId?: string | null;
+  sessionId?: string;
 }
 
 export function generateToken(payload: JwtPayload, expiresIn?: string): string {
