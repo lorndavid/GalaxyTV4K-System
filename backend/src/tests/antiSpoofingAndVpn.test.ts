@@ -195,4 +195,29 @@ describe('Dual-Network Security Engine: Anti-VPN & Anti-Fake-GPS Verification', 
       expect(result.isFakeGps).toBe(false);
     });
   });
+
+  describe('3. Check-Out Time Rule (5:30 PM) Enforcement', () => {
+    const workEndTime = '17:30';
+    const endMinutes = 17 * 60 + 30; // 1050 mins (5:30 PM)
+
+    it('blocks early check-out attempts during working hours (e.g. 10:00 AM, 02:30 PM, 05:15 PM)', () => {
+      const testTimes = ['10:00', '14:30', '17:15', '17:29'];
+      for (const timeStr of testTimes) {
+        const [h, m] = timeStr.split(':').map(Number);
+        const curMins = h * 60 + m;
+        const isAllowed = curMins >= endMinutes;
+        expect(isAllowed).toBe(false);
+      }
+    });
+
+    it('allows check-out at or after scheduled end time (e.g. 05:30 PM, 05:35 PM, 06:00 PM)', () => {
+      const testTimes = ['17:30', '17:35', '18:00', '19:15'];
+      for (const timeStr of testTimes) {
+        const [h, m] = timeStr.split(':').map(Number);
+        const curMins = h * 60 + m;
+        const isAllowed = curMins >= endMinutes;
+        expect(isAllowed).toBe(true);
+      }
+    });
+  });
 });

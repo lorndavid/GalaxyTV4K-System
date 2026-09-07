@@ -30,6 +30,7 @@ import {
   Radio,
   Sparkles,
   Lock,
+  MapPinOff,
 } from 'lucide-react';
 
 export type ScannerState =
@@ -348,6 +349,24 @@ export const ScanPage: React.FC = () => {
   const isLateNow = currentMinutes > (startMinutes + lateGrace);
   const lateMinutesNow = Math.max(0, currentMinutes - startMinutes);
 
+  const endMinutes = useMemo(() => {
+    const [h, m] = workEndTime.split(':').map(Number);
+    return (h || 17) * 60 + (m || 30);
+  }, [workEndTime]);
+
+  const earlyLeaveGrace = companySettings?.earlyLeaveGraceMinutes ?? 0;
+  const earliestCheckOutMinutes = Math.max(0, endMinutes - earlyLeaveGrace);
+  const isCheckOutAllowedNow = currentMinutes >= earliestCheckOutMinutes;
+
+  const formattedEndTime = useMemo(() => {
+    const [h, m] = workEndTime.split(':').map(Number);
+    const endH = h || 17;
+    const endM = (m || 30).toString().padStart(2, '0');
+    const period = endH >= 12 ? 'PM' : 'AM';
+    const h12 = endH % 12 || 12;
+    return `${h12}:${endM} ${period}`;
+  }, [workEndTime]);
+
   const distanceToOffice = useMemo(() => {
     if (!currentCoords) return null;
     return calculateDistanceMeters(
@@ -363,6 +382,44 @@ export const ScanPage: React.FC = () => {
   const hasCheckedIn = Boolean(todayRecord?.checkInAt);
   const hasCheckedOut = Boolean(todayRecord?.checkOutAt);
   const isCompletedToday = hasCheckedIn && hasCheckedOut;
+
+  // Manual GPS Permission / Activation Trigger
+  const requestLocationAccess = () => {
+    if (!navigator.geolocation) {
+      showToast('ឧបករណ៍របស់អ្នកមិនគាំទ្រ Geolocation/GPS ទេ។', 'error');
+      return;
+    }
+    setLocationStatus('កំពុងស្នើសុំបើក GPS...');
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const isMock = Boolean(
+          (pos.coords as any).isMocked ||
+          (pos as any).mocked ||
+          (pos.coords as any).mocked ||
+          !isGeolocationNative() ||
+          pos.coords.accuracy < 1.0
+        );
+        const coords = {
+          latitude: pos.coords.latitude,
+          longitude: pos.coords.longitude,
+          accuracy: pos.coords.accuracy,
+          isMocked: isMock,
+        };
+        geoCoordsRef.current = coords;
+        setCurrentCoords(coords);
+        setIsGpsReady(true);
+        showToast(`✓ បានភ្ជាប់ GPS ជោគជ័យ (±${Math.round(pos.coords.accuracy)}m)`);
+      },
+      (err) => {
+        let msg = 'សូមបើក Location / GPS លើទូរស័ព្ទដៃរបស់អ្នក និងចុច Allow Permission ដើម្បីកត់ត្រាវត្តមាន។';
+        if (err.code === 1) {
+          msg = 'អ្នកបានបដិសេធ Location Permission។ សូមបើក Permission ក្នុង Browser Settings។';
+        }
+        showToast(msg, 'error');
+      },
+      { enableHighAccuracy: true, timeout: 8000 }
+    );
+  };
 
   // Camera stream cleanup
   const stopCameraStream = useCallback(() => {
@@ -388,6 +445,21 @@ export const ScanPage: React.FC = () => {
   // 1-Click Zone Check-In Handler
   const handleZoneCheckIn = async () => {
     if (isProcessingRef.current) return;
+
+    if (!currentCoords && !geoCoordsRef.current) {
+      requestLocationAccess();
+      showToast('📍 សូមបើក Location / GPS នៅលើទូរស័ព្ទដៃរបស់អ្នកជាមុនសិន!', 'warning');
+      return;
+    }
+
+    if (hasCheckedIn && !hasCheckedOut && !isCheckOutAllowedNow) {
+      showToast(
+        `មិនទាន់ដល់ម៉ោងចេញពីធ្វើការនៅឡើយទេ។ ម៉ោងចេញកំណត់ចាប់ពីម៉ោង ${formattedEndTime} (${workEndTime}) តទៅ!`,
+        'warning'
+      );
+      return;
+    }
+
     isProcessingRef.current = true;
     setState('VALIDATING');
 
@@ -467,6 +539,25 @@ export const ScanPage: React.FC = () => {
       }
 
       stopCameraStream();
+
+      if (!currentCoords && !geoCoordsRef.current) {
+        setState('ERROR');
+        setErrorMessage('📍 សូមបើក Location / GPS នៅលើទូរស័ព្ទដៃរបស់អ្នកជាមុនសិន ទើបអាចស្កេន QR Code បាន។');
+        isProcessingRef.current = false;
+        scanCompletedRef.current = false;
+        return;
+      }
+
+      if (hasCheckedIn && !hasCheckedOut && !isCheckOutAllowedNow) {
+        setState('ERROR');
+        setErrorMessage(
+          `មិនទាន់ដល់ម៉ោងចេញពីធ្វើការនៅឡើយទេ។ ម៉ោងចេញកំណត់ចាប់ពីម៉ោង ${formattedEndTime} (${workEndTime}) តទៅ! (Check-out opens at ${formattedEndTime}).`
+        );
+        isProcessingRef.current = false;
+        scanCompletedRef.current = false;
+        return;
+      }
+
       setState('VALIDATING');
 
       try {
@@ -898,6 +989,33 @@ export const ScanPage: React.FC = () => {
               </div>
             </div>
 
+            {/* Location Off Warning Alert Banner */}
+            {!currentCoords && (
+              <div className="w-full bg-amber-950/50 backdrop-blur-xl border border-amber-500/50 rounded-2xl p-4 space-y-3 shadow-xl">
+                <div className="flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <MapPinOff className="w-5 h-5 animate-pulse" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-xs font-bold text-amber-200">
+                      សូមបើក Location / GPS នៅលើទូរស័ព្ទដៃ
+                    </h3>
+                    <p className="text-[11px] text-amber-300/80 leading-relaxed mt-1">
+                      ប្រព័ន្ធតម្រូវឱ្យបើក GPS និងស្ថិតក្នុងបរិវេណការិយាល័យជាចាំបាច់ មុនពេលអាចកត់ត្រាវត្តមានបាន។
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={requestLocationAccess}
+                  className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 active:scale-95 text-slate-950 font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-md"
+                >
+                  <MapPin className="w-4 h-4" />
+                  <span>ចុចបើកដំណើរការ GPS (Turn on GPS)</span>
+                </button>
+              </div>
+            )}
+
             {/* Geofence Radar Status Card */}
             <div className="w-full bg-slate-900/80 backdrop-blur-xl border border-slate-800/90 rounded-2xl p-3.5 space-y-2.5 shadow-md">
               <div className="flex items-center justify-between">
@@ -1026,13 +1144,33 @@ export const ScanPage: React.FC = () => {
 
                   <button
                     type="button"
-                    onClick={handleZoneCheckIn}
-                    disabled={!isInsideOffice || (!hasCheckedIn && !isOpenForCheckIn)}
+                    onClick={
+                      !currentCoords
+                        ? requestLocationAccess
+                        : hasCheckedIn && !hasCheckedOut && !isCheckOutAllowedNow
+                        ? () =>
+                            showToast(
+                              `មិនទាន់ដល់ម៉ោងចេញពីធ្វើការនៅឡើយទេ។ ម៉ោងចេញកំណត់ចាប់ពីម៉ោង ${formattedEndTime} (${workEndTime}) តទៅ!`,
+                              'warning'
+                            )
+                        : handleZoneCheckIn
+                    }
+                    disabled={
+                      Boolean(
+                        currentCoords &&
+                          (!isInsideOffice ||
+                            (!hasCheckedIn && !isOpenForCheckIn))
+                      )
+                    }
                     className={`relative w-40 h-40 rounded-full flex flex-col items-center justify-center transition-all duration-300 active:scale-95 shadow-2xl focus:outline-none ${
-                      !isInsideOffice
+                      !currentCoords
+                        ? 'bg-amber-950/60 text-amber-400 border-2 border-amber-500/50 hover:bg-amber-900/60 ring-4 ring-amber-500/20 cursor-pointer'
+                        : !isInsideOffice
                         ? 'bg-slate-800 text-slate-500 border-2 border-slate-700 cursor-not-allowed opacity-80'
                         : !hasCheckedIn && !isOpenForCheckIn
                         ? 'bg-slate-800 text-slate-400 border-2 border-slate-700 cursor-not-allowed'
+                        : hasCheckedIn && !isCheckOutAllowedNow
+                        ? 'bg-slate-900 text-amber-400 border-2 border-amber-500/40 hover:bg-slate-850 ring-4 ring-amber-500/20 cursor-pointer'
                         : hasCheckedIn
                         ? 'bg-gradient-to-tr from-amber-600 via-orange-500 to-amber-400 text-white shadow-orange-500/40 hover:shadow-orange-500/60 ring-4 ring-orange-400/30'
                         : isLateNow
@@ -1040,23 +1178,49 @@ export const ScanPage: React.FC = () => {
                         : 'bg-gradient-to-tr from-emerald-600 via-teal-500 to-emerald-400 text-white shadow-emerald-500/40 hover:shadow-emerald-500/60 ring-4 ring-emerald-400/30'
                     }`}
                   >
-                    <Fingerprint className={`w-16 h-16 transition-transform duration-300 ${isInsideOffice ? 'animate-pulse text-white' : 'text-slate-500'}`} />
-                    <span className="text-[11px] font-black uppercase tracking-wider mt-1">
-                      {hasCheckedIn
-                        ? 'PUNCH OUT'
-                        : !isOpenForCheckIn
-                        ? `OPENS ${openTimeStr}`
-                        : isLateNow
-                        ? `LATE +${lateMinutesNow}M`
-                        : 'PUNCH IN'}
-                    </span>
+                    {!currentCoords ? (
+                      <>
+                        <MapPinOff className="w-14 h-14 text-amber-400 animate-bounce" />
+                        <span className="text-[10px] font-black uppercase tracking-wider mt-1 text-center px-2">
+                          បើក GPS សិន
+                        </span>
+                      </>
+                    ) : hasCheckedIn && !isCheckOutAllowedNow ? (
+                      <>
+                        <Lock className="w-12 h-12 text-amber-400" />
+                        <span className="text-[10px] font-black uppercase tracking-wider mt-1 text-center px-2">
+                          ចេញម៉ោង {formattedEndTime}
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <Fingerprint
+                          className={`w-16 h-16 transition-transform duration-300 ${
+                            isInsideOffice ? 'animate-pulse text-white' : 'text-slate-500'
+                          }`}
+                        />
+                        <span className="text-[11px] font-black uppercase tracking-wider mt-1">
+                          {hasCheckedIn
+                            ? 'PUNCH OUT'
+                            : !isOpenForCheckIn
+                            ? `OPENS ${openTimeStr}`
+                            : isLateNow
+                            ? `LATE +${lateMinutesNow}M`
+                            : 'PUNCH IN'}
+                        </span>
+                      </>
+                    )}
                   </button>
                 </div>
 
                 {/* Subtitle instructions */}
                 <div className="text-center px-2 space-y-1">
                   <p className="text-sm font-bold text-white">
-                    {hasCheckedIn
+                    {!currentCoords
+                      ? '⚠️ សូមបើក Location / GPS ដើម្បីកត់ត្រាវត្តមាន'
+                      : hasCheckedIn && !isCheckOutAllowedNow
+                      ? `🔒 មិនទាន់ដល់ម៉ោងចេញទេ (ម៉ោងចេញគឺ ${formattedEndTime})`
+                      : hasCheckedIn
                       ? t('attendance.punchOutBtn', 'ចុច Check-Out ចេញពីធ្វើការ')
                       : !isOpenForCheckIn
                       ? `ការកត់ត្រាវត្តមាននឹងបើកនៅម៉ោង ${openTimeStr} ព្រឹក`
@@ -1065,9 +1229,19 @@ export const ScanPage: React.FC = () => {
                       : t('attendance.punchInBtn', 'ចុច Check-In ចូលធ្វើការ')}
                   </p>
                   <p className="text-xs text-slate-400 leading-relaxed">
-                    {isInsideOffice
-                      ? t('attendance.clickToRecordDesc', 'អ្នកស្ថិតនៅក្នុងបរិវេណការិយាល័យរួចរាល់ហើយ សូមចុចប៊ូតុងខាងលើដើម្បីកត់ត្រាវត្តមាន។')
-                      : t('attendance.approachOfficeNotice', 'សូមចូលទៅជិតបរិវេណការិយាល័យ ដើម្បីអាចកត់ត្រាវត្តមានបាន។')}
+                    {!currentCoords
+                      ? 'ប្រព័ន្ធតម្រូវឱ្យបើក GPS លើទូរស័ព្ទដៃជាចាំបាច់។ សូមចុចប៊ូតុងខាងលើដើម្បីភ្ជាប់ GPS។'
+                      : hasCheckedIn && !isCheckOutAllowedNow
+                      ? `កាលវិភាគការងារកំណត់ម៉ោងចេញចាប់ពីម៉ោង ${formattedEndTime} (${workEndTime}) តទៅ។ បុគ្គលិកមិនអាច Check-Out មុនម៉ោងបានឡើយ។`
+                      : isInsideOffice
+                      ? t(
+                          'attendance.clickToRecordDesc',
+                          'អ្នកស្ថិតនៅក្នុងបរិវេណការិយាល័យរួចរាល់ហើយ សូមចុចប៊ូតុងខាងលើដើម្បីកត់ត្រាវត្តមាន។'
+                        )
+                      : t(
+                          'attendance.approachOfficeNotice',
+                          'សូមចូលទៅជិតបរិវេណការិយាល័យ ដើម្បីអាចកត់ត្រាវត្តមានបាន។'
+                        )}
                   </p>
                 </div>
               </div>

@@ -87,11 +87,11 @@ export const QrScannerModal: React.FC<QrScannerModalProps> = ({
         startCamera();
       },
       (err) => {
-        let msg = 'Location permission is required to verify company attendance area.';
+        let msg = 'សូមបើក Location / GPS នៅលើទូរស័ព្ទដៃរបស់អ្នក និងចុច Allow Permission ដើម្បីកត់ត្រាវត្តមាន។ (Location permission is required to check in).';
         if (err.code === 1) {
-          msg = 'Location permission denied. Please allow location access in your browser settings.';
+          msg = 'អ្នកបានបដិសេធ Location Permission។ សូមបើក Permission ក្នុង Browser Settings ដើម្បីអាចស្កេនកត់ត្រាវត្តមានបាន។';
         } else if (err.code === 2) {
-          msg = 'Unable to determine your GPS location. Ensure location services are enabled on your device.';
+          msg = 'មិនអាចកំណត់ទីតាំង GPS បានទេ។ សូមពិនិត្យមើល Location / GPS នៅលើទូរស័ព្ទរបស់អ្នក។';
         }
         setErrorMessage(msg);
         setStage('ERROR');

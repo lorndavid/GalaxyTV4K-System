@@ -512,9 +512,36 @@ export class AttendanceService {
         };
       }
 
+      // Enforce Check-Out Time Rule: Cannot check out before scheduled shift end time (e.g. 17:30 / 5:30 PM)
+      const endTime = (scheduleDay && scheduleDay.endTime) || settings.workEndTime || '17:30';
+      const endMinutes = parseTimeToMinutes(endTime);
+      const currentMinutes = parseTimeToMinutes(currentTimeStr);
+      const earlyGrace = settings.earlyLeaveGraceMinutes ?? 0;
+      const earliestAllowedCheckOutMinutes = Math.max(0, endMinutes - earlyGrace);
+
+      if (scheduleDay && scheduleDay.isWorkingDay) {
+        if (currentMinutes < earliestAllowedCheckOutMinutes) {
+          const endH = Math.floor(endMinutes / 60);
+          const endM = (endMinutes % 60).toString().padStart(2, '0');
+          const endPeriod = endH >= 12 ? 'PM' : 'AM';
+          const endH12 = (endH % 12 || 12).toString().padStart(2, '0');
+          const formattedEndTime = `${endH12}:${endM} ${endPeriod}`;
+
+          throw {
+            code: 'CHECK_OUT_TOO_EARLY',
+            message: `មិនទាន់ដល់ម៉ោងចេញពីធ្វើការនៅឡើយទេ។ ម៉ោងចេញដែលបានកំណត់គឺចាប់ពីម៉ោង ${formattedEndTime} (${endTime}) តទៅ។ (You cannot check out yet. Scheduled check-out time is ${formattedEndTime}).`,
+            status: 400,
+            details: {
+              scheduledEndTime: endTime,
+              currentTime: currentTimeStr,
+              earliestAllowedCheckOutTime: `${Math.floor(earliestAllowedCheckOutMinutes / 60).toString().padStart(2, '0')}:${(earliestAllowedCheckOutMinutes % 60).toString().padStart(2, '0')}`,
+            },
+          };
+        }
+      }
+
       // Calculate Early Leave & Total Worked Minutes
       let earlyLeaveMinutes = 0;
-      const endTime = (scheduleDay && scheduleDay.endTime) || settings.workEndTime || '17:30';
       if (scheduleDay && scheduleDay.isWorkingDay) {
         earlyLeaveMinutes = calculateEarlyLeaveMinutes(
           currentTimeStr,
@@ -928,8 +955,35 @@ export class AttendanceService {
         }
       }
 
-      let earlyLeaveMinutes = 0;
+      // Enforce Check-Out Time Rule: Cannot check out before scheduled shift end time (e.g. 17:30 / 5:30 PM)
       const endTime = (scheduleDay && scheduleDay.endTime) || settings.workEndTime || '17:30';
+      const endMinutes = parseTimeToMinutes(endTime);
+      const currentMinutes = parseTimeToMinutes(currentTimeStr);
+      const earlyGrace = settings.earlyLeaveGraceMinutes ?? 0;
+      const earliestAllowedCheckOutMinutes = Math.max(0, endMinutes - earlyGrace);
+
+      if (scheduleDay && scheduleDay.isWorkingDay) {
+        if (currentMinutes < earliestAllowedCheckOutMinutes) {
+          const endH = Math.floor(endMinutes / 60);
+          const endM = (endMinutes % 60).toString().padStart(2, '0');
+          const endPeriod = endH >= 12 ? 'PM' : 'AM';
+          const endH12 = (endH % 12 || 12).toString().padStart(2, '0');
+          const formattedEndTime = `${endH12}:${endM} ${endPeriod}`;
+
+          throw {
+            code: 'CHECK_OUT_TOO_EARLY',
+            message: `មិនទាន់ដល់ម៉ោងចេញពីធ្វើការនៅឡើយទេ។ ម៉ោងចេញដែលបានកំណត់គឺចាប់ពីម៉ោង ${formattedEndTime} (${endTime}) តទៅ។ (You cannot check out yet. Scheduled check-out time is ${formattedEndTime}).`,
+            status: 400,
+            details: {
+              scheduledEndTime: endTime,
+              currentTime: currentTimeStr,
+              earliestAllowedCheckOutTime: `${Math.floor(earliestAllowedCheckOutMinutes / 60).toString().padStart(2, '0')}:${(earliestAllowedCheckOutMinutes % 60).toString().padStart(2, '0')}`,
+            },
+          };
+        }
+      }
+
+      let earlyLeaveMinutes = 0;
       if (scheduleDay && scheduleDay.isWorkingDay) {
         earlyLeaveMinutes = calculateEarlyLeaveMinutes(
           currentTimeStr,

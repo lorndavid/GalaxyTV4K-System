@@ -461,7 +461,7 @@ export const SettingsPage: React.FC = () => {
             {/* 4. Shift End / Check-Out Time */}
             <div>
               <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                Shift End Time (Check-Out / ម៉ោងចេញពីធ្វើការ)
+                Shift End Time (Check-Out Rule / ម៉ោងអនុញ្ញាតឱ្យចេញ)
               </label>
               <input
                 type="text"
@@ -471,8 +471,8 @@ export const SettingsPage: React.FC = () => {
                 onChange={(e) => setFormData({ ...formData, workEndTime: e.target.value })}
                 className="w-full px-3 py-2 text-sm bg-white dark:bg-dark-elevated border border-slate-200 dark:border-dark-border text-slate-900 dark:text-slate-100 rounded-xl focus:ring-2 focus:ring-brand-500 focus:outline-none font-mono"
               />
-              <p className="text-[11px] text-slate-400 mt-1">
-                Expected evening departure time (e.g. 05:30 PM). Leaving earlier is flagged as early departure.
+              <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-1 font-medium">
+                🔒 ច្បាប់ចេញពីធ្វើការ៖ បុគ្គលិកមិនអាច Check-Out មុនម៉ោងនេះបានឡើយ (ឧ. 17:30 / 5:30 PM) សម្រាប់គ្រប់ថ្ងៃទាំងអស់។
               </p>
             </div>
           </div>
