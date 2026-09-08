@@ -97,6 +97,7 @@ describe('TelegramService & Security Tests', () => {
       getWorkNavMarkup,
       getLocationNavMarkup,
       getLeaveNavMarkup,
+      getTodayAttendanceNavMarkup,
       getBackToMenuMarkup,
       buildMainMenuText,
     } = await import('../services/telegramBotService');
@@ -107,21 +108,23 @@ describe('TelegramService & Security Tests', () => {
     const workNav = getWorkNavMarkup();
     const locNav = getLocationNavMarkup();
     const leaveNav = getLeaveNavMarkup();
+    const todayNav = getTodayAttendanceNavMarkup();
     const welcome = buildMainMenuText();
 
     expect(welcome).toContain('Galaxy TV 4K');
     expect(welcome).toContain('ផ្ទាំងបញ្ជាខាងក្រោម');
 
     // Check menu buttons have emoji animations
-    expect(menu.inline_keyboard[0][0].text).toContain('📊');
-    expect(menu.inline_keyboard[1][0].text).toContain('🎓');
-    expect(menu.inline_keyboard[1][1].text).toContain('💼');
-    expect(menu.inline_keyboard[2][0].text).toContain('🏢');
-    expect(menu.inline_keyboard[2][1].text).toContain('📝');
-    expect(menu.inline_keyboard[3][0].text).toContain('👥');
+    expect(menu.inline_keyboard[0][0].text).toContain('📍');
+    expect(menu.inline_keyboard[1][0].text).toContain('📊');
+    expect(menu.inline_keyboard[2][0].text).toContain('💼');
+    expect(menu.inline_keyboard[2][1].text).toContain('🎓');
+    expect(menu.inline_keyboard[3][0].text).toContain('🏢');
+    expect(menu.inline_keyboard[3][1].text).toContain('📝');
+    expect(menu.inline_keyboard[4][0].text).toContain('👥');
 
     // Check callback_data is defined on all buttons
-    [menu, backMenu, studyNav, workNav, locNav, leaveNav].forEach((kb) => {
+    [menu, backMenu, studyNav, workNav, locNav, leaveNav, todayNav].forEach((kb) => {
       kb.inline_keyboard.forEach((row) => {
         row.forEach((btn) => {
           expect(btn.text).toBeDefined();
@@ -139,24 +142,25 @@ describe('TelegramService & Security Tests', () => {
     expect(replyKb.is_persistent).toBe(true);
     expect(replyKb.keyboard.length).toBe(4);
 
-    // Row 1: Summary + All 20 Staff
+    // Row 1: Today Attendance + Summary
     expect(replyKb.keyboard[0].length).toBe(2);
-    expect(replyKb.keyboard[0][0].text).toContain('📊 របាយការណ៍សង្ខេប');
-    expect(replyKb.keyboard[0][1].text).toContain('👥 បញ្ជីបុគ្គលិក ២០ នាក់');
+    expect(replyKb.keyboard[0][0].text).toContain('📍 វត្តមានថ្ងៃនេះ');
+    expect(replyKb.keyboard[0][1].text).toContain('📊 របាយការណ៍សង្ខេប');
 
-    // Row 2: Study + Work
+    // Row 2: Work + Study
     expect(replyKb.keyboard[1].length).toBe(2);
-    expect(replyKb.keyboard[1][0].text).toContain('🎓 បុគ្គលិកវេនរៀន');
-    expect(replyKb.keyboard[1][1].text).toContain('💼 បុគ្គលិកបំពេញការងារ');
+    expect(replyKb.keyboard[1][0].text).toContain('💼 បុគ្គលិកបំពេញការងារ');
+    expect(replyKb.keyboard[1][1].text).toContain('🎓 បុគ្គលិកវេនរៀន');
 
     // Row 3: Location + Leave
     expect(replyKb.keyboard[2].length).toBe(2);
     expect(replyKb.keyboard[2][0].text).toContain('🏢 វត្តមានក្នុង/ក្រៅការិយាល័យ');
     expect(replyKb.keyboard[2][1].text).toContain('📝 បុគ្គលិកសុំច្បាប់');
 
-    // Row 4: Refresh
-    expect(replyKb.keyboard[3].length).toBe(1);
-    expect(replyKb.keyboard[3][0].text).toContain('🔄 ធ្វើបច្ចុប្បន្នភាពទិន្នន័យ');
+    // Row 4: All Staff + Refresh
+    expect(replyKb.keyboard[3].length).toBe(2);
+    expect(replyKb.keyboard[3][0].text).toContain('👥 បញ្ជីបុគ្គលិក ២០ នាក់');
+    expect(replyKb.keyboard[3][1].text).toContain('🔄 ធ្វើបច្ចុប្បន្នភាពទិន្នន័យ');
   });
 
   it('supports dual chat and sender authorization checking', async () => {

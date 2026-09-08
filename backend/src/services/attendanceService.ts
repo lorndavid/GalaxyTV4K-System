@@ -346,7 +346,7 @@ export class AttendanceService {
         let lateMinutes = 0;
 
         if (scheduleDay && scheduleDay.isWorkingDay) {
-          const startTime = scheduleDay.startTime || settings.workStartTime || '08:00';
+          const startTime = settings.workStartTime || (scheduleDay && scheduleDay.startTime) || '08:00';
           const startMinutes = parseTimeToMinutes(startTime);
           const currentMinutes = parseTimeToMinutes(currentTimeStr);
           const allowedBefore = settings.checkInAllowedBeforeMinutes ?? 60;
@@ -513,7 +513,7 @@ export class AttendanceService {
       }
 
       // Enforce Check-Out Time Rule: Cannot check out before scheduled shift end time (e.g. 17:30 / 5:30 PM)
-      const endTime = (scheduleDay && scheduleDay.endTime) || settings.workEndTime || '17:30';
+      const endTime = settings.workEndTime || (scheduleDay && scheduleDay.endTime) || '17:30';
       const endMinutes = parseTimeToMinutes(endTime);
       const currentMinutes = parseTimeToMinutes(currentTimeStr);
       const earlyGrace = settings.earlyLeaveGraceMinutes ?? 0;
@@ -824,7 +824,7 @@ export class AttendanceService {
         let lateMinutes = 0;
 
         if (scheduleDay && scheduleDay.isWorkingDay) {
-          const startTime = scheduleDay.startTime || settings.workStartTime || '08:00';
+          const startTime = settings.workStartTime || (scheduleDay && scheduleDay.startTime) || '08:00';
           const startMinutes = parseTimeToMinutes(startTime);
           const currentMinutes = parseTimeToMinutes(currentTimeStr);
           const allowedBefore = settings.checkInAllowedBeforeMinutes ?? 60;
@@ -956,7 +956,7 @@ export class AttendanceService {
       }
 
       // Enforce Check-Out Time Rule: Cannot check out before scheduled shift end time (e.g. 17:30 / 5:30 PM)
-      const endTime = (scheduleDay && scheduleDay.endTime) || settings.workEndTime || '17:30';
+      const endTime = settings.workEndTime || (scheduleDay && scheduleDay.endTime) || '17:30';
       const endMinutes = parseTimeToMinutes(endTime);
       const currentMinutes = parseTimeToMinutes(currentTimeStr);
       const earlyGrace = settings.earlyLeaveGraceMinutes ?? 0;

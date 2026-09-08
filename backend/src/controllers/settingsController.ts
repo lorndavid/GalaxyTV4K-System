@@ -106,23 +106,18 @@ export class SettingsController {
       },
     });
 
-    // Synchronize default schedule days if work hours were updated
+    // Synchronize all working schedule days across all schedules in real-time if work hours were updated
     if (workStartTime || workEndTime || breakStartTime !== undefined || breakEndTime !== undefined) {
       try {
-        const defaultSchedule = await prisma.schedule.findFirst({
-          where: { isDefault: true },
+        await prisma.scheduleDay.updateMany({
+          where: { isWorkingDay: true },
+          data: {
+            startTime: workStartTime || undefined,
+            endTime: workEndTime || undefined,
+            breakStartTime: breakStartTime !== undefined ? (breakStartTime ? String(breakStartTime) : null) : undefined,
+            breakEndTime: breakEndTime !== undefined ? (breakEndTime ? String(breakEndTime) : null) : undefined,
+          },
         });
-        if (defaultSchedule) {
-          await prisma.scheduleDay.updateMany({
-            where: { scheduleId: defaultSchedule.id, isWorkingDay: true },
-            data: {
-              startTime: workStartTime || undefined,
-              endTime: workEndTime || undefined,
-              breakStartTime: breakStartTime !== undefined ? (breakStartTime ? String(breakStartTime) : null) : undefined,
-              breakEndTime: breakEndTime !== undefined ? (breakEndTime ? String(breakEndTime) : null) : undefined,
-            },
-          });
-        }
       } catch (scheduleSyncErr) {
         console.warn('Failed to sync schedule days with company settings:', scheduleSyncErr);
       }

@@ -79,20 +79,21 @@ describe('Comprehensive End-to-End (E2E) System Verification', () => {
     expect(replyKb.is_persistent).toBe(true);
     expect(replyKb.keyboard.length).toBe(4);
 
-    // Row 1: Summary + All 20 Staff
-    expect(replyKb.keyboard[0][0].text).toBe('📊 របាយការណ៍សង្ខេប');
-    expect(replyKb.keyboard[0][1].text).toBe('👥 បញ្ជីបុគ្គលិក ២០ នាក់');
+    // Row 1: Today Attendance + Summary
+    expect(replyKb.keyboard[0][0].text).toBe('📍 វត្តមានថ្ងៃនេះ');
+    expect(replyKb.keyboard[0][1].text).toBe('📊 របាយការណ៍សង្ខេប');
 
-    // Row 2: Study + Work
-    expect(replyKb.keyboard[1][0].text).toBe('🎓 បុគ្គលិកវេនរៀន');
-    expect(replyKb.keyboard[1][1].text).toBe('💼 បុគ្គលិកបំពេញការងារ');
+    // Row 2: Work + Study
+    expect(replyKb.keyboard[1][0].text).toBe('💼 បុគ្គលិកបំពេញការងារ');
+    expect(replyKb.keyboard[1][1].text).toBe('🎓 បុគ្គលិកវេនរៀន');
 
     // Row 3: Location + Leave
     expect(replyKb.keyboard[2][0].text).toBe('🏢 វត្តមានក្នុង/ក្រៅការិយាល័យ');
     expect(replyKb.keyboard[2][1].text).toBe('📝 បុគ្គលិកសុំច្បាប់');
 
-    // Row 4: Refresh
-    expect(replyKb.keyboard[3][0].text).toBe('🔄 ធ្វើបច្ចុប្បន្នភាពទិន្នន័យ');
+    // Row 4: All Staff + Refresh
+    expect(replyKb.keyboard[3][0].text).toBe('👥 បញ្ជីបុគ្គលិក ២០ នាក់');
+    expect(replyKb.keyboard[3][1].text).toBe('🔄 ធ្វើបច្ចុប្បន្នភាពទិន្នន័យ');
   });
 
   it('E2E-5: Confirms interactive inline menus and sub-navigation keyboards', () => {
@@ -106,12 +107,13 @@ describe('Comprehensive End-to-End (E2E) System Verification', () => {
     expect(welcomeText).toContain('ផ្ទាំងបញ្ជាខាងក្រោម');
 
     // Check inline menu callbacks
-    expect(inlineMenu.inline_keyboard[0][0].callback_data).toBe('menu_summary');
-    expect(inlineMenu.inline_keyboard[1][0].callback_data).toBe('menu_study');
-    expect(inlineMenu.inline_keyboard[1][1].callback_data).toBe('menu_work');
-    expect(inlineMenu.inline_keyboard[2][0].callback_data).toBe('menu_location');
-    expect(inlineMenu.inline_keyboard[2][1].callback_data).toBe('menu_leave');
-    expect(inlineMenu.inline_keyboard[3][0].callback_data).toBe('menu_all_staff');
+    expect(inlineMenu.inline_keyboard[0][0].callback_data).toBe('menu_today_attendance');
+    expect(inlineMenu.inline_keyboard[1][0].callback_data).toBe('menu_summary');
+    expect(inlineMenu.inline_keyboard[2][0].callback_data).toBe('menu_work');
+    expect(inlineMenu.inline_keyboard[2][1].callback_data).toBe('menu_study');
+    expect(inlineMenu.inline_keyboard[3][0].callback_data).toBe('menu_location');
+    expect(inlineMenu.inline_keyboard[3][1].callback_data).toBe('menu_leave');
+    expect(inlineMenu.inline_keyboard[4][0].callback_data).toBe('menu_all_staff');
 
     // Check sub-navigation keyboards have back to menu button
     expect(studyNav.inline_keyboard[1][0].callback_data).toBe('menu_main');

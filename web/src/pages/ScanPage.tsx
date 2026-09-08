@@ -153,7 +153,8 @@ export const ScanPage: React.FC = () => {
       const res = await apiClient.get('/settings');
       return res.data.data;
     },
-    staleTime: 60000,
+    staleTime: 5000,
+    refetchInterval: 10000,
   });
 
   // 2. Fetch Today's Attendance to know Punch-In vs Punch-Out state

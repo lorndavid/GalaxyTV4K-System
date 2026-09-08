@@ -28,10 +28,10 @@ interface InlineKeyboardMarkup {
 export function getPersistentReplyKeyboard(): ReplyKeyboardMarkup {
   return {
     keyboard: [
-      [{ text: '📊 របាយការណ៍សង្ខេប' }, { text: '👥 បញ្ជីបុគ្គលិក ២០ នាក់' }],
-      [{ text: '🎓 បុគ្គលិកវេនរៀន' }, { text: '💼 បុគ្គលិកបំពេញការងារ' }],
+      [{ text: '📍 វត្តមានថ្ងៃនេះ' }, { text: '📊 របាយការណ៍សង្ខេប' }],
+      [{ text: '💼 បុគ្គលិកបំពេញការងារ' }, { text: '🎓 បុគ្គលិកវេនរៀន' }],
       [{ text: '🏢 វត្តមានក្នុង/ក្រៅការិយាល័យ' }, { text: '📝 បុគ្គលិកសុំច្បាប់' }],
-      [{ text: '🔄 ធ្វើបច្ចុប្បន្នភាពទិន្នន័យ' }],
+      [{ text: '👥 បញ្ជីបុគ្គលិក ២០ នាក់' }, { text: '🔄 ធ្វើបច្ចុប្បន្នភាពទិន្នន័យ' }],
     ],
     resize_keyboard: true,
     is_persistent: true,
@@ -44,10 +44,11 @@ export function getPersistentReplyKeyboard(): ReplyKeyboardMarkup {
 export function getMainInlineMenu(): InlineKeyboardMarkup {
   return {
     inline_keyboard: [
+      [{ text: '📍 វត្តមានថ្ងៃនេះ (Check-in Status)', callback_data: 'menu_today_attendance' }],
       [{ text: '📊 របាយការណ៍សង្ខេបប្រចាំថ្ងៃ', callback_data: 'menu_summary' }],
       [
-        { text: '🎓 បុគ្គលិកវេនរៀន', callback_data: 'menu_study' },
         { text: '💼 បុគ្គលិកបំពេញការងារ', callback_data: 'menu_work' },
+        { text: '🎓 បុគ្គលិកវេនរៀន', callback_data: 'menu_study' },
       ],
       [
         { text: '🏢 វត្តមានក្នុង/ក្រៅការិយាល័យ', callback_data: 'menu_location' },
@@ -55,6 +56,21 @@ export function getMainInlineMenu(): InlineKeyboardMarkup {
       ],
       [{ text: '👥 បញ្ជីឈ្មោះបុគ្គលិកទាំង ២០ រូប', callback_data: 'menu_all_staff' }],
       [{ text: '🔄 ធ្វើបច្ចុប្បន្នភាពទិន្នន័យ (Refresh)', callback_data: 'menu_main' }],
+    ],
+  };
+}
+
+/**
+ * Navigation for Today's Attendance Filter View
+ */
+export function getTodayAttendanceNavMarkup(): InlineKeyboardMarkup {
+  return {
+    inline_keyboard: [
+      [
+        { text: '🔄 ផ្ទុកវត្តមានឡើងវិញ', callback_data: 'menu_today_attendance' },
+        { text: '💼 មើលអ្នកធ្វើការ', callback_data: 'menu_work' },
+      ],
+      [{ text: '🔙 ត្រឡប់ទៅម៉ឺនុយដើម', callback_data: 'menu_main' }],
     ],
   };
 }
@@ -248,7 +264,7 @@ export function buildMainMenuText(): string {
 }
 
 /**
- * Filter: Employees Studying Today
+ * Filter: Employees Studying Today (Concise: Number serial, Name, ផ្នែកការងារ)
  */
 export async function buildStudyOnlyReport(): Promise<string> {
   const now = new Date();
@@ -267,20 +283,14 @@ export async function buildStudyOnlyReport(): Promise<string> {
 
   const lines: string[] = [];
   studyingStaff.forEach((emp, index) => {
-    const numKh = index + 1;
+    const numKh = TelegramService.toKhmerDigits(index + 1);
     const khmerName = emp.khmerName || emp.displayName;
     const deptName = emp.department?.name || 'ទូទៅ';
-    const position = emp.position || 'បុគ្គលិក';
-    const skill = emp.skill || 'ទូទៅ';
-    const studyDay = emp.studyDay || 'គ្មាន';
+    const serial = emp.employeeCode ? ` (${emp.employeeCode})` : '';
 
     lines.push(
-      `${numKh}. 👤 <b>${khmerName}</b>\n` +
-      `   🔹 ផ្នែកការងារ: ${deptName}\n` +
-      `   🔹 តួនាទី: ${position}\n` +
-      `   🔹 ជំនាញ: ${skill}\n` +
-      `   🔹 ថ្ងៃរៀន: ${studyDay}\n` +
-      `   🔸 ស្ថានភាព: 🎓 <b>វេនរៀន</b>`
+      `${numKh}. 👤 <b>${khmerName}</b>${serial}\n` +
+      `   🔹 ផ្នែកការងារ: <b>${deptName}</b>`
     );
   });
 
@@ -297,13 +307,13 @@ export async function buildStudyOnlyReport(): Promise<string> {
 }
 
 /**
- * Filter: Employees Working Today
+ * Filter: Employees Working Today (Concise: Number serial, Name, ផ្នែកការងារ - Only working staff)
  */
 export async function buildWorkOnlyReport(): Promise<string> {
   const now = new Date();
   const cambodiaDate = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Phnom_Penh' }));
   const dayIndex = cambodiaDate.getDay();
-  const todayIso = cambodiaDate.toISOString().split('T')[0];
+  const todayIso = now.toLocaleDateString('en-CA', { timeZone: 'Asia/Phnom_Penh' });
 
   const employees = await prisma.employee.findMany({
     where: { status: 'ACTIVE' },
@@ -328,20 +338,14 @@ export async function buildWorkOnlyReport(): Promise<string> {
 
   const lines: string[] = [];
   workingStaff.forEach((emp, index) => {
-    const numKh = index + 1;
+    const numKh = TelegramService.toKhmerDigits(index + 1);
     const khmerName = emp.khmerName || emp.displayName;
     const deptName = emp.department?.name || 'ទូទៅ';
-    const position = emp.position || 'បុគ្គលិក';
-    const skill = emp.skill || 'ទូទៅ';
-    const studyDay = emp.studyDay || 'គ្មាន';
+    const serial = emp.employeeCode ? ` (${emp.employeeCode})` : '';
 
     lines.push(
-      `${numKh}. 👤 <b>${khmerName}</b>\n` +
-      `   🔹 ផ្នែកការងារ: ${deptName}\n` +
-      `   🔹 តួនាទី: ${position}\n` +
-      `   🔹 ជំនាញ: ${skill}\n` +
-      `   🔹 ថ្ងៃរៀន: ${studyDay}\n` +
-      `   🔸 ស្ថានភាព: 💼 <b>បំពេញការងារ</b>`
+      `${numKh}. 👤 <b>${khmerName}</b>${serial}\n` +
+      `   🔹 ផ្នែកការងារ: <b>${deptName}</b>`
     );
   });
 
@@ -354,6 +358,104 @@ export async function buildWorkOnlyReport(): Promise<string> {
     workingStaff.length > 0
       ? lines.join('\n\n')
       : '✨ មិនមានបុគ្គលិកបំពេញការងារនៅថ្ងៃនេះទេ។',
+  ].join('\n');
+}
+
+/**
+ * Filter: Today's Attendance (Check-in & Check-out Status + Summary)
+ */
+export async function buildTodayAttendanceReport(): Promise<string> {
+  const now = new Date();
+  const cambodiaDate = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Phnom_Penh' }));
+  const dayIndex = cambodiaDate.getDay();
+  const todayIso = now.toLocaleDateString('en-CA', { timeZone: 'Asia/Phnom_Penh' });
+
+  const employees = await prisma.employee.findMany({
+    where: { status: 'ACTIVE' },
+    include: {
+      department: true,
+      attendances: {
+        where: { date: todayIso },
+      },
+    },
+    orderBy: { employeeCode: 'asc' },
+  });
+
+  const activeLeaves = await prisma.leaveRequest.findMany({
+    where: {
+      status: 'APPROVED',
+      startDate: { lte: todayIso },
+      endDate: { gte: todayIso },
+    },
+  });
+  const leaveSet = new Set(activeLeaves.map((l) => l.employeeId));
+
+  const workingStaff = employees.filter((e) => {
+    const isStudying = TelegramService.checkIsStudyDay(e.studyDay, dayIndex);
+    const isOnLeave = leaveSet.has(e.id);
+    return !isStudying && !isOnLeave;
+  });
+
+  let checkedInCount = 0;
+  let checkedOutCount = 0;
+
+  const lines: string[] = [];
+  workingStaff.forEach((emp, index) => {
+    const numKh = TelegramService.toKhmerDigits(index + 1);
+    const khmerName = emp.khmerName || emp.displayName;
+    const deptName = emp.department?.name || 'ទូទៅ';
+    const serial = emp.employeeCode ? ` (${emp.employeeCode})` : '';
+    const att = emp.attendances && emp.attendances.length > 0 ? emp.attendances[0] : null;
+
+    let statusText = '⏳ <b>មិនទាន់ Check-In</b>';
+
+    if (att && att.checkInAt) {
+      checkedInCount++;
+      const inTimeStr = new Date(att.checkInAt).toLocaleTimeString('en-US', {
+        timeZone: 'Asia/Phnom_Penh',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+      });
+
+      if (att.checkOutAt) {
+        checkedOutCount++;
+        const outTimeStr = new Date(att.checkOutAt).toLocaleTimeString('en-US', {
+          timeZone: 'Asia/Phnom_Penh',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: true,
+        });
+        statusText = `✅ <b>ចូល:</b> ${inTimeStr} | 🚪 <b>ចេញ:</b> ${outTimeStr}`;
+      } else {
+        const lateTag = att.status === 'LATE' ? ' (យឺត)' : '';
+        statusText = `✅ <b>ចូលម៉ោង:</b> ${inTimeStr}${lateTag}`;
+      }
+    }
+
+    lines.push(
+      `${numKh}. 👤 <b>${khmerName}</b>${serial}\n` +
+      `   🔹 ផ្នែកការងារ: <b>${deptName}</b>\n` +
+      `   🔸 វត្តមាន: ${statusText}`
+    );
+  });
+
+  const notCheckedInCount = workingStaff.length - checkedInCount;
+
+  return [
+    `📍 <b>ស្ថានភាពវត្តមានបុគ្គលិកថ្ងៃនេះ</b>`,
+    `🏢 <b>ស្ថាប័ន:</b> Galaxy TV 4K`,
+    `📅 <b>កាលបរិច្ឆេទ:</b> ${todayIso}`,
+    `━━━━━━━━━━━━━━━━━━━━━`,
+    workingStaff.length > 0
+      ? lines.join('\n\n')
+      : '✨ មិនមានបុគ្គលិកបំពេញការងារនៅថ្ងៃនេះទេ។',
+    `━━━━━━━━━━━━━━━━━━━━━`,
+    `📊 <b>សង្ខេបវត្តមានថ្ងៃនេះ (Attendance Summary)</b>`,
+    `💼 បុគ្គលិកត្រូវធ្វើការ: <b>${TelegramService.toKhmerDigits(workingStaff.length)} នាក់</b>`,
+    `✅ បាន Check-In: <b>${TelegramService.toKhmerDigits(checkedInCount)} នាក់</b>`,
+    `⏳ មិនទាន់ Check-In: <b>${TelegramService.toKhmerDigits(notCheckedInCount)} នាក់</b>`,
+    `🚪 បាន Check-Out: <b>${TelegramService.toKhmerDigits(checkedOutCount)} នាក់</b>`,
   ].join('\n');
 }
 
@@ -520,6 +622,11 @@ async function processUpdate(botToken: string, update: any): Promise<void> {
     let additionalParts: string[] = [];
 
     switch (data) {
+      case 'menu_today_attendance':
+        responseText = await buildTodayAttendanceReport();
+        keyboard = getTodayAttendanceNavMarkup();
+        break;
+
       case 'menu_main':
         responseText = buildMainMenuText();
         keyboard = getMainInlineMenu();
@@ -648,6 +755,24 @@ async function processUpdate(botToken: string, update: any): Promise<void> {
       return;
     }
 
+    // 0. Today's Real-Time Attendance (វត្តមានថ្ងៃនេះ)
+    if (
+      text.includes('វត្តមានថ្ងៃនេះ') ||
+      text.includes('check-in') ||
+      lower.startsWith('/attendance') ||
+      lower.startsWith('/today')
+    ) {
+      const report = await buildTodayAttendanceReport();
+      await callTelegram(botToken, 'sendMessage', {
+        chat_id: chatId,
+        text: report,
+        parse_mode: 'HTML',
+        reply_markup: getTodayAttendanceNavMarkup(),
+        disable_web_page_preview: true,
+      });
+      return;
+    }
+
     // 1. Daily Summary
     if (text.includes('សង្ខេប') || lower.startsWith('/summary')) {
       const full = await TelegramService.buildDailyMorningSummaryKhmer();
@@ -689,8 +814,8 @@ async function processUpdate(botToken: string, update: any): Promise<void> {
       return;
     }
 
-    // 4. Location filter
-    if (text.includes('វត្តមាន') || text.includes('ទីតាំង') || lower.startsWith('/location')) {
+    // 4. Location filter (វត្តមានក្នុង/ក្រៅការិយាល័យ)
+    if (text.includes('ទីតាំង') || text.includes('ការិយាល័យ') || lower.startsWith('/location')) {
       const report = await buildLocationStatusReport();
       await callTelegram(botToken, 'sendMessage', {
         chat_id: chatId,
