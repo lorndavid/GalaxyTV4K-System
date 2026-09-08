@@ -80,20 +80,20 @@ describe('Comprehensive End-to-End (E2E) System Verification', () => {
     expect(replyKb.keyboard.length).toBe(4);
 
     // Row 1: Today Attendance + Summary
-    expect(replyKb.keyboard[0][0].text).toBe('📍 វត្តមានថ្ងៃនេះ');
-    expect(replyKb.keyboard[0][1].text).toBe('📊 របាយការណ៍សង្ខេប');
+    expect(replyKb.keyboard[0][0].text).toBe('វត្តមានថ្ងៃនេះ');
+    expect(replyKb.keyboard[0][1].text).toBe('របាយការណ៍សង្ខេប');
 
     // Row 2: Work + Study
-    expect(replyKb.keyboard[1][0].text).toBe('💼 បុគ្គលិកបំពេញការងារ');
-    expect(replyKb.keyboard[1][1].text).toBe('🎓 បុគ្គលិកវេនរៀន');
+    expect(replyKb.keyboard[1][0].text).toBe('បុគ្គលិកបំពេញការងារ');
+    expect(replyKb.keyboard[1][1].text).toBe('បុគ្គលិកវេនរៀន');
 
     // Row 3: Location + Leave
-    expect(replyKb.keyboard[2][0].text).toBe('🏢 វត្តមានក្នុង/ក្រៅការិយាល័យ');
-    expect(replyKb.keyboard[2][1].text).toBe('📝 បុគ្គលិកសុំច្បាប់');
+    expect(replyKb.keyboard[2][0].text).toBe('វត្តមានក្នុង/ក្រៅការិយាល័យ');
+    expect(replyKb.keyboard[2][1].text).toBe('បុគ្គលិកសុំច្បាប់');
 
     // Row 4: All Staff + Refresh
-    expect(replyKb.keyboard[3][0].text).toBe('👥 បញ្ជីបុគ្គលិក ២០ នាក់');
-    expect(replyKb.keyboard[3][1].text).toBe('🔄 ធ្វើបច្ចុប្បន្នភាពទិន្នន័យ');
+    expect(replyKb.keyboard[3][0].text).toBe('បញ្ជីបុគ្គលិក ២០ នាក់');
+    expect(replyKb.keyboard[3][1].text).toBe('ធ្វើបច្ចុប្បន្នភាពទិន្នន័យ');
   });
 
   it('E2E-5: Confirms interactive inline menus and sub-navigation keyboards', () => {

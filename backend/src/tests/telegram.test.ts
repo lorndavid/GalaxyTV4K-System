@@ -90,7 +90,7 @@ describe('TelegramService & Security Tests', () => {
     });
   });
 
-  it('generates interactive main menu with clean Khmer text, emoji animations and rich navigation', async () => {
+  it('generates interactive main menu with clean Khmer text without emojis and rich navigation', async () => {
     const {
       getMainInlineMenu,
       getStudyNavMarkup,
@@ -114,19 +114,22 @@ describe('TelegramService & Security Tests', () => {
     expect(welcome).toContain('Galaxy TV 4K');
     expect(welcome).toContain('ផ្ទាំងបញ្ជាខាងក្រោម');
 
-    // Check menu buttons have emoji animations
-    expect(menu.inline_keyboard[0][0].text).toContain('📍');
-    expect(menu.inline_keyboard[1][0].text).toContain('📊');
-    expect(menu.inline_keyboard[2][0].text).toContain('💼');
-    expect(menu.inline_keyboard[2][1].text).toContain('🎓');
-    expect(menu.inline_keyboard[3][0].text).toContain('🏢');
-    expect(menu.inline_keyboard[3][1].text).toContain('📝');
-    expect(menu.inline_keyboard[4][0].text).toContain('👥');
+    // Check menu buttons have clean text and no emojis
+    const emojiRegex = /[\u{1F300}-\u{1F5FF}\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/u;
 
-    // Check callback_data is defined on all buttons
+    expect(menu.inline_keyboard[0][0].text).toContain('វត្តមានថ្ងៃនេះ');
+    expect(menu.inline_keyboard[1][0].text).toContain('របាយការណ៍សង្ខេប');
+    expect(menu.inline_keyboard[2][0].text).toContain('បុគ្គលិកបំពេញការងារ');
+    expect(menu.inline_keyboard[2][1].text).toContain('បុគ្គលិកវេនរៀន');
+    expect(menu.inline_keyboard[3][0].text).toContain('វត្តមានក្នុង/ក្រៅការិយាល័យ');
+    expect(menu.inline_keyboard[3][1].text).toContain('បុគ្គលិកសុំច្បាប់');
+    expect(menu.inline_keyboard[4][0].text).toContain('បញ្ជីឈ្មោះបុគ្គលិកទាំង ២០ រូប');
+
+    // Verify all inline buttons are emoji-free
     [menu, backMenu, studyNav, workNav, locNav, leaveNav, todayNav].forEach((kb) => {
       kb.inline_keyboard.forEach((row) => {
         row.forEach((btn) => {
+          expect(emojiRegex.test(btn.text)).toBe(false);
           expect(btn.text).toBeDefined();
           expect(btn.callback_data).toBeDefined();
         });
@@ -144,23 +147,23 @@ describe('TelegramService & Security Tests', () => {
 
     // Row 1: Today Attendance + Summary
     expect(replyKb.keyboard[0].length).toBe(2);
-    expect(replyKb.keyboard[0][0].text).toContain('📍 វត្តមានថ្ងៃនេះ');
-    expect(replyKb.keyboard[0][1].text).toContain('📊 របាយការណ៍សង្ខេប');
+    expect(replyKb.keyboard[0][0].text).toBe('វត្តមានថ្ងៃនេះ');
+    expect(replyKb.keyboard[0][1].text).toBe('របាយការណ៍សង្ខេប');
 
     // Row 2: Work + Study
     expect(replyKb.keyboard[1].length).toBe(2);
-    expect(replyKb.keyboard[1][0].text).toContain('💼 បុគ្គលិកបំពេញការងារ');
-    expect(replyKb.keyboard[1][1].text).toContain('🎓 បុគ្គលិកវេនរៀន');
+    expect(replyKb.keyboard[1][0].text).toBe('បុគ្គលិកបំពេញការងារ');
+    expect(replyKb.keyboard[1][1].text).toBe('បុគ្គលិកវេនរៀន');
 
     // Row 3: Location + Leave
     expect(replyKb.keyboard[2].length).toBe(2);
-    expect(replyKb.keyboard[2][0].text).toContain('🏢 វត្តមានក្នុង/ក្រៅការិយាល័យ');
-    expect(replyKb.keyboard[2][1].text).toContain('📝 បុគ្គលិកសុំច្បាប់');
+    expect(replyKb.keyboard[2][0].text).toBe('វត្តមានក្នុង/ក្រៅការិយាល័យ');
+    expect(replyKb.keyboard[2][1].text).toBe('បុគ្គលិកសុំច្បាប់');
 
     // Row 4: All Staff + Refresh
     expect(replyKb.keyboard[3].length).toBe(2);
-    expect(replyKb.keyboard[3][0].text).toContain('👥 បញ្ជីបុគ្គលិក ២០ នាក់');
-    expect(replyKb.keyboard[3][1].text).toContain('🔄 ធ្វើបច្ចុប្បន្នភាពទិន្នន័យ');
+    expect(replyKb.keyboard[3][0].text).toBe('បញ្ជីបុគ្គលិក ២០ នាក់');
+    expect(replyKb.keyboard[3][1].text).toBe('ធ្វើបច្ចុប្បន្នភាពទិន្នន័យ');
   });
 
   it('supports dual chat and sender authorization checking', async () => {

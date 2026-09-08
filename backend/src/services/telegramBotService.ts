@@ -28,10 +28,10 @@ interface InlineKeyboardMarkup {
 export function getPersistentReplyKeyboard(): ReplyKeyboardMarkup {
   return {
     keyboard: [
-      [{ text: '📍 វត្តមានថ្ងៃនេះ' }, { text: '📊 របាយការណ៍សង្ខេប' }],
-      [{ text: '💼 បុគ្គលិកបំពេញការងារ' }, { text: '🎓 បុគ្គលិកវេនរៀន' }],
-      [{ text: '🏢 វត្តមានក្នុង/ក្រៅការិយាល័យ' }, { text: '📝 បុគ្គលិកសុំច្បាប់' }],
-      [{ text: '👥 បញ្ជីបុគ្គលិក ២០ នាក់' }, { text: '🔄 ធ្វើបច្ចុប្បន្នភាពទិន្នន័យ' }],
+      [{ text: 'វត្តមានថ្ងៃនេះ' }, { text: 'របាយការណ៍សង្ខេប' }],
+      [{ text: 'បុគ្គលិកបំពេញការងារ' }, { text: 'បុគ្គលិកវេនរៀន' }],
+      [{ text: 'វត្តមានក្នុង/ក្រៅការិយាល័យ' }, { text: 'បុគ្គលិកសុំច្បាប់' }],
+      [{ text: 'បញ្ជីបុគ្គលិក ២០ នាក់' }, { text: 'ធ្វើបច្ចុប្បន្នភាពទិន្នន័យ' }],
     ],
     resize_keyboard: true,
     is_persistent: true,
@@ -44,18 +44,18 @@ export function getPersistentReplyKeyboard(): ReplyKeyboardMarkup {
 export function getMainInlineMenu(): InlineKeyboardMarkup {
   return {
     inline_keyboard: [
-      [{ text: '📍 វត្តមានថ្ងៃនេះ (Check-in Status)', callback_data: 'menu_today_attendance' }],
-      [{ text: '📊 របាយការណ៍សង្ខេបប្រចាំថ្ងៃ', callback_data: 'menu_summary' }],
+      [{ text: 'វត្តមានថ្ងៃនេះ (Check-in Status)', callback_data: 'menu_today_attendance' }],
+      [{ text: 'របាយការណ៍សង្ខេបប្រចាំថ្ងៃ', callback_data: 'menu_summary' }],
       [
-        { text: '💼 បុគ្គលិកបំពេញការងារ', callback_data: 'menu_work' },
-        { text: '🎓 បុគ្គលិកវេនរៀន', callback_data: 'menu_study' },
+        { text: 'បុគ្គលិកបំពេញការងារ', callback_data: 'menu_work' },
+        { text: 'បុគ្គលិកវេនរៀន', callback_data: 'menu_study' },
       ],
       [
-        { text: '🏢 វត្តមានក្នុង/ក្រៅការិយាល័យ', callback_data: 'menu_location' },
-        { text: '📝 បុគ្គលិកសុំច្បាប់', callback_data: 'menu_leave' },
+        { text: 'វត្តមានក្នុង/ក្រៅការិយាល័យ', callback_data: 'menu_location' },
+        { text: 'បុគ្គលិកសុំច្បាប់', callback_data: 'menu_leave' },
       ],
-      [{ text: '👥 បញ្ជីឈ្មោះបុគ្គលិកទាំង ២០ រូប', callback_data: 'menu_all_staff' }],
-      [{ text: '🔄 ធ្វើបច្ចុប្បន្នភាពទិន្នន័យ (Refresh)', callback_data: 'menu_main' }],
+      [{ text: 'បញ្ជីឈ្មោះបុគ្គលិកទាំង ២០ រូប', callback_data: 'menu_all_staff' }],
+      [{ text: 'ធ្វើបច្ចុប្បន្នភាពទិន្នន័យ (Refresh)', callback_data: 'menu_main' }],
     ],
   };
 }
@@ -67,10 +67,10 @@ export function getTodayAttendanceNavMarkup(): InlineKeyboardMarkup {
   return {
     inline_keyboard: [
       [
-        { text: '🔄 ផ្ទុកវត្តមានឡើងវិញ', callback_data: 'menu_today_attendance' },
-        { text: '💼 មើលអ្នកធ្វើការ', callback_data: 'menu_work' },
+        { text: 'ផ្ទុកវត្តមានឡើងវិញ', callback_data: 'menu_today_attendance' },
+        { text: 'មើលអ្នកធ្វើការ', callback_data: 'menu_work' },
       ],
-      [{ text: '🔙 ត្រឡប់ទៅម៉ឺនុយដើម', callback_data: 'menu_main' }],
+      [{ text: 'ត្រឡប់ទៅម៉ឺនុយដើម', callback_data: 'menu_main' }],
     ],
   };
 }
@@ -82,10 +82,10 @@ export function getStudyNavMarkup(): InlineKeyboardMarkup {
   return {
     inline_keyboard: [
       [
-        { text: '💼 មើលអ្នកធ្វើការ', callback_data: 'menu_work' },
-        { text: '🏢 វត្តមានទីតាំង', callback_data: 'menu_location' },
+        { text: 'មើលអ្នកធ្វើការ', callback_data: 'menu_work' },
+        { text: 'វត្តមានទីតាំង', callback_data: 'menu_location' },
       ],
-      [{ text: '🔙 ត្រឡប់ទៅម៉ឺនុយដើម', callback_data: 'menu_main' }],
+      [{ text: 'ត្រឡប់ទៅម៉ឺនុយដើម', callback_data: 'menu_main' }],
     ],
   };
 }
@@ -97,10 +97,10 @@ export function getWorkNavMarkup(): InlineKeyboardMarkup {
   return {
     inline_keyboard: [
       [
-        { text: '🎓 មើលអ្នករៀន', callback_data: 'menu_study' },
-        { text: '🏢 វត្តមានទីតាំង', callback_data: 'menu_location' },
+        { text: 'មើលអ្នករៀន', callback_data: 'menu_study' },
+        { text: 'វត្តមានទីតាំង', callback_data: 'menu_location' },
       ],
-      [{ text: '🔙 ត្រឡប់ទៅម៉ឺនុយដើម', callback_data: 'menu_main' }],
+      [{ text: 'ត្រឡប់ទៅម៉ឺនុយដើម', callback_data: 'menu_main' }],
     ],
   };
 }
@@ -112,10 +112,10 @@ export function getLocationNavMarkup(): InlineKeyboardMarkup {
   return {
     inline_keyboard: [
       [
-        { text: '🔄 ផ្ទុកទីតាំងឡើងវិញ', callback_data: 'menu_location' },
-        { text: '📝 មើលអ្នកសុំច្បាប់', callback_data: 'menu_leave' },
+        { text: 'ផ្ទុកទីតាំងឡើងវិញ', callback_data: 'menu_location' },
+        { text: 'មើលអ្នកសុំច្បាប់', callback_data: 'menu_leave' },
       ],
-      [{ text: '🔙 ត្រឡប់ទៅម៉ឺនុយដើម', callback_data: 'menu_main' }],
+      [{ text: 'ត្រឡប់ទៅម៉ឺនុយដើម', callback_data: 'menu_main' }],
     ],
   };
 }
@@ -127,10 +127,10 @@ export function getLeaveNavMarkup(): InlineKeyboardMarkup {
   return {
     inline_keyboard: [
       [
-        { text: '💼 មើលអ្នកធ្វើការ', callback_data: 'menu_work' },
-        { text: '🎓 មើលអ្នករៀន', callback_data: 'menu_study' },
+        { text: 'មើលអ្នកធ្វើការ', callback_data: 'menu_work' },
+        { text: 'មើលអ្នករៀន', callback_data: 'menu_study' },
       ],
-      [{ text: '🔙 ត្រឡប់ទៅម៉ឺនុយដើម', callback_data: 'menu_main' }],
+      [{ text: 'ត្រឡប់ទៅម៉ឺនុយដើម', callback_data: 'menu_main' }],
     ],
   };
 }
@@ -141,7 +141,7 @@ export function getLeaveNavMarkup(): InlineKeyboardMarkup {
 export function getBackToMenuMarkup(): InlineKeyboardMarkup {
   return {
     inline_keyboard: [
-      [{ text: '🔙 ត្រឡប់ទៅម៉ឺនុយដើម', callback_data: 'menu_main' }],
+      [{ text: 'ត្រឡប់ទៅម៉ឺនុយដើម', callback_data: 'menu_main' }],
     ],
   };
 }
@@ -254,17 +254,17 @@ export function buildMainMenuText(): string {
   });
 
   return [
-    `✨ <b>ប្រព័ន្ធគ្រប់គ្រងវត្តមាន និងកាលវិភាគការងារ</b>`,
-    `🏢 <b>ស្ថាប័ន:</b> Galaxy TV 4K`,
-    `📅 <b>កាលបរិច្ឆេទ:</b> ថ្ងៃ${dayName} ទី${dayNum} ខែ${monthName} ឆ្នាំ${yearNum}`,
-    `⏰ <b>ម៉ោងបច្ចុប្បន្ន:</b> ${timeStr}`,
+    `<b>ប្រព័ន្ធគ្រប់គ្រងវត្តមាន និងកាលវិភាគការងារ</b>`,
+    `ស្ថាប័ន: Galaxy TV 4K`,
+    `កាលបរិច្ឆេទ: ថ្ងៃ${dayName} ទី${dayNum} ខែ${monthName} ឆ្នាំ${yearNum}`,
+    `ម៉ោងបច្ចុប្បន្ន: ${timeStr}`,
     `━━━━━━━━━━━━━━━━━━━━━`,
     `សូមជ្រើសរើសមុខងារពី <b>ផ្ទាំងបញ្ជាខាងក្រោម (Keyboard Menu)</b>:`,
   ].join('\n');
 }
 
 /**
- * Filter: Employees Studying Today (Concise: Number serial, Name, ផ្នែកការងារ)
+ * Filter: Employees Studying Today (Concise Text Style: Number serial, Name, ផ្នែកការងារ)
  */
 export async function buildStudyOnlyReport(): Promise<string> {
   const now = new Date();
@@ -289,25 +289,25 @@ export async function buildStudyOnlyReport(): Promise<string> {
     const serial = emp.employeeCode ? ` (${emp.employeeCode})` : '';
 
     lines.push(
-      `${numKh}. 👤 <b>${khmerName}</b>${serial}\n` +
-      `   🔹 ផ្នែកការងារ: <b>${deptName}</b>`
+      `${numKh}. <b>${khmerName}</b>${serial}\n` +
+      `   ផ្នែកការងារ: <b>${deptName}</b>`
     );
   });
 
   return [
-    `🎓 <b>បញ្ជីបុគ្គលិកមានវេនរៀនថ្ងៃនេះ</b>`,
-    `🏢 <b>ស្ថាប័ន:</b> Galaxy TV 4K`,
+    `<b>បញ្ជីបុគ្គលិកមានវេនរៀនថ្ងៃនេះ</b>`,
+    `ស្ថាប័ន: Galaxy TV 4K`,
     `━━━━━━━━━━━━━━━━━━━━━`,
-    `📊 <b>ចំនួនសរុប:</b> <b>${TelegramService.toKhmerDigits(studyingStaff.length)} នាក់</b>`,
+    `ចំនួនសរុប: <b>${TelegramService.toKhmerDigits(studyingStaff.length)} នាក់</b>`,
     `━━━━━━━━━━━━━━━━━━━━━`,
     studyingStaff.length > 0
       ? lines.join('\n\n')
-      : '✨ មិនមានបុគ្គលិកមានវេនរៀននៅថ្ងៃនេះទេ។',
+      : 'មិនមានបុគ្គលិកមានវេនរៀននៅថ្ងៃនេះទេ។',
   ].join('\n');
 }
 
 /**
- * Filter: Employees Working Today (Concise: Number serial, Name, ផ្នែកការងារ - Only working staff)
+ * Filter: Employees Working Today (Concise Text Style: Number serial, Name, ផ្នែកការងារ - Only working staff)
  */
 export async function buildWorkOnlyReport(): Promise<string> {
   const now = new Date();
@@ -344,25 +344,25 @@ export async function buildWorkOnlyReport(): Promise<string> {
     const serial = emp.employeeCode ? ` (${emp.employeeCode})` : '';
 
     lines.push(
-      `${numKh}. 👤 <b>${khmerName}</b>${serial}\n` +
-      `   🔹 ផ្នែកការងារ: <b>${deptName}</b>`
+      `${numKh}. <b>${khmerName}</b>${serial}\n` +
+      `   ផ្នែកការងារ: <b>${deptName}</b>`
     );
   });
 
   return [
-    `💼 <b>បញ្ជីបុគ្គលិកបំពេញការងារថ្ងៃនេះ</b>`,
-    `🏢 <b>ស្ថាប័ន:</b> Galaxy TV 4K`,
+    `<b>បញ្ជីបុគ្គលិកបំពេញការងារថ្ងៃនេះ</b>`,
+    `ស្ថាប័ន: Galaxy TV 4K`,
     `━━━━━━━━━━━━━━━━━━━━━`,
-    `📊 <b>ចំនួនសរុប:</b> <b>${TelegramService.toKhmerDigits(workingStaff.length)} នាក់</b>`,
+    `ចំនួនសរុប: <b>${TelegramService.toKhmerDigits(workingStaff.length)} នាក់</b>`,
     `━━━━━━━━━━━━━━━━━━━━━`,
     workingStaff.length > 0
       ? lines.join('\n\n')
-      : '✨ មិនមានបុគ្គលិកបំពេញការងារនៅថ្ងៃនេះទេ។',
+      : 'មិនមានបុគ្គលិកបំពេញការងារនៅថ្ងៃនេះទេ។',
   ].join('\n');
 }
 
 /**
- * Filter: Today's Attendance (Check-in & Check-out Status + Summary)
+ * Filter: Today's Attendance (Pure Text Style: Check-in & Check-out Status + Summary)
  */
 export async function buildTodayAttendanceReport(): Promise<string> {
   const now = new Date();
@@ -407,7 +407,7 @@ export async function buildTodayAttendanceReport(): Promise<string> {
     const serial = emp.employeeCode ? ` (${emp.employeeCode})` : '';
     const att = emp.attendances && emp.attendances.length > 0 ? emp.attendances[0] : null;
 
-    let statusText = '⏳ <b>មិនទាន់ Check-In</b>';
+    let statusText = 'មិនទាន់ Check-In';
 
     if (att && att.checkInAt) {
       checkedInCount++;
@@ -426,36 +426,36 @@ export async function buildTodayAttendanceReport(): Promise<string> {
           minute: '2-digit',
           hour12: true,
         });
-        statusText = `✅ <b>ចូល:</b> ${inTimeStr} | 🚪 <b>ចេញ:</b> ${outTimeStr}`;
+        statusText = `ចូល: ${inTimeStr} | ចេញ: ${outTimeStr}`;
       } else {
         const lateTag = att.status === 'LATE' ? ' (យឺត)' : '';
-        statusText = `✅ <b>ចូលម៉ោង:</b> ${inTimeStr}${lateTag}`;
+        statusText = `ចូលម៉ោង: ${inTimeStr}${lateTag}`;
       }
     }
 
     lines.push(
-      `${numKh}. 👤 <b>${khmerName}</b>${serial}\n` +
-      `   🔹 ផ្នែកការងារ: <b>${deptName}</b>\n` +
-      `   🔸 វត្តមាន: ${statusText}`
+      `${numKh}. <b>${khmerName}</b>${serial}\n` +
+      `   ផ្នែកការងារ: <b>${deptName}</b>\n` +
+      `   វត្តមាន: ${statusText}`
     );
   });
 
   const notCheckedInCount = workingStaff.length - checkedInCount;
 
   return [
-    `📍 <b>ស្ថានភាពវត្តមានបុគ្គលិកថ្ងៃនេះ</b>`,
-    `🏢 <b>ស្ថាប័ន:</b> Galaxy TV 4K`,
-    `📅 <b>កាលបរិច្ឆេទ:</b> ${todayIso}`,
+    `<b>ស្ថានភាពវត្តមានបុគ្គលិកថ្ងៃនេះ</b>`,
+    `ស្ថាប័ន: Galaxy TV 4K`,
+    `កាលបរិច្ឆេទ: ${todayIso}`,
     `━━━━━━━━━━━━━━━━━━━━━`,
     workingStaff.length > 0
       ? lines.join('\n\n')
-      : '✨ មិនមានបុគ្គលិកបំពេញការងារនៅថ្ងៃនេះទេ។',
+      : 'មិនមានបុគ្គលិកបំពេញការងារនៅថ្ងៃនេះទេ។',
     `━━━━━━━━━━━━━━━━━━━━━`,
-    `📊 <b>សង្ខេបវត្តមានថ្ងៃនេះ (Attendance Summary)</b>`,
-    `💼 បុគ្គលិកត្រូវធ្វើការ: <b>${TelegramService.toKhmerDigits(workingStaff.length)} នាក់</b>`,
-    `✅ បាន Check-In: <b>${TelegramService.toKhmerDigits(checkedInCount)} នាក់</b>`,
-    `⏳ មិនទាន់ Check-In: <b>${TelegramService.toKhmerDigits(notCheckedInCount)} នាក់</b>`,
-    `🚪 បាន Check-Out: <b>${TelegramService.toKhmerDigits(checkedOutCount)} នាក់</b>`,
+    `<b>សង្ខេបវត្តមានថ្ងៃនេះ (Attendance Summary)</b>`,
+    `បុគ្គលិកត្រូវធ្វើការ: <b>${TelegramService.toKhmerDigits(workingStaff.length)} នាក់</b>`,
+    `បាន Check-In: <b>${TelegramService.toKhmerDigits(checkedInCount)} នាក់</b>`,
+    `មិនទាន់ Check-In: <b>${TelegramService.toKhmerDigits(notCheckedInCount)} នាក់</b>`,
+    `បាន Check-Out: <b>${TelegramService.toKhmerDigits(checkedOutCount)} នាក់</b>`,
   ].join('\n');
 }
 
@@ -489,39 +489,36 @@ export async function buildLocationStatusReport(): Promise<string> {
 
   const lines: string[] = [];
   employees.forEach((emp, index) => {
-    const numKh = index + 1;
+    const numKh = TelegramService.toKhmerDigits(index + 1);
     const khmerName = emp.khmerName || emp.displayName;
     const isInside =
       emp.lastLocationStatus === 'INSIDE_OFFICE' ||
       (emp.lastDistanceMeters !== null && emp.lastDistanceMeters <= 30.0);
 
     let statusText = 'មិនទាន់កំណត់ទីតាំង';
-    let statusIcon = '⚪';
     let distStr = '';
 
     if (isInside) {
       statusText = 'នៅក្នុងការិយាល័យ';
-      statusIcon = '🟢';
       if (emp.lastDistanceMeters !== null) {
         distStr = ` (${Math.round(emp.lastDistanceMeters)}m)`;
       }
     } else if (emp.lastLocationStatus === 'OUTSIDE_OFFICE') {
       statusText = 'នៅក្រៅការិយាល័យ';
-      statusIcon = '🔴';
       if (emp.lastDistanceMeters !== null) {
         distStr = ` (${Math.round(emp.lastDistanceMeters)}m)`;
       }
     }
 
-    lines.push(`${numKh}. 👤 <b>${khmerName}</b> — ${statusIcon} ${statusText}${distStr}`);
+    lines.push(`${numKh}. <b>${khmerName}</b> — ${statusText}${distStr}`);
   });
 
   return [
-    `🏢 <b>ស្ថានភាពវត្តមានក្នុង និងក្រៅការិយាល័យ (Real-time)</b>`,
+    `<b>ស្ថានភាពវត្តមានក្នុង និងក្រៅការិយាល័យ (Real-time)</b>`,
     `━━━━━━━━━━━━━━━━━━━━━`,
-    `🟢 នៅក្នុងការិយាល័យ: <b>${TelegramService.toKhmerDigits(insideStaff.length)} នាក់</b>`,
-    `🔴 នៅក្រៅការិយាល័យ: <b>${TelegramService.toKhmerDigits(outsideStaff.length)} នាក់</b>`,
-    `⚪ មិនទាន់កំណត់ទីតាំង: <b>${TelegramService.toKhmerDigits(otherStaff.length)} នាក់</b>`,
+    `នៅក្នុងការិយាល័យ: <b>${TelegramService.toKhmerDigits(insideStaff.length)} នាក់</b>`,
+    `នៅក្រៅការិយាល័យ: <b>${TelegramService.toKhmerDigits(outsideStaff.length)} នាក់</b>`,
+    `មិនទាន់កំណត់ទីតាំង: <b>${TelegramService.toKhmerDigits(otherStaff.length)} នាក់</b>`,
     `━━━━━━━━━━━━━━━━━━━━━`,
     lines.join('\n'),
   ].join('\n');
@@ -546,27 +543,27 @@ export async function buildLeaveOnlyReport(): Promise<string> {
 
   if (activeLeaves.length === 0) {
     return [
-      `📝 <b>បញ្ជីបុគ្គលិកសុំច្បាប់សម្រាកថ្ងៃនេះ</b>`,
+      `<b>បញ្ជីបុគ្គលិកសុំច្បាប់សម្រាកថ្ងៃនេះ</b>`,
       `━━━━━━━━━━━━━━━━━━━━━`,
-      `✨ មិនមានបុគ្គលិកសុំច្បាប់សម្រាកនៅថ្ងៃនេះទេ។`,
+      `មិនមានបុគ្គលិកសុំច្បាប់សម្រាកនៅថ្ងៃនេះទេ។`,
     ].join('\n');
   }
 
   const lines = activeLeaves.map((l, index) => {
-    const numKh = index + 1;
+    const numKh = TelegramService.toKhmerDigits(index + 1);
     const name = l.employee.khmerName || l.employee.displayName;
     return (
-      `${numKh}. 👤 <b>${name}</b>\n` +
-      `   🔹 ប្រភេទច្បាប់: 🌴 ${l.type}\n` +
-      `   🔹 រយៈពេល: ${l.startDate} ដល់ ${l.endDate}\n` +
-      `   🔹 មូលហេតុ: ${l.reason || 'ផ្ទាល់ខ្លួន'}`
+      `${numKh}. <b>${name}</b>\n` +
+      `   ប្រភេទច្បាប់: ${l.type}\n` +
+      `   រយៈពេល: ${l.startDate} ដល់ ${l.endDate}\n` +
+      `   មូលហេតុ: ${l.reason || 'ផ្ទាល់ខ្លួន'}`
     );
   });
 
   return [
-    `📝 <b>បញ្ជីបុគ្គលិកសុំច្បាប់សម្រាកថ្ងៃនេះ</b>`,
+    `<b>បញ្ជីបុគ្គលិកសុំច្បាប់សម្រាកថ្ងៃនេះ</b>`,
     `━━━━━━━━━━━━━━━━━━━━━`,
-    `📊 <b>ចំនួនសរុប:</b> <b>${TelegramService.toKhmerDigits(activeLeaves.length)} នាក់</b>`,
+    `ចំនួនសរុប: <b>${TelegramService.toKhmerDigits(activeLeaves.length)} នាក់</b>`,
     `━━━━━━━━━━━━━━━━━━━━━`,
     lines.join('\n\n'),
   ].join('\n');
@@ -585,13 +582,14 @@ async function processUpdate(botToken: string, update: any): Promise<void> {
     const data = cq.data;
 
     // Fast responsive native toast animation
-    let toastMsg = '✨ កំពុងដំណើរការ...';
-    if (data === 'menu_main') toastMsg = '🏠 ម៉ឺនុយដើម';
-    if (data === 'menu_study') toastMsg = '🎓 បុគ្គលិកវេនរៀន';
-    if (data === 'menu_work') toastMsg = '💼 បុគ្គលិកបំពេញការងារ';
-    if (data === 'menu_location') toastMsg = '🏢 វត្តមានទីតាំង';
-    if (data === 'menu_leave') toastMsg = '📝 បុគ្គលិកសុំច្បាប់';
-    if (data === 'menu_summary' || data === 'menu_all_staff') toastMsg = '📊 របាយការណ៍សង្ខេប';
+    let toastMsg = 'កំពុងដំណើរការ...';
+    if (data === 'menu_today_attendance') toastMsg = 'វត្តមានថ្ងៃនេះ';
+    if (data === 'menu_main') toastMsg = 'ម៉ឺនុយដើម';
+    if (data === 'menu_study') toastMsg = 'បុគ្គលិកវេនរៀន';
+    if (data === 'menu_work') toastMsg = 'បុគ្គលិកបំពេញការងារ';
+    if (data === 'menu_location') toastMsg = 'វត្តមានទីតាំង';
+    if (data === 'menu_leave') toastMsg = 'បុគ្គលិកសុំច្បាប់';
+    if (data === 'menu_summary' || data === 'menu_all_staff') toastMsg = 'របាយការណ៍សង្ខេប';
 
     await callTelegram(botToken, 'answerCallbackQuery', {
       callback_query_id: cq.id,
@@ -606,12 +604,12 @@ async function processUpdate(botToken: string, update: any): Promise<void> {
       await callTelegram(botToken, 'sendMessage', {
         chat_id: chatId,
         text:
-          `🔒 <b>ការជូនដំណឹងពីប្រព័ន្ធសុវត្ថិភាព</b>\n` +
+          `<b>ការជូនដំណឹងពីប្រព័ន្ធសុវត្ថិភាព</b>\n` +
           `━━━━━━━━━━━━━━━━━━━━━\n` +
-          `⛔ លោកអ្នកមិនមានសិទ្ធិចូលមើលទិន្នន័យនេះទេ។\n` +
-          `🆔 <b>Chat ID:</b> <code>${chatId}</code>\n` +
-          (fromId && fromId !== chatId ? `👤 <b>User ID:</b> <code>${fromId}</code>\n` : '') +
-          `💬 សូមទាក់ទងអ្នកគ្រប់គ្រងប្រព័ន្ធ (Admin) ដើម្បីបន្ថែមលេខសម្គាល់នេះ។`,
+          `លោកអ្នកមិនមានសិទ្ធិចូលមើលទិន្នន័យនេះទេ។\n` +
+          `Chat ID: <code>${chatId}</code>\n` +
+          (fromId && fromId !== chatId ? `User ID: <code>${fromId}</code>\n` : '') +
+          `សូមទាក់ទងអ្នកគ្រប់គ្រងប្រព័ន្ធ (Admin) ដើម្បីបន្ថែមលេខសម្គាល់នេះ។`,
         parse_mode: 'HTML',
       });
       return;
@@ -722,13 +720,13 @@ async function processUpdate(botToken: string, update: any): Promise<void> {
       await callTelegram(botToken, 'sendMessage', {
         chat_id: chatId,
         text: [
-          `🆔 <b>ព័ត៌មានលេខសម្គាល់គណនី (Telegram ID)</b>`,
+          `<b>ព័ត៌មានលេខសម្គាល់គណនី (Telegram ID)</b>`,
           `━━━━━━━━━━━━━━━━━━━━━`,
-          `💬 <b>Chat ID:</b> <code>${chatId}</code>`,
-          fromId && fromId !== chatId ? `👤 <b>User ID:</b> <code>${fromId}</code>` : '',
-          `🏷️ <b>ប្រភេទ:</b> ${msg.chat?.type || 'ទូទៅ'}`,
+          `Chat ID: <code>${chatId}</code>`,
+          fromId && fromId !== chatId ? `User ID: <code>${fromId}</code>` : '',
+          `ប្រភេទ: ${msg.chat?.type || 'ទូទៅ'}`,
           `━━━━━━━━━━━━━━━━━━━━━`,
-          `📋 <i>លោកអ្នកអាចចុចលើលេខសម្គាល់ខាងលើដើម្បី Copy រួចផ្ញើជូន Admin ដើម្បីបញ្ចូលទៅក្នុងប្រព័ន្ធអនុញ្ញាត។</i>`,
+          `<i>លោកអ្នកអាចចុចលើលេខសម្គាល់ខាងលើដើម្បី Copy រួចផ្ញើជូន Admin ដើម្បីបញ្ចូលទៅក្នុងប្រព័ន្ធអនុញ្ញាត។</i>`,
         ]
           .filter(Boolean)
           .join('\n'),
@@ -744,12 +742,12 @@ async function processUpdate(botToken: string, update: any): Promise<void> {
       await callTelegram(botToken, 'sendMessage', {
         chat_id: chatId,
         text:
-          `🔒 <b>ការជូនដំណឹងពីប្រព័ន្ធសុវត្ថិភាព</b>\n` +
+          `<b>ការជូនដំណឹងពីប្រព័ន្ធសុវត្ថិភាព</b>\n` +
           `━━━━━━━━━━━━━━━━━━━━━\n` +
-          `⛔ លោកអ្នកមិនមានសិទ្ធិចូលមើលទិន្នន័យនេះទេ។\n` +
-          `🆔 <b>Chat ID:</b> <code>${chatId}</code>\n` +
-          (fromId && fromId !== chatId ? `👤 <b>User ID:</b> <code>${fromId}</code>\n` : '') +
-          `💬 សូមទាក់ទងអ្នកគ្រប់គ្រងប្រព័ន្ធ (Admin) ដើម្បីបន្ថែមលេខសម្គាល់នេះ។`,
+          `លោកអ្នកមិនមានសិទ្ធិចូលមើលទិន្នន័យនេះទេ។\n` +
+          `Chat ID: <code>${chatId}</code>\n` +
+          (fromId && fromId !== chatId ? `User ID: <code>${fromId}</code>\n` : '') +
+          `សូមទាក់ទងអ្នកគ្រប់គ្រងប្រព័ន្ធ (Admin) ដើម្បីបន្ថែមលេខសម្គាល់នេះ។`,
         parse_mode: 'HTML',
       });
       return;

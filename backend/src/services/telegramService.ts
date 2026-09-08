@@ -82,7 +82,7 @@ export class TelegramService {
       const botUsername = getMeRes.result?.username || 'AttendanceBot';
 
       if (testChatId) {
-        const testMsg = `🔔 <b>Attendance System Test</b>\n\nTelegram notification channel is connected successfully.\n<b>Time:</b> ${new Date().toLocaleString('en-US', { timeZone: 'Asia/Phnom_Penh' })}`;
+        const testMsg = `<b>Attendance System Test</b>\n\nTelegram notification channel is connected successfully.\n<b>Time:</b> ${new Date().toLocaleString('en-US', { timeZone: 'Asia/Phnom_Penh' })}`;
         const sendRes = await this.requestTelegram(botToken, 'sendMessage', {
           chat_id: testChatId,
           text: testMsg,
@@ -173,21 +173,21 @@ export class TelegramService {
     accuracyMeters: number;
   }): Promise<void> {
     const statusText = data.isLate
-      ? `⚠️ <b>Late</b> (+${data.lateMinutes || 0} mins)`
-      : `✅ <b>Present (On Time)</b>`;
+      ? `<b>Late</b> (+${data.lateMinutes || 0} mins)`
+      : `<b>Present (On Time)</b>`;
 
     const locText = data.isInsideOffice
-      ? `🟢 Inside Office (${Math.round(data.distanceMeters)}m)`
-      : `🔴 Outside Office (${Math.round(data.distanceMeters)}m)`;
+      ? `Inside Office (${Math.round(data.distanceMeters)}m)`
+      : `Outside Office (${Math.round(data.distanceMeters)}m)`;
 
     const msg = [
-      `📍 <b>Attendance Check-In</b>`,
-      `━━━━━━━━━━━━━━━━━━`,
-      `👤 <b>Employee:</b> ${data.employeeName} (<code>${data.employeeCode}</code>)`,
-      `⏰ <b>Time:</b> ${data.time}`,
-      `📊 <b>Status:</b> ${statusText}`,
-      `🏢 <b>Location:</b> ${locText}`,
-      `🎯 <b>GPS Accuracy:</b> ±${Math.round(data.accuracyMeters)}m`,
+      `<b>Attendance Check-In</b>`,
+      `--------------------------------------------------`,
+      `<b>Employee:</b> ${data.employeeName} (<code>${data.employeeCode}</code>)`,
+      `<b>Time:</b> ${data.time}`,
+      `<b>Status:</b> ${statusText}`,
+      `<b>Location:</b> ${locText}`,
+      `<b>GPS Accuracy:</b> ±${Math.round(data.accuracyMeters)}m`,
     ].join('\n');
 
     await this.broadcastMessage(msg, 'attendance');
@@ -205,16 +205,16 @@ export class TelegramService {
     distanceMeters: number;
   }): Promise<void> {
     const locText = data.isInsideOffice
-      ? `🟢 Inside Office (${Math.round(data.distanceMeters)}m)`
-      : `🔴 Outside Office (${Math.round(data.distanceMeters)}m)`;
+      ? `Inside Office (${Math.round(data.distanceMeters)}m)`
+      : `Outside Office (${Math.round(data.distanceMeters)}m)`;
 
     const msg = [
-      `🏁 <b>Attendance Check-Out</b>`,
-      `━━━━━━━━━━━━━━━━━━`,
-      `👤 <b>Employee:</b> ${data.employeeName} (<code>${data.employeeCode}</code>)`,
-      `⏰ <b>Time:</b> ${data.time}`,
-      `⏳ <b>Worked Time:</b> ${data.workedDuration}`,
-      `🏢 <b>Location:</b> ${locText}`,
+      `<b>Attendance Check-Out</b>`,
+      `--------------------------------------------------`,
+      `<b>Employee:</b> ${data.employeeName} (<code>${data.employeeCode}</code>)`,
+      `<b>Time:</b> ${data.time}`,
+      `<b>Worked Time:</b> ${data.workedDuration}`,
+      `<b>Location:</b> ${locText}`,
     ].join('\n');
 
     await this.broadcastMessage(msg, 'attendance');
@@ -232,15 +232,15 @@ export class TelegramService {
   }): Promise<void> {
     const title =
       data.eventType === 'ENTERED_OFFICE'
-        ? `🟢 <b>Employee Entered Office</b>`
-        : `🔴 <b>Employee Left Office Area</b>`;
+        ? `<b>Employee Entered Office</b>`
+        : `<b>Employee Left Office Area</b>`;
 
     const msg = [
       title,
-      `━━━━━━━━━━━━━━━━━━`,
-      `👤 <b>Employee:</b> ${data.employeeName} (<code>${data.employeeCode}</code>)`,
-      `📏 <b>Distance:</b> ${Math.round(data.distanceMeters)}m from office`,
-      `⏰ <b>Time:</b> ${data.time}`,
+      `--------------------------------------------------`,
+      `<b>Employee:</b> ${data.employeeName} (<code>${data.employeeCode}</code>)`,
+      `<b>Distance:</b> ${Math.round(data.distanceMeters)}m from office`,
+      `<b>Time:</b> ${data.time}`,
     ].join('\n');
 
     await this.broadcastMessage(msg, 'location');
@@ -297,10 +297,10 @@ export class TelegramService {
 
     const statusBadge =
       data.status === 'ACTIVE'
-        ? '🟢 សកម្ម (ACTIVE)'
+        ? 'សកម្ម (ACTIVE)'
         : data.status === 'SUSPENDED'
-        ? '🟠 ផ្អាកបណ្តោះអាសន្ន (SUSPENDED)'
-        : '🔴 អសកម្ម (INACTIVE)';
+        ? 'ផ្អាកបណ្តោះអាសន្ន (SUSPENDED)'
+        : 'អសកម្ម (INACTIVE)';
 
     const studyDayText = data.studyDay && data.studyDay.trim() && !data.studyDay.includes('គ្មាន')
       ? data.studyDay.trim()
@@ -308,21 +308,21 @@ export class TelegramService {
     const calculatedWorkDays = data.workDays || this.getWorkDaysFromStudyDay(data.studyDay);
 
     const changedSummary = data.changedFields && data.changedFields.length > 0
-      ? `📝 <b>ផ្នែកកែប្រែ:</b> ${data.changedFields.join(', ')}`
+      ? `<b>ផ្នែកកែប្រែ:</b> ${data.changedFields.join(', ')}`
       : '';
 
     const msg = [
-      `🔔 <b>បច្ចុប្បន្នភាពបុគ្គលិក / Employee Updated</b>`,
-      `━━━━━━━━━━━━━━━━━━`,
-      `👤 <b>ឈ្មោះ:</b> ${data.employeeName} (<code>${data.employeeCode}</code>)`,
-      data.department ? `🏢 <b>ផ្នែក:</b> ${data.department}` : '',
-      data.position ? `💼 <b>តួនាទី:</b> ${data.position}` : '',
-      `🎓 <b>ថ្ងៃរៀន:</b> ${studyDayText}`,
-      `🛠 <b>ថ្ងៃធ្វើការ:</b> ${calculatedWorkDays}`,
-      `⚡ <b>ស្ថានភាព:</b> ${statusBadge}`,
+      `<b>បច្ចុប្បន្នភាពបុគ្គលិក / Employee Updated</b>`,
+      `--------------------------------------------------`,
+      `<b>ឈ្មោះ:</b> ${data.employeeName} (<code>${data.employeeCode}</code>)`,
+      data.department ? `<b>ផ្នែក:</b> ${data.department}` : '',
+      data.position ? `<b>តួនាទី:</b> ${data.position}` : '',
+      `<b>ថ្ងៃរៀន:</b> ${studyDayText}`,
+      `<b>ថ្ងៃធ្វើការ:</b> ${calculatedWorkDays}`,
+      `<b>ស្ថានភាព:</b> ${statusBadge}`,
       changedSummary,
-      data.updatedBy ? `👨‍💻 <b>កែប្រែដោយ:</b> ${data.updatedBy}` : '',
-      `⏰ <b>កាលបរិច្ឆេទ:</b> ${dateStr} ${timeStr}`,
+      data.updatedBy ? `<b>កែប្រែដោយ:</b> ${data.updatedBy}` : '',
+      `<b>កាលបរិច្ឆេទ:</b> ${dateStr} ${timeStr}`,
     ]
       .filter(Boolean)
       .join('\n');
