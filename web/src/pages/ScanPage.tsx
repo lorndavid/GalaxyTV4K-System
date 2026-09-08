@@ -331,8 +331,10 @@ export const ScanPage: React.FC = () => {
   const lateGrace = companySettings?.lateGracePeriodMinutes ?? 0;
 
   const startMinutes = useMemo(() => {
-    const [h, m] = workStartTime.split(':').map(Number);
-    return (h || 8) * 60 + (m || 0);
+    const parts = (workStartTime || '08:00').split(':').map(Number);
+    const h = !isNaN(parts[0]) ? parts[0] : 8;
+    const m = !isNaN(parts[1]) ? parts[1] : 0;
+    return h * 60 + m;
   }, [workStartTime]);
 
   const openMinutes = useMemo(() => {
@@ -351,8 +353,10 @@ export const ScanPage: React.FC = () => {
   const lateMinutesNow = Math.max(0, currentMinutes - startMinutes);
 
   const endMinutes = useMemo(() => {
-    const [h, m] = workEndTime.split(':').map(Number);
-    return (h || 17) * 60 + (m || 30);
+    const parts = (workEndTime || '17:30').split(':').map(Number);
+    const h = !isNaN(parts[0]) ? parts[0] : 17;
+    const m = !isNaN(parts[1]) ? parts[1] : 0;
+    return h * 60 + m;
   }, [workEndTime]);
 
   const earlyLeaveGrace = companySettings?.earlyLeaveGraceMinutes ?? 0;
@@ -360,9 +364,9 @@ export const ScanPage: React.FC = () => {
   const isCheckOutAllowedNow = currentMinutes >= earliestCheckOutMinutes;
 
   const formattedEndTime = useMemo(() => {
-    const [h, m] = workEndTime.split(':').map(Number);
-    const endH = h || 17;
-    const endM = (m || 30).toString().padStart(2, '0');
+    const parts = (workEndTime || '17:30').split(':').map(Number);
+    const endH = !isNaN(parts[0]) ? parts[0] : 17;
+    const endM = (!isNaN(parts[1]) ? parts[1] : 0).toString().padStart(2, '0');
     const period = endH >= 12 ? 'PM' : 'AM';
     const h12 = endH % 12 || 12;
     return `${h12}:${endM} ${period}`;
@@ -455,7 +459,7 @@ export const ScanPage: React.FC = () => {
 
     if (hasCheckedIn && !hasCheckedOut && !isCheckOutAllowedNow) {
       showToast(
-        `មិនទាន់ដល់ម៉ោងចេញពីធ្វើការនៅឡើយទេ។ ម៉ោងចេញកំណត់ចាប់ពីម៉ោង ${formattedEndTime} (${workEndTime}) តទៅ!`,
+        `មិនទាន់ដល់ម៉ោងចេញពីធ្វើការនៅឡើយទេ (ម៉ោងចេញគឺ ${formattedEndTime})!`,
         'warning'
       );
       return;
@@ -543,7 +547,7 @@ export const ScanPage: React.FC = () => {
 
       if (!currentCoords && !geoCoordsRef.current) {
         setState('ERROR');
-        setErrorMessage('📍 សូមបើក Location / GPS នៅលើទូរស័ព្ទដៃរបស់អ្នកជាមុនសិន ទើបអាចស្កេន QR Code បាន។');
+        setErrorMessage('📍 សូមបើក Location / GPS នៅលើទូរស័ព្ទដៃរបស់អ្នកជាមុនសិន។');
         isProcessingRef.current = false;
         scanCompletedRef.current = false;
         return;
@@ -1151,7 +1155,7 @@ export const ScanPage: React.FC = () => {
                         : hasCheckedIn && !hasCheckedOut && !isCheckOutAllowedNow
                         ? () =>
                             showToast(
-                              `មិនទាន់ដល់ម៉ោងចេញពីធ្វើការនៅឡើយទេ។ ម៉ោងចេញកំណត់ចាប់ពីម៉ោង ${formattedEndTime} (${workEndTime}) តទៅ!`,
+                              `មិនទាន់ដល់ម៉ោងចេញពីធ្វើការនៅឡើយទេ (ម៉ោងចេញគឺ ${formattedEndTime})!`,
                               'warning'
                             )
                         : handleZoneCheckIn
@@ -1214,7 +1218,7 @@ export const ScanPage: React.FC = () => {
                   </button>
                 </div>
 
-                {/* Subtitle instructions */}
+                {/* Subtitle instructions (clean, concise, and professional) */}
                 <div className="text-center px-2 space-y-1">
                   <p className="text-sm font-bold text-white">
                     {!currentCoords
@@ -1229,21 +1233,21 @@ export const ScanPage: React.FC = () => {
                       ? `ចុច Check-In ចូលធ្វើការ (មកយឺត ${lateMinutesNow} នាទី)`
                       : t('attendance.punchInBtn', 'ចុច Check-In ចូលធ្វើការ')}
                   </p>
-                  <p className="text-xs text-slate-400 leading-relaxed">
-                    {!currentCoords
-                      ? 'ប្រព័ន្ធតម្រូវឱ្យបើក GPS លើទូរស័ព្ទដៃជាចាំបាច់។ សូមចុចប៊ូតុងខាងលើដើម្បីភ្ជាប់ GPS។'
-                      : hasCheckedIn && !isCheckOutAllowedNow
-                      ? `កាលវិភាគការងារកំណត់ម៉ោងចេញចាប់ពីម៉ោង ${formattedEndTime} (${workEndTime}) តទៅ។ បុគ្គលិកមិនអាច Check-Out មុនម៉ោងបានឡើយ។`
-                      : isInsideOffice
-                      ? t(
-                          'attendance.clickToRecordDesc',
-                          'អ្នកស្ថិតនៅក្នុងបរិវេណការិយាល័យរួចរាល់ហើយ សូមចុចប៊ូតុងខាងលើដើម្បីកត់ត្រាវត្តមាន។'
-                        )
-                      : t(
-                          'attendance.approachOfficeNotice',
-                          'សូមចូលទៅជិតបរិវេណការិយាល័យ ដើម្បីអាចកត់ត្រាវត្តមានបាន។'
-                        )}
-                  </p>
+                  {(!hasCheckedIn || isCheckOutAllowedNow || !currentCoords) && (
+                    <p className="text-xs text-slate-400 leading-relaxed">
+                      {!currentCoords
+                        ? 'ប្រព័ន្ធតម្រូវឱ្យបើក GPS លើទូរស័ព្ទដៃជាចាំបាច់។ សូមចុចប៊ូតុងខាងលើដើម្បីភ្ជាប់ GPS។'
+                        : isInsideOffice
+                        ? t(
+                            'attendance.clickToRecordDesc',
+                            'អ្នកស្ថិតនៅក្នុងបរិវេណការិយាល័យរួចរាល់ហើយ សូមចុចប៊ូតុងខាងលើដើម្បីកត់ត្រាវត្តមាន។'
+                          )
+                        : t(
+                            'attendance.approachOfficeNotice',
+                            'សូមចូលទៅជិតបរិវេណការិយាល័យ ដើម្បីអាចកត់ត្រាវត្តមានបាន។'
+                          )}
+                    </p>
+                  )}
                 </div>
               </div>
             )}
