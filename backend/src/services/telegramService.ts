@@ -183,7 +183,7 @@ export class TelegramService {
     const msg = [
       `<b>Attendance Check-In</b>`,
       `--------------------------------------------------`,
-      `<b>Employee:</b> ${data.employeeName} (<code>${data.employeeCode}</code>)`,
+      `<b>Employee:</b> ${data.employeeName}`,
       `<b>Time:</b> ${data.time}`,
       `<b>Status:</b> ${statusText}`,
       `<b>Location:</b> ${locText}`,
@@ -211,7 +211,7 @@ export class TelegramService {
     const msg = [
       `<b>Attendance Check-Out</b>`,
       `--------------------------------------------------`,
-      `<b>Employee:</b> ${data.employeeName} (<code>${data.employeeCode}</code>)`,
+      `<b>Employee:</b> ${data.employeeName}`,
       `<b>Time:</b> ${data.time}`,
       `<b>Worked Time:</b> ${data.workedDuration}`,
       `<b>Location:</b> ${locText}`,
@@ -238,7 +238,7 @@ export class TelegramService {
     const msg = [
       title,
       `--------------------------------------------------`,
-      `<b>Employee:</b> ${data.employeeName} (<code>${data.employeeCode}</code>)`,
+      `<b>Employee:</b> ${data.employeeName}`,
       `<b>Distance:</b> ${Math.round(data.distanceMeters)}m from office`,
       `<b>Time:</b> ${data.time}`,
     ].join('\n');
@@ -314,7 +314,7 @@ export class TelegramService {
     const msg = [
       `<b>បច្ចុប្បន្នភាពបុគ្គលិក / Employee Updated</b>`,
       `--------------------------------------------------`,
-      `<b>ឈ្មោះ:</b> ${data.employeeName} (<code>${data.employeeCode}</code>)`,
+      `<b>ឈ្មោះ:</b> ${data.employeeName}`,
       data.department ? `<b>ផ្នែក:</b> ${data.department}` : '',
       data.position ? `<b>តួនាទី:</b> ${data.position}` : '',
       `<b>ថ្ងៃរៀន:</b> ${studyDayText}`,

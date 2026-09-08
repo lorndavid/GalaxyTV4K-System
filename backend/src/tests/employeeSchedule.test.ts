@@ -74,7 +74,7 @@ describe('Employee Work & Study Schedule Management', () => {
       const [msg, category] = broadcastSpy.mock.calls[0];
       expect(category).toBe('system');
       expect(msg).toContain('ហួយ ប៊ុនធឿន');
-      expect(msg).toContain('EMP-001');
+      expect(msg).not.toContain('EMP-001');
       expect(msg).toContain('ព្រហ-សុក្រ');
       expect(msg).toContain('ACTIVE');
       expect(msg).toContain('IT & Software');

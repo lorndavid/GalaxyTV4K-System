@@ -286,10 +286,9 @@ export async function buildStudyOnlyReport(): Promise<string> {
     const numKh = TelegramService.toKhmerDigits(index + 1);
     const khmerName = emp.khmerName || emp.displayName;
     const deptName = emp.department?.name || 'ទូទៅ';
-    const serial = emp.employeeCode ? ` (${emp.employeeCode})` : '';
 
     lines.push(
-      `${numKh}. <b>${khmerName}</b>${serial}\n` +
+      `${numKh}. <b>${khmerName}</b>\n` +
       `   ផ្នែកការងារ: <b>${deptName}</b>`
     );
   });
@@ -341,10 +340,9 @@ export async function buildWorkOnlyReport(): Promise<string> {
     const numKh = TelegramService.toKhmerDigits(index + 1);
     const khmerName = emp.khmerName || emp.displayName;
     const deptName = emp.department?.name || 'ទូទៅ';
-    const serial = emp.employeeCode ? ` (${emp.employeeCode})` : '';
 
     lines.push(
-      `${numKh}. <b>${khmerName}</b>${serial}\n` +
+      `${numKh}. <b>${khmerName}</b>\n` +
       `   ផ្នែកការងារ: <b>${deptName}</b>`
     );
   });
@@ -404,7 +402,6 @@ export async function buildTodayAttendanceReport(): Promise<string> {
     const numKh = TelegramService.toKhmerDigits(index + 1);
     const khmerName = emp.khmerName || emp.displayName;
     const deptName = emp.department?.name || 'ទូទៅ';
-    const serial = emp.employeeCode ? ` (${emp.employeeCode})` : '';
     const att = emp.attendances && emp.attendances.length > 0 ? emp.attendances[0] : null;
 
     let statusText = 'មិនទាន់ Check-In';
@@ -434,7 +431,7 @@ export async function buildTodayAttendanceReport(): Promise<string> {
     }
 
     lines.push(
-      `${numKh}. <b>${khmerName}</b>${serial}\n` +
+      `${numKh}. <b>${khmerName}</b>\n` +
       `   ផ្នែកការងារ: <b>${deptName}</b>\n` +
       `   វត្តមាន: ${statusText}`
     );
