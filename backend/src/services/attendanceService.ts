@@ -346,26 +346,34 @@ export class AttendanceService {
         let lateMinutes = 0;
 
         if (scheduleDay && scheduleDay.isWorkingDay) {
-          const startTime = settings.workStartTime || (scheduleDay && scheduleDay.startTime) || '08:00';
-          const startMinutes = parseTimeToMinutes(startTime);
+          // Check if employee has a custom shift or check-in window
+          const openTime = employee.checkInStartTime || settings.workStartTime || (scheduleDay && scheduleDay.startTime) || '08:00';
+          const deadlineTime = employee.checkInDeadline || employee.checkInStartTime || settings.workStartTime || (scheduleDay && scheduleDay.startTime) || '08:00';
+
+          const openMinutes = parseTimeToMinutes(openTime);
           const currentMinutes = parseTimeToMinutes(currentTimeStr);
-          const allowedBefore = settings.checkInAllowedBeforeMinutes ?? 60;
-          const earliestMinutes = Math.max(0, startMinutes - allowedBefore);
+
+          // For afternoon or custom shift, enforce check-in open from exact checkInStartTime (e.g. 12:00)
+          const allowedBefore = (employee.shiftType === 'AFTERNOON' || (employee.checkInStartTime && employee.checkInStartTime !== '08:00'))
+            ? 0
+            : (settings.checkInAllowedBeforeMinutes ?? 60);
+          const earliestMinutes = Math.max(0, openMinutes - allowedBefore);
 
           if (currentMinutes < earliestMinutes) {
-            const openH = Math.floor(earliestMinutes / 60).toString().padStart(2, '0');
-            const openM = (earliestMinutes % 60).toString().padStart(2, '0');
+            const openH = Math.floor(openMinutes / 60).toString().padStart(2, '0');
+            const openM = (openMinutes % 60).toString().padStart(2, '0');
             const openTimeStr = `${openH}:${openM}`;
+            const timeTag = openMinutes >= 720 ? 'ថ្ងៃត្រង់/រសៀល' : 'ព្រឹក';
             throw {
               code: 'CHECK_IN_NOT_OPEN_YET',
-              message: `ការកត់ត្រាវត្តមានចូលមិនទាន់បើកនៅឡើយទេ។ បើកចាប់ពីម៉ោង ${openTimeStr} ព្រឹកតទៅ (Check-in opens at ${openTimeStr}).`,
+              message: `ការកត់ត្រាវត្តមានចូលមិនទាន់បើកនៅឡើយទេ។ បើកចាប់ពីម៉ោង ${openTimeStr} ${timeTag}តទៅ (Check-in opens at ${openTimeStr}).`,
               status: 400,
             };
           }
 
           lateMinutes = calculateLateMinutes(
             currentTimeStr,
-            startTime,
+            deadlineTime,
             settings.lateGracePeriodMinutes ?? 0
           );
           if (lateMinutes > 0) {

@@ -140,6 +140,11 @@ model Employee {
   position                String              @default("Staff")
   hireDate                DateTime            @default(now())
   status                  EmployeeStatus      @default(ACTIVE)
+  shiftType               String?             @default("STANDARD")
+  checkInStartTime        String?             @default("08:00")
+  checkInDeadline         String?             @default("08:00")
+  workEndTime             String?             @default("17:30")
+  studyClassInfo          String?
   department              Department?         @relation(fields: [departmentId], references: [id], onDelete: SetNull)
   departmentId            String?
   schedule                Schedule?           @relation(fields: [scheduleId], references: [id], onDelete: SetNull)
@@ -327,9 +332,14 @@ model LeaveRequest {
   type         LeaveType
   startDate    String        // YYYY-MM-DD
   endDate      String        // YYYY-MM-DD
+  startTime    String?       // HH:mm (e.g. 14:00)
+  endTime      String?       // HH:mm (e.g. 17:30)
   daysCount    Float
   reason       String
   status       RequestStatus @default(PENDING)
+  isPermission Boolean       @default(false)
+  permissionType String?     // GO_HOME, PERSONAL, SICK, MISSION, OTHER
+  createdById  String?
   adminComment String?
   reviewedById String?
   reviewedAt   DateTime?

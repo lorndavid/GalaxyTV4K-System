@@ -174,4 +174,81 @@ export class LeaveController {
       return sendError(res, err.code || 'LEAVE_REJECTION_FAILED', err.message, err.status || 400);
     }
   }
+
+  static async grantPermission(req: AuthenticatedRequest, res: Response) {
+    const {
+      employeeId,
+      permissionType,
+      type,
+      startDate,
+      endDate,
+      startTime,
+      endTime,
+      daysCount,
+      reason,
+      adminComment,
+    } = req.body;
+
+    if (!employeeId || !startDate || !reason) {
+      return sendError(res, 'VALIDATION_ERROR', 'Employee, start date, and reason are required.', 400);
+    }
+
+    try {
+      const result = await LeaveService.grantAdminPermission({
+        employeeId,
+        permissionType,
+        type: type || LeaveType.PERSONAL,
+        startDate,
+        endDate,
+        startTime,
+        endTime,
+        daysCount,
+        reason,
+        adminComment,
+        adminUserId: req.user?.userId,
+      });
+      return sendSuccess(res, result, 201);
+    } catch (err: any) {
+      return sendError(res, err.code || 'PERMISSION_GRANT_FAILED', err.message, err.status || 400);
+    }
+  }
+
+  static async updatePermission(req: AuthenticatedRequest, res: Response) {
+    const { id } = req.params;
+    const {
+      permissionType,
+      startDate,
+      endDate,
+      startTime,
+      endTime,
+      reason,
+      adminComment,
+    } = req.body;
+
+    try {
+      const result = await LeaveService.updateAdminPermission(id, {
+        permissionType,
+        startDate,
+        endDate,
+        startTime,
+        endTime,
+        reason,
+        adminComment,
+      });
+      return sendSuccess(res, result);
+    } catch (err: any) {
+      return sendError(res, err.code || 'PERMISSION_UPDATE_FAILED', err.message, err.status || 400);
+    }
+  }
+
+  static async deletePermission(req: AuthenticatedRequest, res: Response) {
+    const { id } = req.params;
+
+    try {
+      const result = await LeaveService.deleteAdminPermission(id);
+      return sendSuccess(res, result);
+    } catch (err: any) {
+      return sendError(res, err.code || 'PERMISSION_DELETE_FAILED', err.message, err.status || 400);
+    }
+  }
 }

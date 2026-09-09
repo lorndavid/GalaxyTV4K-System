@@ -40,6 +40,11 @@ interface Employee {
   phone?: string;
   position: string;
   status: string;
+  shiftType?: string;
+  checkInStartTime?: string;
+  checkInDeadline?: string;
+  workEndTime?: string;
+  studyClassInfo?: string;
   department?: { id: string; name: string };
   schedule?: { id: string; name: string };
   user?: { id: string; email: string; status: string };
@@ -229,6 +234,11 @@ export const EmployeesPage: React.FC = () => {
     email: '',
     password: 'Employee@123456',
     status: 'ACTIVE',
+    shiftType: 'STANDARD',
+    checkInStartTime: '08:00',
+    checkInDeadline: '08:00',
+    workEndTime: '17:30',
+    studyClassInfo: '',
   });
 
   // Queries
@@ -342,6 +352,11 @@ export const EmployeesPage: React.FC = () => {
       email: '',
       password: 'Employee@123456',
       status: 'ACTIVE',
+      shiftType: 'STANDARD',
+      checkInStartTime: '08:00',
+      checkInDeadline: '08:00',
+      workEndTime: '17:30',
+      studyClassInfo: '',
     });
   };
 
@@ -361,6 +376,11 @@ export const EmployeesPage: React.FC = () => {
       email: emp.email || '',
       password: '',
       status: emp.status || 'ACTIVE',
+      shiftType: emp.shiftType || 'STANDARD',
+      checkInStartTime: emp.checkInStartTime || '08:00',
+      checkInDeadline: emp.checkInDeadline || '08:00',
+      workEndTime: emp.workEndTime || '17:30',
+      studyClassInfo: emp.studyClassInfo || '',
     });
     setIsEditModalOpen(true);
   };
@@ -1213,6 +1233,122 @@ export const EmployeesPage: React.FC = () => {
                     </option>
                   ))}
                 </select>
+              </div>
+            </div>
+
+            {/* Shift & Check-In Window Section */}
+            <div className="p-3 rounded-2xl bg-slate-50 dark:bg-dark-elevated/70 border border-slate-200 dark:border-dark-border space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                  វេនការងារ & ម៉ោង Check-in (Work Shift & Check-In Window)
+                </label>
+                <span className="text-[10px] text-slate-400 font-medium">កំណត់សម្រាប់បុគ្គលិកម្នាក់ៗ</span>
+              </div>
+
+              {/* Shift Presets */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setFormData({
+                      ...formData,
+                      shiftType: 'STANDARD',
+                      checkInStartTime: '08:00',
+                      checkInDeadline: '08:00',
+                      workEndTime: '17:30',
+                      studyClassInfo: '',
+                    })
+                  }
+                  className={`p-2 rounded-xl text-left border transition-all cursor-pointer ${
+                    formData.shiftType === 'STANDARD' || !formData.shiftType
+                      ? 'border-brand-500 bg-brand-50/50 dark:bg-brand-950/30 text-brand-700 dark:text-brand-300 ring-1 ring-brand-500'
+                      : 'border-slate-200 dark:border-dark-border bg-white dark:bg-dark-surface text-slate-600 dark:text-slate-400'
+                  }`}
+                >
+                  <div className="font-bold text-xs">☀️ វេនធម្មតា (08:00)</div>
+                  <div className="text-[10px] opacity-80">ចូល 08:00 - ចេញ 17:30</div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    setFormData({
+                      ...formData,
+                      shiftType: 'AFTERNOON',
+                      checkInStartTime: '12:00',
+                      checkInDeadline: '13:00',
+                      workEndTime: '17:30',
+                      studyClassInfo: 'រៀនភាសាចិន ពេលព្រឹក (08:00 - 11:00)',
+                    })
+                  }
+                  className={`p-2 rounded-xl text-left border transition-all cursor-pointer ${
+                    formData.shiftType === 'AFTERNOON'
+                      ? 'border-brand-500 bg-brand-50/50 dark:bg-brand-950/30 text-brand-700 dark:text-brand-300 ring-1 ring-brand-500'
+                      : 'border-slate-200 dark:border-dark-border bg-white dark:bg-dark-surface text-slate-600 dark:text-slate-400'
+                  }`}
+                >
+                  <div className="font-bold text-xs">🎓 វេនរសៀល (12:00 - 13:00)</div>
+                  <div className="text-[10px] opacity-80">រៀនចិនព្រឹក ចូលមុន 13:00</div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    setFormData({
+                      ...formData,
+                      shiftType: 'CUSTOM',
+                    })
+                  }
+                  className={`p-2 rounded-xl text-left border transition-all cursor-pointer ${
+                    formData.shiftType === 'CUSTOM'
+                      ? 'border-brand-500 bg-brand-50/50 dark:bg-brand-950/30 text-brand-700 dark:text-brand-300 ring-1 ring-brand-500'
+                      : 'border-slate-200 dark:border-dark-border bg-white dark:bg-dark-surface text-slate-600 dark:text-slate-400'
+                  }`}
+                >
+                  <div className="font-bold text-xs">⚙️ កំណត់ផ្ទាល់ខ្លួន</div>
+                  <div className="text-[10px] opacity-80">កែប្រែម៉ោងដោយសេរី</div>
+                </button>
+              </div>
+
+              {/* Time inputs */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">
+                    ម៉ោងបើកឱ្យ Check-in (Open Time)
+                  </label>
+                  <input
+                    type="time"
+                    value={formData.checkInStartTime || '08:00'}
+                    onChange={(e) => setFormData({ ...formData, checkInStartTime: e.target.value })}
+                    className="w-full px-3 py-1.5 bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-xl text-slate-900 dark:text-slate-100 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-brand-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">
+                    ម៉ោងកំណត់ត្រូវ Check-in / យឺត (Deadline)
+                  </label>
+                  <input
+                    type="time"
+                    value={formData.checkInDeadline || '08:00'}
+                    onChange={(e) => setFormData({ ...formData, checkInDeadline: e.target.value })}
+                    className="w-full px-3 py-1.5 bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-xl text-slate-900 dark:text-slate-100 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-brand-500"
+                  />
+                </div>
+              </div>
+
+              {/* Study Class Notes */}
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">
+                  ព័ត៌មានម៉ោងរៀនភាសា / វគ្គសិក្សា (Study Class Info)
+                </label>
+                <input
+                  type="text"
+                  value={formData.studyClassInfo || ''}
+                  onChange={(e) => setFormData({ ...formData, studyClassInfo: e.target.value })}
+                  placeholder="ឧ. រៀនភាសាចិន ពេលព្រឹក (08:00 - 11:00)"
+                  className="w-full px-3 py-1.5 bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-xl text-slate-900 dark:text-slate-100 text-xs focus:outline-none focus:ring-2 focus:ring-brand-500"
+                />
               </div>
             </div>
 

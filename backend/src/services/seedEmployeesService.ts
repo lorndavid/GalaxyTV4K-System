@@ -13,6 +13,11 @@ export interface OfficialEmployeeData {
   departmentName: string;
   departmentCode: string;
   email: string;
+  shiftType?: string;
+  checkInStartTime?: string;
+  checkInDeadline?: string;
+  workEndTime?: string;
+  studyClassInfo?: string;
 }
 
 export const OFFICIAL_EMPLOYEES: OfficialEmployeeData[] = [
@@ -62,6 +67,11 @@ export const OFFICIAL_EMPLOYEES: OfficialEmployeeData[] = [
     gender: 'ប្រុស',
     skill: 'ទីផ្សារឌីជីថល',
     studyDay: 'សុក្រ-សៅរ៍-អាទិត្យ',
+    shiftType: 'AFTERNOON',
+    checkInStartTime: '12:00',
+    checkInDeadline: '13:00',
+    workEndTime: '17:30',
+    studyClassInfo: 'រៀនភាសាចិន ពេលព្រឹក (08:00 - 11:00)',
     phone: '061756748',
     position: 'ព័ត៌មានទូទៅ',
     departmentName: 'សេដ្ឋកិច្ច និង ហិរញ្ញវត្ថុ',
@@ -114,6 +124,11 @@ export const OFFICIAL_EMPLOYEES: OfficialEmployeeData[] = [
     gender: 'ស្រី',
     skill: 'ព័ត៌មានវិទ្យា',
     studyDay: 'ព្រហ-សុក្រ',
+    shiftType: 'AFTERNOON',
+    checkInStartTime: '12:00',
+    checkInDeadline: '13:00',
+    workEndTime: '17:30',
+    studyClassInfo: 'រៀនភាសាចិន ពេលព្រឹក (08:00 - 11:00)',
     phone: '0714484085',
     position: 'ព័ត៌មានទូទៅ',
     departmentName: 'សុខភាព និងសម្រស់',
@@ -394,6 +409,11 @@ export async function seedOfficialEmployees(prisma: PrismaClient) {
         gender: empData.gender,
         skill: empData.skill,
         studyDay: empData.studyDay,
+        shiftType: (empData as any).shiftType || 'STANDARD',
+        checkInStartTime: (empData as any).checkInStartTime || '08:00',
+        checkInDeadline: (empData as any).checkInDeadline || '08:00',
+        workEndTime: (empData as any).workEndTime || '17:30',
+        studyClassInfo: (empData as any).studyClassInfo || null,
         phone: empData.phone,
         position: empData.position,
         departmentId: deptId || null,
@@ -407,6 +427,11 @@ export async function seedOfficialEmployees(prisma: PrismaClient) {
         gender: empData.gender,
         skill: empData.skill,
         studyDay: empData.studyDay,
+        shiftType: (empData as any).shiftType || 'STANDARD',
+        checkInStartTime: (empData as any).checkInStartTime || '08:00',
+        checkInDeadline: (empData as any).checkInDeadline || '08:00',
+        workEndTime: (empData as any).workEndTime || '17:30',
+        studyClassInfo: (empData as any).studyClassInfo || null,
         email: empData.email.toLowerCase(),
         phone: empData.phone,
         position: empData.position,

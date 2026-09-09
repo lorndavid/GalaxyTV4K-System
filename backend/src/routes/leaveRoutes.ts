@@ -18,5 +18,9 @@ router.post('/:id/cancel', requireEmployee, LeaveController.cancelMyLeave);
 router.get('/admin', requireAdmin, LeaveController.getAdminLeaveRequests);
 router.patch('/admin/:id/approve', requireAdmin, LeaveController.approve);
 router.patch('/admin/:id/reject', requireAdmin, LeaveController.reject);
+router.post('/admin/grant-permission', requireAdmin, LeaveController.grantPermission);
+router.put('/admin/:id/permission', requireAdmin, LeaveController.updatePermission);
+router.patch('/admin/:id/permission', requireAdmin, LeaveController.updatePermission);
+router.delete('/admin/:id/permission', requireAdmin, LeaveController.deletePermission);
 
 export default router;

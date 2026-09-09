@@ -42,10 +42,14 @@ router.post('/holidays', HolidayController.create);
 router.patch('/holidays/:id', HolidayController.update);
 router.delete('/holidays/:id', HolidayController.delete);
 
-// Leave Requests
+// Leave Requests & Manual Permissions
 router.get('/leave-requests', LeaveController.getAdminLeaveRequests);
 router.patch('/leave-requests/:id/approve', LeaveController.approve);
 router.patch('/leave-requests/:id/reject', LeaveController.reject);
+router.post('/leave-requests/grant-permission', LeaveController.grantPermission);
+router.put('/leave-requests/:id/permission', LeaveController.updatePermission);
+router.patch('/leave-requests/:id/permission', LeaveController.updatePermission);
+router.delete('/leave-requests/:id/permission', LeaveController.deletePermission);
 
 // Out Requests
 router.get('/out-requests', OutController.getAdminOutRequests);

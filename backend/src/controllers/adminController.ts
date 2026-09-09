@@ -203,6 +203,11 @@ export class AdminController {
       position,
       scheduleId,
       status,
+      shiftType,
+      checkInStartTime,
+      checkInDeadline,
+      workEndTime,
+      studyClassInfo,
     } = req.body;
 
     const finalDisplayName = khmerName?.trim() || latinName?.trim() || displayName?.trim();
@@ -221,6 +226,11 @@ export class AdminController {
           gender: gender !== undefined ? (gender?.trim() || null) : undefined,
           skill: skill !== undefined ? (skill?.trim() || null) : undefined,
           studyDay: studyDay !== undefined ? (studyDay?.trim() || null) : undefined,
+          shiftType: shiftType !== undefined ? (shiftType?.trim() || 'STANDARD') : undefined,
+          checkInStartTime: checkInStartTime !== undefined ? (checkInStartTime?.trim() || '08:00') : undefined,
+          checkInDeadline: checkInDeadline !== undefined ? (checkInDeadline?.trim() || '08:00') : undefined,
+          workEndTime: workEndTime !== undefined ? (workEndTime?.trim() || '17:30') : undefined,
+          studyClassInfo: studyClassInfo !== undefined ? (studyClassInfo?.trim() || null) : undefined,
           firstName: firstName !== undefined ? firstName : undefined,
           lastName: lastName !== undefined ? lastName : undefined,
           displayName: finalDisplayName || undefined,
@@ -269,6 +279,12 @@ export class AdminController {
     const changedFields: string[] = [];
     if (studyDay !== undefined && studyDay?.trim() !== (existing?.studyDay || '').trim()) {
       changedFields.push('ថ្ងៃរៀន (Study Day)');
+    }
+    if (shiftType !== undefined && shiftType !== existing?.shiftType) {
+      changedFields.push('វេនការងារ (Shift)');
+    }
+    if (checkInDeadline !== undefined && checkInDeadline !== existing?.checkInDeadline) {
+      changedFields.push(`ម៉ោងចូល (${checkInDeadline})`);
     }
     if (status !== undefined && status !== existing?.status) {
       changedFields.push('ស្ថានភាព (Status)');

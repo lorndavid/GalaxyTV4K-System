@@ -1,6 +1,7 @@
 import { prisma } from '../utils/prisma.js';
 import { LeaveType, RequestStatus, ActorType } from '@prisma/client';
 import { createAuditLog } from '../utils/audit.js';
+import { TelegramService } from './telegramService.js';
 
 export class LeaveService {
   static async getEmployeeLeaveBalance(employeeId: string, year = new Date().getFullYear()) {
@@ -188,6 +189,125 @@ export class LeaveService {
     return prisma.leaveRequest.update({
       where: { id: requestId },
       data: { status: RequestStatus.CANCELLED },
+    });
+  }
+
+  /**
+   * Grant manual leave or permission directly by Admin
+   */
+  static async grantAdminPermission({
+    employeeId,
+    type = LeaveType.PERSONAL,
+    permissionType = 'GO_HOME',
+    startDate,
+    endDate,
+    startTime,
+    endTime,
+    daysCount,
+    reason,
+    adminComment,
+    adminUserId,
+  }: {
+    employeeId: string;
+    type?: LeaveType;
+    permissionType?: string;
+    startDate: string;
+    endDate?: string;
+    startTime?: string;
+    endTime?: string;
+    daysCount?: number;
+    reason: string;
+    adminComment?: string;
+    adminUserId?: string;
+  }) {
+    const finalEndDate = endDate || startDate;
+    const finalDaysCount = daysCount !== undefined ? daysCount : (startTime && endTime ? 0.5 : 1);
+
+    const leave = await prisma.leaveRequest.create({
+      data: {
+        employeeId,
+        type,
+        startDate,
+        endDate: finalEndDate,
+        startTime: startTime || null,
+        endTime: endTime || null,
+        daysCount: finalDaysCount,
+        reason,
+        status: RequestStatus.APPROVED,
+        isPermission: true,
+        permissionType: permissionType || 'GO_HOME',
+        adminComment: adminComment || 'អនុញ្ញាតដោយ Admin',
+        createdById: adminUserId || null,
+        reviewedById: adminUserId || null,
+        reviewedAt: new Date(),
+      },
+      include: {
+        employee: {
+          include: { department: true },
+        },
+      },
+    });
+
+    // Notify Telegram channel in real time
+    TelegramService.notifyPermissionGranted({
+      employeeName: leave.employee.khmerName || leave.employee.displayName,
+      department: leave.employee.department?.name || 'ទូទៅ',
+      permissionType: leave.permissionType || 'GO_HOME',
+      date: startDate === finalEndDate ? startDate : `${startDate} ដល់ ${finalEndDate}`,
+      timeRange: startTime && endTime ? `${startTime} - ${endTime}` : undefined,
+      reason,
+      grantedBy: adminComment || 'Admin',
+    }).catch((err) => console.error('[LeaveService] Telegram permission alert failed:', err));
+
+    return leave;
+  }
+
+  /**
+   * Update manual leave or permission by Admin
+   */
+  static async updateAdminPermission(
+    id: string,
+    data: {
+      permissionType?: string;
+      startDate?: string;
+      endDate?: string;
+      startTime?: string;
+      endTime?: string;
+      reason?: string;
+      adminComment?: string;
+    }
+  ) {
+    const existing = await prisma.leaveRequest.findUnique({
+      where: { id },
+      include: { employee: { include: { department: true } } },
+    });
+    if (!existing) {
+      throw { code: 'NOT_FOUND', message: 'Permission record not found.', status: 404 };
+    }
+
+    const updated = await prisma.leaveRequest.update({
+      where: { id },
+      data: {
+        permissionType: data.permissionType !== undefined ? data.permissionType : existing.permissionType,
+        startDate: data.startDate !== undefined ? data.startDate : existing.startDate,
+        endDate: data.endDate !== undefined ? data.endDate : existing.endDate,
+        startTime: data.startTime !== undefined ? data.startTime : existing.startTime,
+        endTime: data.endTime !== undefined ? data.endTime : existing.endTime,
+        reason: data.reason !== undefined ? data.reason : existing.reason,
+        adminComment: data.adminComment !== undefined ? data.adminComment : existing.adminComment,
+      },
+      include: { employee: { include: { department: true } } },
+    });
+
+    return updated;
+  }
+
+  /**
+   * Delete manual permission by Admin
+   */
+  static async deleteAdminPermission(id: string) {
+    return prisma.leaveRequest.delete({
+      where: { id },
     });
   }
 }

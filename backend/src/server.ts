@@ -6,11 +6,16 @@ import { startTelegramScheduler, stopTelegramScheduler } from './services/telegr
 import { startTelegramBotPolling, stopTelegramBotPolling } from './services/telegramBotService.js';
 import { StorageService } from './services/storageService.js';
 
+import { ensureSchemaUpgrades } from './utils/schemaUpgrade.js';
+
 async function startServer() {
   try {
     // Verify database connection
     await prisma.$connect();
     console.log('✓ Connected to PostgreSQL database via Prisma');
+
+    // Ensure database columns exist
+    await ensureSchemaUpgrades(prisma);
 
     // Initialize MinIO storage & bucket
     await StorageService.init();

@@ -278,7 +278,8 @@ export async function buildStudyOnlyReport(): Promise<string> {
   });
 
   const studyingStaff = employees.filter((e) =>
-    TelegramService.checkIsStudyDay(e.studyDay, dayIndex)
+    TelegramService.checkIsStudyDay(e.studyDay, dayIndex) ||
+    (e.shiftType === 'AFTERNOON' && Boolean(e.studyClassInfo))
   );
 
   const lines: string[] = [];
@@ -286,10 +287,12 @@ export async function buildStudyOnlyReport(): Promise<string> {
     const numKh = TelegramService.toKhmerDigits(index + 1);
     const khmerName = emp.khmerName || emp.displayName;
     const deptName = emp.department?.name || 'ទូទៅ';
+    const classInfo = emp.studyClassInfo ? `\n   ម៉ោងរៀន: <b>${emp.studyClassInfo}</b>` : '';
 
     lines.push(
       `${numKh}. <b>${khmerName}</b>\n` +
-      `   ផ្នែកការងារ: <b>${deptName}</b>`
+      `   ផ្នែកការងារ: <b>${deptName}</b>` +
+      classInfo
     );
   });
 
@@ -386,12 +389,15 @@ export async function buildTodayAttendanceReport(): Promise<string> {
       endDate: { gte: todayIso },
     },
   });
-  const leaveSet = new Set(activeLeaves.map((l) => l.employeeId));
+  const fullDayLeaves = activeLeaves.filter((l) => !l.isPermission);
+  const fullLeaveSet = new Set(fullDayLeaves.map((l) => l.employeeId));
+  const permMap = new Map<string, (typeof activeLeaves)[0]>();
+  activeLeaves.filter((l) => l.isPermission).forEach((p) => permMap.set(p.employeeId, p));
 
   const workingStaff = employees.filter((e) => {
     const isStudying = TelegramService.checkIsStudyDay(e.studyDay, dayIndex);
-    const isOnLeave = leaveSet.has(e.id);
-    return !isStudying && !isOnLeave;
+    const isOnFullLeave = fullLeaveSet.has(e.id);
+    return !isStudying && !isOnFullLeave;
   });
 
   let checkedInCount = 0;
@@ -403,8 +409,12 @@ export async function buildTodayAttendanceReport(): Promise<string> {
     const khmerName = emp.khmerName || emp.displayName;
     const deptName = emp.department?.name || 'ទូទៅ';
     const att = emp.attendances && emp.attendances.length > 0 ? emp.attendances[0] : null;
+    const perm = permMap.get(emp.id);
 
-    let statusText = 'មិនទាន់ Check-In';
+    const isAfternoon = emp.shiftType === 'AFTERNOON' || (emp.checkInStartTime && emp.checkInStartTime !== '08:00');
+    let statusText = isAfternoon
+      ? `មិនទាន់ Check-In (វេនរសៀល ចូលម៉ោង ${emp.checkInStartTime || '12:00'})`
+      : 'មិនទាន់ Check-In';
 
     if (att && att.checkInAt) {
       checkedInCount++;
@@ -428,6 +438,14 @@ export async function buildTodayAttendanceReport(): Promise<string> {
         const lateTag = att.status === 'LATE' ? ' (យឺត)' : '';
         statusText = `ចូលម៉ោង: ${inTimeStr}${lateTag}`;
       }
+    }
+
+    if (perm) {
+      const pTypeKh = TelegramService.getPermissionTypeKhmer(perm.permissionType);
+      const timeNote = perm.startTime && perm.endTime
+        ? ` (${TelegramService.formatTimeToKhmer12h(perm.startTime)} - ${TelegramService.formatTimeToKhmer12h(perm.endTime)})`
+        : '';
+      statusText += `\n   ច្បាប់អនុញ្ញាត: <b>${pTypeKh}${timeNote}</b>`;
     }
 
     lines.push(
@@ -535,7 +553,11 @@ export async function buildLeaveOnlyReport(): Promise<string> {
       startDate: { lte: todayIso },
       endDate: { gte: todayIso },
     },
-    include: { employee: true },
+    include: {
+      employee: {
+        include: { department: true },
+      },
+    },
   });
 
   if (activeLeaves.length === 0) {
@@ -549,10 +571,22 @@ export async function buildLeaveOnlyReport(): Promise<string> {
   const lines = activeLeaves.map((l, index) => {
     const numKh = TelegramService.toKhmerDigits(index + 1);
     const name = l.employee.khmerName || l.employee.displayName;
+    const deptName = (l.employee as any).department?.name || 'ទូទៅ';
+    const typeKh = l.isPermission
+      ? TelegramService.getPermissionTypeKhmer(l.permissionType)
+      : (l.type === 'SICK' ? 'ច្បាប់ឈឺ (Sick Leave)' : l.type === 'ANNUAL' ? 'ច្បាប់ប្រចាំឆ្នាំ (Annual Leave)' : 'ច្បាប់សម្រាក (Leave)');
+
+    let timeOrDuration = `រយៈពេល: ${l.startDate} ដល់ ${l.endDate}`;
+    if (l.startTime && l.endTime) {
+      const timeKh = `${TelegramService.formatTimeToKhmer12h(l.startTime)} ដល់ ${TelegramService.formatTimeToKhmer12h(l.endTime)}`;
+      timeOrDuration = `កាលបរិច្ឆេទ: ${l.startDate}\n   ម៉ោងអនុញ្ញាត: <b>${timeKh}</b>`;
+    }
+
     return (
       `${numKh}. <b>${name}</b>\n` +
-      `   ប្រភេទច្បាប់: ${l.type}\n` +
-      `   រយៈពេល: ${l.startDate} ដល់ ${l.endDate}\n` +
+      `   ផ្នែកការងារ: <b>${deptName}</b>\n` +
+      `   ប្រភេទ: <b>${typeKh}</b>\n` +
+      `   ${timeOrDuration}\n` +
       `   មូលហេតុ: ${l.reason || 'ផ្ទាល់ខ្លួន'}`
     );
   });

@@ -331,6 +331,76 @@ export class TelegramService {
   }
 
   /**
+   * Helper: Map permission type to Khmer label
+   */
+  public static getPermissionTypeKhmer(type?: string | null): string {
+    switch (type) {
+      case 'GO_HOME':
+        return 'សុំចេញទៅផ្ទះ (Go Home)';
+      case 'PERSONAL':
+        return 'ច្បាប់ផ្ទាល់ខ្លួន (Personal Leave)';
+      case 'SICK':
+        return 'ច្បាប់ឈឺ (Sick Leave)';
+      case 'MISSION':
+        return 'បេសកកម្មការងារ (Official Mission)';
+      default:
+        return 'ច្បាប់ពិសេស (Special Permission)';
+    }
+  }
+
+  /**
+   * Helper: Convert 24h HH:mm to 12h time string in Khmer
+   */
+  public static formatTimeToKhmer12h(timeStr?: string | null): string {
+    if (!timeStr) return '';
+    const parts = timeStr.split(':');
+    if (parts.length < 2) return timeStr;
+    const hour = parseInt(parts[0], 10);
+    const minute = parts[1];
+    const h12 = hour % 12 === 0 ? 12 : hour % 12;
+    const hStr = h12 < 10 ? `០${h12}` : this.toKhmerDigits(h12);
+    const mStr = this.toKhmerDigits(minute);
+    const period = hour < 12 ? 'ព្រឹក' : hour < 17 ? 'រសៀល' : 'ល្ងាច';
+    return `ម៉ោង ${hStr}:${mStr} ${period}`;
+  }
+
+  /**
+   * Leave Permission Notification (Zero Emojis, Clean Text Style)
+   */
+  public static async notifyPermissionGranted(data: {
+    employeeName: string;
+    department?: string;
+    permissionType: string;
+    date: string;
+    timeRange?: string;
+    reason: string;
+    grantedBy?: string;
+  }): Promise<void> {
+    const typeKh = this.getPermissionTypeKhmer(data.permissionType);
+    let timeLine = '';
+    if (data.timeRange) {
+      const [start, end] = data.timeRange.split('-').map((s) => s.trim());
+      timeLine = `<b>ម៉ោងអនុញ្ញាត:</b> ${this.formatTimeToKhmer12h(start)} ដល់ ${this.formatTimeToKhmer12h(end)}`;
+    }
+
+    const msg = [
+      `<b>ការអនុញ្ញាតច្បាប់ / Leave Permission Granted</b>`,
+      `--------------------------------------------------`,
+      `<b>ឈ្មោះ:</b> ${data.employeeName}`,
+      data.department ? `<b>ផ្នែកការងារ:</b> ${data.department}` : '',
+      `<b>ប្រភេទច្បាប់:</b> ${typeKh}`,
+      `<b>កាលបរិច្ឆេទ:</b> ${data.date}`,
+      timeLine,
+      `<b>មូលហេតុ:</b> ${data.reason}`,
+      data.grantedBy ? `<b>អនុញ្ញាតដោយ:</b> ${data.grantedBy}` : '',
+    ]
+      .filter(Boolean)
+      .join('\n');
+
+    await this.broadcastMessage(msg, 'system');
+  }
+
+  /**
    * Helper: Convert Arabic digits to Khmer digits
    */
   public static toKhmerDigits(num: number | string): string {
@@ -445,13 +515,16 @@ export class TelegramService {
       const skill = emp.skill || 'ទូទៅ';
       const studyDay = emp.studyDay || 'គ្មាន';
 
+      const studyClassLine = emp.studyClassInfo ? `\n   ម៉ោងរៀនភាសា: ${emp.studyClassInfo}` : '';
+
       // As requested: Only Khmer name, NO English name and NO employee ID/code
       employeeLines.push(
         `${numKh}. <b>${khmerName}</b>\n` +
         `   ផ្នែកការងារ: ${deptName}\n` +
         `   តួនាទី: ${position}\n` +
         `   ជំនាញ: ${skill}\n` +
-        `   ថ្ងៃរៀន: ${studyDay}\n` +
+        `   ថ្ងៃរៀន: ${studyDay}` +
+        studyClassLine + `\n` +
         `   ស្ថានភាពថ្ងៃនេះ: <b>${statusKhmer}</b>`
       );
     });
