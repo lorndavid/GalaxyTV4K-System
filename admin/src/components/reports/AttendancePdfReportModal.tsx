@@ -290,7 +290,7 @@ export const AttendancePdfReportModal: React.FC<AttendancePdfReportModalProps> =
     return `របាយការណ៍វត្តមាន ចាប់ពីថ្ងៃ ${effectiveStart} ដល់ ${effectiveEnd}`;
   }, [period, singleDate, effectiveStart, effectiveEnd]);
 
-  // Browser Print / Save as PDF function via isolated iframe
+  // Browser Print / Save as PDF function (Dual-Engine: Window + Portal Fallback)
   const handlePrintToPdf = () => {
     const printContent = printSheetRef.current;
     if (!printContent) {
@@ -298,115 +298,232 @@ export const AttendancePdfReportModal: React.FC<AttendancePdfReportModalProps> =
       return;
     }
 
-    // Clean up any old print iframe
-    const oldFrame = document.getElementById('attendance-report-pdf-frame');
-    if (oldFrame) oldFrame.remove();
+    const title = `${periodTitleKhmer} - Galaxy TV4K`;
+    let htmlContent = printContent.innerHTML;
 
-    const iframe = document.createElement('iframe');
-    iframe.id = 'attendance-report-pdf-frame';
-    iframe.style.position = 'fixed';
-    iframe.style.right = '0';
-    iframe.style.bottom = '0';
-    iframe.style.width = '0';
-    iframe.style.height = '0';
-    iframe.style.border = '0';
-    iframe.style.opacity = '0';
-    iframe.style.pointerEvents = 'none';
-    document.body.appendChild(iframe);
+    // Ensure image source is absolute so it loads in any new window or context
+    const origin = window.location.origin;
+    htmlContent = htmlContent.replace(/src="\/logo\.png"/g, `src="${origin}/logo.png"`);
 
-    const frameDoc = iframe.contentWindow?.document;
-    if (!frameDoc) {
-      window.print();
-      return;
-    }
+    const standaloneCss = `
+      @page {
+        size: A4 ${orientation};
+        margin: 8mm 10mm;
+      }
+      *, *::before, *::after {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        box-sizing: border-box !important;
+      }
+      html, body {
+        margin: 0 !important;
+        padding: 0 !important;
+        background: #ffffff !important;
+        color: #0f172a !important;
+        font-family: 'Battambang', 'Khmer OS Battambang', 'Suwannaphum', sans-serif !important;
+        -webkit-font-smoothing: antialiased;
+      }
+      .font-moul {
+        font-family: 'Moul', 'Moulpali', 'Khmer OS Muol Light', serif !important;
+      }
+      .font-battambang {
+        font-family: 'Battambang', 'Khmer OS Battambang', sans-serif !important;
+      }
+      .a4-report-sheet {
+        width: 100% !important;
+        max-width: 100% !important;
+        background: #ffffff !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        border: none !important;
+        box-shadow: none !important;
+      }
+      table {
+        border-collapse: collapse !important;
+        width: 100% !important;
+        margin-top: 8px !important;
+        margin-bottom: 12px !important;
+      }
+      th, td {
+        border: 1px solid #64748b !important;
+        padding: 4px 6px !important;
+        font-size: 11px !important;
+      }
+      th {
+        background-color: #f1f5f9 !important;
+        color: #0f172a !important;
+        font-weight: 700 !important;
+      }
+      tr {
+        page-break-inside: avoid !important;
+      }
+      .no-break {
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+      }
+      /* Explicit utility classes for bulletproof PDF styling */
+      .grid { display: grid !important; }
+      .grid-cols-7 { grid-template-columns: repeat(7, minmax(0, 1fr)) !important; }
+      .grid-cols-6 { grid-template-columns: repeat(6, minmax(0, 1fr)) !important; }
+      .grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+      .divide-x > * + * { border-left: 1px solid #94a3b8 !important; }
+      .flex { display: flex !important; }
+      .flex-col { flex-direction: column !important; }
+      .items-center { align-items: center !important; }
+      .items-start { align-items: flex-start !important; }
+      .justify-between { justify-content: space-between !important; }
+      .justify-center { justify-content: center !important; }
+      .text-center { text-align: center !important; }
+      .text-left { text-align: left !important; }
+      .text-right { text-align: right !important; }
+      .font-bold { font-weight: 700 !important; }
+      .font-semibold { font-weight: 600 !important; }
+      .font-mono { font-family: monospace !important; }
+      .font-sans { font-family: sans-serif !important; }
+      .border { border: 1px solid #cbd5e1 !important; }
+      .border-2 { border: 2px solid #94a3b8 !important; }
+      .border-b { border-bottom: 1px solid #cbd5e1 !important; }
+      .border-b-2 { border-bottom: 2px solid #475569 !important; }
+      .border-slate-300 { border-color: #cbd5e1 !important; }
+      .border-slate-400 { border-color: #94a3b8 !important; }
+      .border-dotted { border-style: dotted !important; }
+      .border-dashed { border-style: dashed !important; }
+      .bg-white { background-color: #ffffff !important; }
+      .bg-slate-50 { background-color: #f8fafc !important; }
+      .bg-slate-100 { background-color: #f1f5f9 !important; }
+      .bg-emerald-50\\/60 { background-color: #ecfdf5 !important; }
+      .bg-amber-50\\/60 { background-color: #fffbeb !important; }
+      .bg-blue-50\\/60 { background-color: #eff6ff !important; }
+      .bg-indigo-50\\/60 { background-color: #eef2ff !important; }
+      .bg-rose-50\\/60 { background-color: #fff1f2 !important; }
+      .text-emerald-700, .text-emerald-800 { color: #047857 !important; }
+      .text-amber-700, .text-amber-800 { color: #b45309 !important; }
+      .text-blue-700, .text-blue-800 { color: #1d4ed8 !important; }
+      .text-indigo-700, .text-indigo-800 { color: #4338ca !important; }
+      .text-rose-500, .text-rose-700, .text-rose-800 { color: #e11d48 !important; }
+      .text-slate-900, .text-slate-950 { color: #0f172a !important; }
+      .text-slate-800 { color: #1e293b !important; }
+      .text-slate-700 { color: #334155 !important; }
+      .text-slate-600 { color: #475569 !important; }
+      .text-slate-500 { color: #64748b !important; }
+      .p-1 { padding: 4px !important; }
+      .p-1\\.5 { padding: 6px !important; }
+      .p-2 { padding: 8px !important; }
+      .p-3 { padding: 12px !important; }
+      .p-4 { padding: 16px !important; }
+      .pb-3 { padding-bottom: 12px !important; }
+      .mb-4 { margin-bottom: 16px !important; }
+      .mb-5 { margin-bottom: 20px !important; }
+      .mb-6 { margin-bottom: 24px !important; }
+      .mt-auto { margin-top: auto !important; }
+      .gap-3 { gap: 12px !important; }
+      .gap-6 { gap: 24px !important; }
+      .w-full { width: 100% !important; }
+      .w-8 { width: 32px !important; }
+      .w-14 { width: 56px !important; }
+      .h-14 { height: 56px !important; }
+      .w-16 { width: 64px !important; }
+      .h-16 { height: 64px !important; }
+      .w-20 { width: 80px !important; }
+      .w-24 { width: 96px !important; }
+      .w-36 { width: 144px !important; }
+      .w-40 { width: 160px !important; }
+      .h-40 { height: 160px !important; }
+      .mx-auto { margin-left: auto !important; margin-right: auto !important; }
+      .rounded-lg { border-radius: 8px !important; }
+      .rounded-xl { border-radius: 12px !important; }
+      .rounded-full { border-radius: 9999px !important; }
+      .block { display: block !important; }
+      .inline-block { display: inline-block !important; }
+    `;
 
-    // Grab all stylesheets
-    const styleTags = Array.from(document.querySelectorAll('link[rel="stylesheet"], style'))
-      .map((el) => el.outerHTML)
-      .join('\n');
-
-    const htmlContent = printContent.innerHTML;
-
-    frameDoc.open();
-    frameDoc.write(`
+    const fullHtml = `
       <!DOCTYPE html>
       <html lang="km">
         <head>
           <meta charset="utf-8" />
-          <title>${periodTitleKhmer} - Galaxy TV4K</title>
+          <title>${title}</title>
+          <base href="${origin}/">
           <link rel="preconnect" href="https://fonts.googleapis.com" />
           <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
           <link href="https://fonts.googleapis.com/css2?family=Battambang:wght@400;700;900&family=Moul&family=Moulpali&family=Koh+Santepheap:wght@400;700&display=swap" rel="stylesheet" />
-          ${styleTags}
           <style>
-            @page {
-              size: A4 ${orientation};
-              margin: 8mm 10mm;
-            }
-            *, *::before, *::after {
-              -webkit-print-color-adjust: exact !important;
-              print-color-adjust: exact !important;
-              box-sizing: border-box;
-            }
-            html, body {
-              margin: 0 !important;
-              padding: 0 !important;
-              background: #ffffff !important;
-              color: #0f172a !important;
-              font-family: 'Battambang', 'Khmer OS Battambang', 'Suwannaphum', sans-serif !important;
-            }
-            .font-moul {
-              font-family: 'Moul', 'Moulpali', 'Khmer OS Muol Light', serif !important;
-            }
-            .font-battambang {
-              font-family: 'Battambang', 'Khmer OS Battambang', sans-serif !important;
-            }
-            .report-print-container {
-              width: 100% !important;
-              max-width: 100% !important;
-              background: #ffffff !important;
-              padding: 0 !important;
-              margin: 0 !important;
-            }
-            table {
-              border-collapse: collapse !important;
-              width: 100% !important;
-            }
-            th, td {
-              border: 1px solid #64748b !important;
-              padding: 4px 6px !important;
-            }
-            th {
-              background-color: #f1f5f9 !important;
-            }
-            tr {
-              page-break-inside: avoid !important;
-            }
-            .no-break {
-              page-break-inside: avoid !important;
-            }
+            ${standaloneCss}
           </style>
         </head>
         <body>
-          <div class="report-print-container font-battambang">
+          <div class="a4-report-sheet font-battambang">
             ${htmlContent}
           </div>
+          <script>
+            window.onload = function() {
+              setTimeout(function() {
+                window.focus();
+                window.print();
+              }, 400);
+            };
+          </script>
         </body>
       </html>
-    `);
-    frameDoc.close();
+    `;
 
-    // Trigger print after iframe assets settle
-    setTimeout(() => {
-      try {
-        iframe.contentWindow?.focus();
-        iframe.contentWindow?.print();
-        showToast('PDF print preview launched successfully.');
-      } catch (err) {
-        console.error('Failed to trigger print', err);
-        window.print();
+    // 1. Try dedicated print window first (cleanest & most reliable across Edge, Chrome, Safari)
+    try {
+      const printWindow = window.open('', '_blank');
+      if (printWindow && !printWindow.closed) {
+        printWindow.document.open();
+        printWindow.document.write(fullHtml);
+        printWindow.document.close();
+        showToast('កំពុងបើកផ្ទាំងបោះពុម្ព / Export PDF...');
+        return;
       }
-    }, 450);
+    } catch (e) {
+      console.warn('Popup window blocked, falling back to print portal', e);
+    }
+
+    // 2. Fallback: In-page print portal (guaranteed to print report even if popup is blocked)
+    const oldPortal = document.getElementById('report-print-portal');
+    if (oldPortal) oldPortal.remove();
+
+    const portal = document.createElement('div');
+    portal.id = 'report-print-portal';
+    portal.innerHTML = `
+      <style>
+        @media screen {
+          #report-print-portal { display: none !important; }
+        }
+        @media print {
+          body > *:not(#report-print-portal) { display: none !important; }
+          #report-print-portal {
+            display: block !important;
+            position: absolute !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            background: #ffffff !important;
+            color: #0f172a !important;
+          }
+          ${standaloneCss}
+        }
+      </style>
+      <div class="a4-report-sheet font-battambang">
+        ${htmlContent}
+      </div>
+    `;
+    document.body.appendChild(portal);
+
+    const cleanup = () => {
+      portal.remove();
+      window.removeEventListener('afterprint', cleanup);
+    };
+    window.addEventListener('afterprint', cleanup);
+
+    setTimeout(() => {
+      window.print();
+      showToast('កំពុងបើកផ្ទាំងបោះពុម្ព / Export PDF...');
+    }, 150);
   };
 
   if (!isOpen) return null;
