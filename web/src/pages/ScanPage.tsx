@@ -31,6 +31,8 @@ import {
   Sparkles,
   Lock,
   MapPinOff,
+  BookOpen,
+  GraduationCap,
 } from 'lucide-react';
 
 export type ScannerState =
@@ -387,6 +389,8 @@ export const ScanPage: React.FC = () => {
   const hasCheckedIn = Boolean(todayRecord?.checkInAt);
   const hasCheckedOut = Boolean(todayRecord?.checkOutAt);
   const isCompletedToday = hasCheckedIn && hasCheckedOut;
+  const dutyInfo = (todayRecord as any)?.duty;
+  const canCheckIn = dutyInfo ? dutyInfo.canCheckIn : true;
 
   // Manual GPS Permission / Activation Trigger
   const requestLocationAccess = () => {
@@ -454,6 +458,11 @@ export const ScanPage: React.FC = () => {
     if (!currentCoords && !geoCoordsRef.current) {
       requestLocationAccess();
       showToast('📍 សូមបើក Location / GPS នៅលើទូរស័ព្ទដៃរបស់អ្នកជាមុនសិន!', 'warning');
+      return;
+    }
+
+    if (!hasCheckedIn && dutyInfo && !dutyInfo.canCheckIn) {
+      showToast(dutyInfo.dutyMessage || 'ថ្ងៃនេះជាថ្ងៃសិក្សារបស់អ្នក មិនតម្រូវឱ្យស្កេនវត្តមានឡើយ។', 'warning');
       return;
     }
 
@@ -548,6 +557,14 @@ export const ScanPage: React.FC = () => {
       if (!currentCoords && !geoCoordsRef.current) {
         setState('ERROR');
         setErrorMessage('📍 សូមបើក Location / GPS នៅលើទូរស័ព្ទដៃរបស់អ្នកជាមុនសិន។');
+        isProcessingRef.current = false;
+        scanCompletedRef.current = false;
+        return;
+      }
+
+      if (!hasCheckedIn && dutyInfo && !dutyInfo.canCheckIn) {
+        setState('ERROR');
+        setErrorMessage(dutyInfo.dutyMessage || 'ថ្ងៃនេះជាថ្ងៃសិក្សារបស់អ្នក មិនតម្រូវឱ្យស្កេនវត្តមានឡើយ។');
         isProcessingRef.current = false;
         scanCompletedRef.current = false;
         return;
@@ -994,6 +1011,28 @@ export const ScanPage: React.FC = () => {
               </div>
             </div>
 
+            {/* Study Day / Non-Working Alert Notice */}
+            {dutyInfo && !dutyInfo.canCheckIn && !hasCheckedIn && (
+              <div className="w-full bg-gradient-to-br from-indigo-950/80 via-purple-950/70 to-slate-950/90 backdrop-blur-2xl border border-indigo-500/40 rounded-3xl p-5 text-center space-y-3 shadow-xl">
+                <div className="w-12 h-12 rounded-2xl bg-indigo-500/20 text-indigo-300 flex items-center justify-center mx-auto">
+                  <BookOpen className="w-6 h-6 text-indigo-400" />
+                </div>
+                <h3 className="text-sm font-bold text-white">
+                  {dutyInfo.dutyTitle}
+                </h3>
+                <p className="text-xs text-indigo-200/90 leading-relaxed px-2">
+                  {dutyInfo.dutyMessage}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => navigate('/')}
+                  className="w-full py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs transition-all shadow-md mt-1 cursor-pointer"
+                >
+                  ត្រឡប់ទៅទំព័រដើម (Back to Home)
+                </button>
+              </div>
+            )}
+
             {/* Location Off Warning Alert Banner */}
             {!currentCoords && (
               <div className="w-full bg-amber-950/50 backdrop-blur-xl border border-amber-500/50 rounded-2xl p-4 space-y-3 shadow-xl">
@@ -1150,7 +1189,9 @@ export const ScanPage: React.FC = () => {
                   <button
                     type="button"
                     onClick={
-                      !currentCoords
+                      !hasCheckedIn && dutyInfo && !dutyInfo.canCheckIn
+                        ? () => showToast(dutyInfo.dutyMessage || 'ថ្ងៃនេះជាថ្ងៃសិក្សារបស់អ្នក មិនតម្រូវឱ្យស្កេនវត្តមានឡើយ។', 'warning')
+                        : !currentCoords
                         ? requestLocationAccess
                         : hasCheckedIn && !hasCheckedOut && !isCheckOutAllowedNow
                         ? () =>
@@ -1162,13 +1203,16 @@ export const ScanPage: React.FC = () => {
                     }
                     disabled={
                       Boolean(
-                        currentCoords &&
+                        (!hasCheckedIn && dutyInfo && !dutyInfo.canCheckIn) ||
+                        (currentCoords &&
                           (!isInsideOffice ||
-                            (!hasCheckedIn && !isOpenForCheckIn))
+                            (!hasCheckedIn && !isOpenForCheckIn)))
                       )
                     }
                     className={`relative w-40 h-40 rounded-full flex flex-col items-center justify-center transition-all duration-300 active:scale-95 shadow-2xl focus:outline-none ${
-                      !currentCoords
+                      !hasCheckedIn && dutyInfo && !dutyInfo.canCheckIn
+                        ? 'bg-slate-800 text-slate-500 border-2 border-indigo-500/40 cursor-not-allowed opacity-90'
+                        : !currentCoords
                         ? 'bg-amber-950/60 text-amber-400 border-2 border-amber-500/50 hover:bg-amber-900/60 ring-4 ring-amber-500/20 cursor-pointer'
                         : !isInsideOffice
                         ? 'bg-slate-800 text-slate-500 border-2 border-slate-700 cursor-not-allowed opacity-80'
@@ -1183,7 +1227,14 @@ export const ScanPage: React.FC = () => {
                         : 'bg-gradient-to-tr from-emerald-600 via-teal-500 to-emerald-400 text-white shadow-emerald-500/40 hover:shadow-emerald-500/60 ring-4 ring-emerald-400/30'
                     }`}
                   >
-                    {!currentCoords ? (
+                    {!hasCheckedIn && dutyInfo && !dutyInfo.canCheckIn ? (
+                      <>
+                        <BookOpen className="w-14 h-14 text-indigo-400" />
+                        <span className="text-[10px] font-black uppercase tracking-wider mt-1 text-center px-2 text-indigo-300">
+                          ម៉ោងសិក្សា
+                        </span>
+                      </>
+                    ) : !currentCoords ? (
                       <>
                         <MapPinOff className="w-14 h-14 text-amber-400 animate-bounce" />
                         <span className="text-[10px] font-black uppercase tracking-wider mt-1 text-center px-2">

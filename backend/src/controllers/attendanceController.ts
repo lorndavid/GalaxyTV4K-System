@@ -169,17 +169,123 @@ export class AttendanceController {
       return sendError(res, 'EMPLOYEE_REQUIRED', 'Employee profile required.', 403);
     }
 
-    const today = new Date().toISOString().substring(0, 10);
-    const record = await prisma.attendance.findUnique({
-      where: {
-        employeeId_date: {
-          employeeId,
-          date: today,
-        },
-      },
-    });
+    const now = new Date();
+    const today = now.toLocaleDateString('en-CA', { timeZone: 'Asia/Phnom_Penh' });
+    const cambodiaDate = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Phnom_Penh' }));
+    const dayIndex = cambodiaDate.getDay();
+    const cambodiaHours = cambodiaDate.getHours();
+    const cambodiaMinutes = cambodiaDate.getMinutes();
+    const currentTotalMinutes = cambodiaHours * 60 + cambodiaMinutes;
 
-    return sendSuccess(res, record || { date: today, checkInAt: null, checkOutAt: null, status: 'NOT_CHECKED_IN' });
+    const [record, employee, activeLeave] = await Promise.all([
+      prisma.attendance.findUnique({
+        where: {
+          employeeId_date: {
+            employeeId,
+            date: today,
+          },
+        },
+      }),
+      prisma.employee.findUnique({
+        where: { id: employeeId },
+        include: {
+          schedule: {
+            include: { days: true },
+          },
+          department: true,
+        },
+      }),
+      prisma.leaveRequest.findFirst({
+        where: {
+          employeeId,
+          status: 'APPROVED',
+          startDate: { lte: today },
+          endDate: { gte: today },
+        },
+      }),
+    ]);
+
+    // Compute duty and check-in eligibility
+    let dutyType: 'WORK' | 'STUDY' | 'ON_LEAVE' | 'REST_DAY' = 'WORK';
+    let canCheckIn = true;
+    let dutyTitle = 'បំពេញការងារ (Working Shift)';
+    let dutySubtitle = 'កាលវិភាគការងារថ្ងៃនេះ';
+    let dutyMessage = 'សូមស្កេនវត្តមានដើម្បីកត់ត្រាម៉ោងចូលធ្វើការ។';
+    const isFullStudy = TelegramService.checkIsStudyDay(employee?.studyDay, dayIndex);
+    const isAfternoon = employee?.shiftType === 'AFTERNOON' || (employee?.checkInStartTime && employee.checkInStartTime !== '08:00');
+
+    if (activeLeave && !activeLeave.isPermission) {
+      dutyType = 'ON_LEAVE';
+      canCheckIn = false;
+      dutyTitle = 'ច្បាប់សម្រាក (Approved Leave)';
+      dutySubtitle = activeLeave.type;
+      dutyMessage = 'ថ្ងៃនេះលោកអ្នកកំពុងស្ថិតក្នុងច្បាប់ឈប់សម្រាកដែលបានអនុម័ត។ មិនតម្រូវឱ្យស្កេនវត្តមានឡើយ។';
+    } else if (isAfternoon) {
+      // Afternoon shift: Chinese class in morning 8-11am, work starts 12:00
+      const openMinutes = employee?.checkInStartTime
+        ? parseInt(employee.checkInStartTime.split(':')[0], 10) * 60 + parseInt(employee.checkInStartTime.split(':')[1] || '0', 10)
+        : 720;
+      if (currentTotalMinutes < openMinutes && (!record || !record.checkInAt)) {
+        dutyType = 'STUDY';
+        canCheckIn = false;
+        dutyTitle = 'រីករាយជាមួយការរៀនភាសាចិនពេលព្រឹក (Morning Chinese Class)';
+        dutySubtitle = employee?.studyClassInfo || 'រៀនភាសាចិន ពេលព្រឹក (08:00 - 11:00)';
+        dutyMessage = 'ពេលព្រឹកនេះជាម៉ោងសិក្សាភាសាចិនរបស់អ្នក។ ម៉ោងស្កេនចូលធ្វើការនឹងបើកនៅម៉ោង ១២:០០ ថ្ងៃត្រង់។';
+      } else {
+        dutyType = 'WORK';
+        canCheckIn = true;
+        dutyTitle = 'វេនរសៀល (Afternoon Shift)';
+        dutySubtitle = `${employee?.checkInStartTime || '12:00'} – ${employee?.workEndTime || '17:30'}`;
+        dutyMessage = 'សូមស្កេនវត្តមានចូលធ្វើការវេនរសៀល។';
+      }
+    } else if (isFullStudy) {
+      dutyType = 'STUDY';
+      canCheckIn = false;
+      dutyTitle = 'វេនរៀនសូត្រ (Study & Learning Day)';
+      dutySubtitle = employee?.studyDay || 'ថ្ងៃសិក្សា';
+      dutyMessage = 'ថ្ងៃនេះជាថ្ងៃសិក្សារបស់លោកអ្នក មិនតម្រូវឱ្យស្កេនវត្តមានចូលធ្វើការឡើយ។ សូមរីករាយជាមួយការរៀនសូត្រ!';
+    } else if (employee?.schedule?.days) {
+      const DAY_NAMES = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
+      const currentDayName = DAY_NAMES[dayIndex];
+      const sDay = employee.schedule.days.find((d) => d.dayOfWeek === currentDayName);
+      if (sDay && !sDay.isWorkingDay) {
+        dutyType = 'REST_DAY';
+        canCheckIn = false;
+        dutyTitle = 'ថ្ងៃសម្រាកប្រចាំសប្តាហ៍ (Rest Day)';
+        dutySubtitle = 'សម្រាកពីការងារ';
+        dutyMessage = 'ថ្ងៃនេះជាថ្ងៃឈប់សម្រាកប្រចាំសប្តាហ៍របស់អ្នក។';
+      }
+    }
+
+    const payload = {
+      ...(record || { date: today, checkInAt: null, checkOutAt: null, status: 'NOT_CHECKED_IN' }),
+      duty: {
+        dutyType,
+        canCheckIn,
+        dutyTitle,
+        dutySubtitle,
+        dutyMessage,
+        isStudyDay: dutyType === 'STUDY',
+        isWorkingDay: dutyType === 'WORK',
+        shiftType: employee?.shiftType || 'STANDARD',
+        checkInStartTime: employee?.checkInStartTime || '08:00',
+        checkInDeadline: employee?.checkInDeadline || '08:00',
+        workEndTime: employee?.workEndTime || '17:30',
+        studyClassInfo: employee?.studyClassInfo || null,
+        studyDay: employee?.studyDay || null,
+        activeLeave: activeLeave
+          ? {
+              type: activeLeave.type,
+              isPermission: activeLeave.isPermission,
+              startTime: activeLeave.startTime,
+              endTime: activeLeave.endTime,
+              reason: activeLeave.reason,
+            }
+          : null,
+      },
+    };
+
+    return sendSuccess(res, payload);
   }
 
   /**

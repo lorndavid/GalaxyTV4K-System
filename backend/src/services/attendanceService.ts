@@ -23,6 +23,7 @@ import {
 import { createAuditLog } from '../utils/audit.js';
 
 import { detectVpnOrProxy, detectFakeGps } from '../utils/security.js';
+import { TelegramService } from './telegramService.js';
 
 // Active SSE client connections for real-time live attendance stream
 const attendanceSseClients = new Set<Response>();
@@ -230,10 +231,22 @@ export class AttendanceService {
         },
       });
 
-      if (approvedLeave) {
+      if (approvedLeave && !approvedLeave.isPermission) {
         throw {
           code: 'LEAVE_APPROVED',
           message: `You have an approved leave (${approvedLeave.type}) for today. Attendance recording is disabled.`,
+          status: 400,
+        };
+      }
+
+      // Step B2: Check if today is a designated non-working Study Day
+      const cambodiaZoned = new Date(now.toLocaleString('en-US', { timeZone: timezone }));
+      const dayIndex = cambodiaZoned.getDay();
+      const isFullStudy = TelegramService.checkIsStudyDay(employee.studyDay, dayIndex);
+      if (isFullStudy && employee.shiftType !== 'AFTERNOON') {
+        throw {
+          code: 'STUDY_DAY_NO_WORK',
+          message: 'ថ្ងៃនេះជាថ្ងៃសិក្សារបស់លោកអ្នក មិនតម្រូវឱ្យស្កេនវត្តមានចូលធ្វើការឡើយ។ សូមរីករាយជាមួយការរៀនសូត្រ! (Today is your designated study day. Attendance check-in is not required.)',
           status: 400,
         };
       }

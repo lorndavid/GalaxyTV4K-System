@@ -35,6 +35,11 @@ export interface EmployeeProfile {
   };
   isLocationSharingActive?: boolean;
   profilePhoto?: string;
+  shiftType?: string;
+  checkInStartTime?: string;
+  checkInDeadline?: string;
+  workEndTime?: string;
+  studyClassInfo?: string;
 }
 
 export interface User {
