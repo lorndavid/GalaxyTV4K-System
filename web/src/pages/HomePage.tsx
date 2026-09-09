@@ -7,7 +7,6 @@ import { queryKeys } from '../lib/queryKeys';
 import apiClient from '../api/client';
 import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
-import { LanguageSwitcher } from '../components/ui/LanguageSwitcher';
 import {
   Clock3,
   CalendarDays,
@@ -292,7 +291,7 @@ export const HomePage: React.FC = () => {
 
   return (
     <div className="space-y-4 pb-4 animate-fade-in max-w-lg mx-auto select-none">
-      {/* 1. Senior Executive Greeting Header with Quick Language Switcher */}
+      {/* 1. Senior Executive Greeting Header */}
       <div className="flex items-center justify-between gap-2.5 pt-1 px-0.5">
         <div className="min-w-0 flex-1">
           <h1 className="text-sm sm:text-base font-bold tracking-tight leading-tight truncate">
@@ -304,21 +303,17 @@ export const HomePage: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-1.5 flex-shrink-0">
-          {/* Language Switcher Button (KM / EN) */}
-          <LanguageSwitcher compact className="min-h-[32px] px-2.5 rounded-full" />
-
-          {/* Office Proximity Pill */}
-          <Link to="/location-privacy" className="flex-shrink-0">
-            <div
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold border transition-all duration-200 shadow-2xs ${
-                isLocationActive
-                  ? isInside
-                    ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/60'
-                    : 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800/60'
-                  : 'bg-slate-100 dark:bg-dark-elevated text-slate-600 dark:text-slate-400 border-slate-200 dark:border-dark-border'
-              }`}
-            >
+        {/* Office Proximity Pill */}
+        <Link to="/location-privacy" className="flex-shrink-0">
+          <div
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold border transition-all duration-200 shadow-2xs ${
+              isLocationActive
+                ? isInside
+                  ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800/60'
+                  : 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800/60'
+                : 'bg-slate-100 dark:bg-dark-elevated text-slate-600 dark:text-slate-400 border-slate-200 dark:border-dark-border'
+            }`}
+          >
               <span
                 className={`w-2 h-2 rounded-full ${
                   isLocationActive
@@ -337,7 +332,6 @@ export const HomePage: React.FC = () => {
               </span>
             </div>
           </Link>
-        </div>
       </div>
 
       {/* 2. Clean, Standard Attendance & Punch Station Card */}
