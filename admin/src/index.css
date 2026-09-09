@@ -108,7 +108,8 @@
     visibility: hidden;
   }
 
-  .a4-print-sheet, .a4-print-sheet * {
+  .a4-print-sheet, .a4-print-sheet *,
+  .a4-report-sheet, .a4-report-sheet * {
     visibility: visible;
   }
 
@@ -134,3 +135,13 @@
     z-index: 999999 !important;
   }
 }
+
+/* Khmer Official Report Typography */
+.font-moul {
+  font-family: 'Moul', 'Moulpali', 'Khmer OS Muol Light', 'Khmer OS Muol', serif !important;
+}
+
+.font-battambang {
+  font-family: 'Battambang', 'Khmer OS Battambang', 'Suwannaphum', sans-serif !important;
+}
+

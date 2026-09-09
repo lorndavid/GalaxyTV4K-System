@@ -8,6 +8,7 @@ import { Badge } from '../components/ui/Badge';
 import { Skeleton } from '../components/ui/Skeleton';
 import { EmptyState } from '../components/ui/EmptyState';
 import { useToast } from '../components/ui/Toast';
+import { AttendancePdfReportModal } from '../components/reports/AttendancePdfReportModal';
 import {
   BarChart3,
   Download,
@@ -17,6 +18,8 @@ import {
   CheckCircle2,
   AlertCircle,
   FileSpreadsheet,
+  Printer,
+  FileText,
 } from 'lucide-react';
 
 interface ReportStats {
@@ -55,6 +58,7 @@ export const ReportsPage: React.FC = () => {
   );
   const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
   const [isExporting, setIsExporting] = useState(false);
+  const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
 
   const { data: report, isLoading } = useQuery<ReportStats>({
     queryKey: ['adminReport', startDate, endDate],
@@ -98,19 +102,28 @@ export const ReportsPage: React.FC = () => {
         <div>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">Attendance Analytics & Reports</h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-            Evaluate aggregated staff attendance metrics and export official CSV reports for payroll.
+            Evaluate aggregated staff attendance metrics and export official PDF or CSV reports for management.
           </p>
         </div>
 
         <div className="flex items-center gap-2.5">
           <Button
             variant="primary"
+            icon={Printer}
+            size="md"
+            onClick={() => setIsPdfModalOpen(true)}
+            className="shadow-sm"
+          >
+            Export PDF (ស្តង់ដារ A4)
+          </Button>
+          <Button
+            variant="secondary"
             icon={Download}
             size="md"
             isLoading={isExporting}
             onClick={handleExportCSV}
           >
-            Export Payroll CSV
+            Export CSV
           </Button>
         </div>
       </div>
@@ -245,6 +258,13 @@ export const ReportsPage: React.FC = () => {
           )}
         </Card>
       </div>
+
+      {/* Official A4 PDF Report Modal */}
+      <AttendancePdfReportModal
+        isOpen={isPdfModalOpen}
+        onClose={() => setIsPdfModalOpen(false)}
+        defaultPeriod="MONTH"
+      />
     </div>
   );
 };

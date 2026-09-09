@@ -24,7 +24,10 @@ import {
   Building2,
   Sparkles,
   User,
+  Printer,
+  FileText,
 } from 'lucide-react';
+import { AttendancePdfReportModal } from '../components/reports/AttendancePdfReportModal';
 
 interface AttendanceRecord {
   id: string;
@@ -99,6 +102,7 @@ export const AttendancePage: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [autoRefresh, setAutoRefresh] = useState<boolean>(true);
+  const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
 
   // Manual Adjustment Modal
   const [isAdjustModalOpen, setIsAdjustModalOpen] = useState(false);
@@ -302,6 +306,16 @@ export const AttendancePage: React.FC = () => {
           >
             <RefreshCw className={`w-4 h-4 ${isFetching ? 'animate-spin text-brand-600' : ''}`} />
           </button>
+
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => setIsPdfModalOpen(true)}
+            className="font-bold shadow-2xs font-battambang"
+          >
+            <Printer className="w-3.5 h-3.5 mr-1" />
+            {isKhmer ? 'របាយការណ៍ PDF' : 'Export PDF'}
+          </Button>
         </div>
       </div>
 
@@ -944,6 +958,14 @@ export const AttendancePage: React.FC = () => {
           </div>
         </form>
       </Modal>
+
+      {/* Official A4 PDF Report Modal */}
+      <AttendancePdfReportModal
+        isOpen={isPdfModalOpen}
+        onClose={() => setIsPdfModalOpen(false)}
+        defaultPeriod="TODAY"
+        defaultDate={selectedDate}
+      />
     </div>
   );
 };
