@@ -219,7 +219,18 @@ export const HomePage: React.FC = () => {
     staleTime: 60000,
   });
 
-  // 3. Fetch location telemetry state
+  // 3. Fetch company settings for real-time shift rules
+  const { data: companySettings } = useQuery({
+    queryKey: ['companySettings'],
+    queryFn: async () => {
+      const res = await apiClient.get('/settings');
+      return res.data.data;
+    },
+    staleTime: 10000,
+    refetchInterval: 15000,
+  });
+
+  // 4. Fetch location telemetry state
   const { data: locData } = useQuery({
     queryKey: ['myLocationStatus'],
     queryFn: async () => {
@@ -255,8 +266,21 @@ export const HomePage: React.FC = () => {
     return isStudySchedule && !isAfternoonShift;
   }, [isStudySchedule, isAfternoonShift]);
 
+  const effectiveWorkEndTimeStr = useMemo(() => {
+    const isCustom = todayRecord?.duty?.shiftType === 'CUSTOM';
+    if (isCustom && todayRecord?.duty?.workEndTime) return todayRecord.duty.workEndTime;
+    return companySettings?.workEndTime || todayRecord?.duty?.workEndTime || user?.employee?.workEndTime || '17:30';
+  }, [todayRecord?.duty?.shiftType, todayRecord?.duty?.workEndTime, companySettings?.workEndTime, user?.employee?.workEndTime]);
+
+  const effectiveWorkStartTimeStr = useMemo(() => {
+    if (isAfternoonShift) return todayRecord?.duty?.checkInStartTime || '12:00';
+    const isCustom = todayRecord?.duty?.shiftType === 'CUSTOM';
+    if (isCustom && todayRecord?.duty?.checkInStartTime) return todayRecord.duty.checkInStartTime;
+    return companySettings?.workStartTime || todayRecord?.duty?.checkInStartTime || user?.employee?.checkInStartTime || '07:30';
+  }, [isAfternoonShift, todayRecord?.duty?.shiftType, todayRecord?.duty?.checkInStartTime, companySettings?.workStartTime, user?.employee?.checkInStartTime]);
+
   const formattedWorkEndTime = useMemo(() => {
-    const raw = todayRecord?.duty?.workEndTime || user?.employee?.workEndTime || '17:30';
+    const raw = effectiveWorkEndTimeStr;
     const cleaned = String(raw).replace(/[^\d:]/g, '');
     const isPM = /pm/i.test(String(raw));
     const isAM = /am/i.test(String(raw));
@@ -271,7 +295,7 @@ export const HomePage: React.FC = () => {
     const period = h >= 12 ? 'PM' : 'AM';
     const h12 = (h % 12 || 12).toString().padStart(2, '0');
     return `${h12}:${m} ${period}`;
-  }, [todayRecord?.duty?.workEndTime, user?.employee?.workEndTime]);
+  }, [effectiveWorkEndTimeStr]);
 
   // Live worked duration calculation
   const [liveWorkedTime, setLiveWorkedTime] = useState<string>('0h 0m');
@@ -534,9 +558,7 @@ export const HomePage: React.FC = () => {
             </h2>
           </div>
           <span className="text-[11px] font-semibold text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-brand-950/60 px-2.5 py-0.5 rounded-full border border-brand-200/60 dark:border-brand-800/40 font-mono">
-            {isAfternoonShift
-              ? `${todayRecord?.duty?.checkInStartTime || user?.employee?.checkInStartTime || '12:00'} – ${todayRecord?.duty?.workEndTime || user?.employee?.workEndTime || '17:30'}`
-              : `${todayRecord?.duty?.checkInStartTime || user?.employee?.checkInStartTime || '07:30'} – ${todayRecord?.duty?.workEndTime || user?.employee?.workEndTime || '17:30'}`}
+            {`${effectiveWorkStartTimeStr} – ${effectiveWorkEndTimeStr}`}
           </span>
         </div>
 
@@ -550,7 +572,7 @@ export const HomePage: React.FC = () => {
                 : t('home.morningStart', 'ចូលពេលព្រឹក')}
             </span>
             <span className="font-bold text-slate-900 dark:text-slate-100 font-mono text-xs mt-1 block">
-              {isAfternoonShift ? '08:00 – 11:00' : `${todayRecord?.duty?.checkInStartTime || user?.employee?.checkInStartTime || '07:30'} AM`}
+              {isAfternoonShift ? '08:00 – 11:00' : `${effectiveWorkStartTimeStr} AM`}
             </span>
           </div>
 

@@ -185,7 +185,7 @@ export class AttendanceController {
     const cambodiaMinutes = cambodiaDate.getMinutes();
     const currentTotalMinutes = cambodiaHours * 60 + cambodiaMinutes;
 
-    const [record, employee, activeLeave] = await Promise.all([
+    const [record, employee, activeLeave, settings] = await Promise.all([
       prisma.attendance.findUnique({
         where: {
           employeeId_date: {
@@ -211,7 +211,31 @@ export class AttendanceController {
           endDate: { gte: today },
         },
       }),
+      prisma.companySettings.findUnique({ where: { id: 'default' } }),
     ]);
+
+    // Dynamically resolve real-time shift parameters:
+    // If CUSTOM: prioritize employee custom settings
+    // If AFTERNOON: checkInStartTime is 12:00, deadline is 13:00, workEndTime is company setting or employee workEndTime
+    // If STANDARD / default: prioritize companySettings directly in real-time
+    const isCustomShift = employee?.shiftType === 'CUSTOM';
+    const isAfternoon = employee?.shiftType === 'AFTERNOON' || (employee?.checkInStartTime && employee.checkInStartTime === '12:00');
+
+    const effectiveStartTime = isAfternoon
+      ? (employee?.checkInStartTime || '12:00')
+      : (isCustomShift && employee?.checkInStartTime
+          ? employee.checkInStartTime
+          : (settings?.workStartTime || employee?.checkInStartTime || '07:30'));
+
+    const effectiveDeadline = isAfternoon
+      ? (employee?.checkInDeadline || '13:00')
+      : (isCustomShift && employee?.checkInDeadline
+          ? employee.checkInDeadline
+          : (settings?.workStartTime || employee?.checkInDeadline || '07:30'));
+
+    const effectiveEndTime = (isCustomShift && employee?.workEndTime)
+      ? employee.workEndTime
+      : (settings?.workEndTime || employee?.workEndTime || '17:30');
 
     // Compute duty and check-in eligibility
     let dutyType: 'WORK' | 'STUDY' | 'ON_LEAVE' | 'REST_DAY' = 'WORK';
@@ -220,7 +244,6 @@ export class AttendanceController {
     let dutySubtitle = 'កាលវិភាគការងារថ្ងៃនេះ';
     let dutyMessage = 'សូមស្កេនវត្តមានដើម្បីកត់ត្រាម៉ោងចូលធ្វើការ។';
     const isFullStudy = TelegramService.checkIsStudyDay(employee?.studyDay, dayIndex);
-    const isAfternoon = employee?.shiftType === 'AFTERNOON' || (employee?.checkInStartTime && employee.checkInStartTime !== '08:00');
 
     if (activeLeave && !activeLeave.isPermission) {
       dutyType = 'ON_LEAVE';
@@ -243,7 +266,7 @@ export class AttendanceController {
         dutyType = 'WORK';
         canCheckIn = true;
         dutyTitle = 'វេនរសៀល (Afternoon Shift)';
-        dutySubtitle = `${employee?.checkInStartTime || '12:00'} – ${employee?.workEndTime || '17:30'}`;
+        dutySubtitle = `${effectiveStartTime} – ${effectiveEndTime}`;
         dutyMessage = 'សូមស្កេនវត្តមានចូលធ្វើការវេនរសៀល។';
       }
     } else if (isFullStudy) {
@@ -276,9 +299,9 @@ export class AttendanceController {
         isStudyDay: dutyType === 'STUDY',
         isWorkingDay: dutyType === 'WORK',
         shiftType: employee?.shiftType || 'STANDARD',
-        checkInStartTime: employee?.checkInStartTime || '07:30',
-        checkInDeadline: employee?.checkInDeadline || '07:30',
-        workEndTime: employee?.workEndTime || '17:30',
+        checkInStartTime: effectiveStartTime,
+        checkInDeadline: effectiveDeadline,
+        workEndTime: effectiveEndTime,
         studyClassInfo: employee?.studyClassInfo || null,
         studyDay: employee?.studyDay || null,
         activeLeave: activeLeave

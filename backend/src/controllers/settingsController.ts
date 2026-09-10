@@ -130,7 +130,11 @@ export class SettingsController {
         if (normalizedEnd) {
           await prisma.employee.updateMany({
             where: {
-              OR: [{ shiftType: 'STANDARD' }, { shiftType: null }],
+              OR: [
+                { shiftType: 'STANDARD' },
+                { shiftType: null },
+                { shiftType: 'AFTERNOON' },
+              ],
             },
             data: {
               workEndTime: normalizedEnd,

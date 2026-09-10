@@ -41,11 +41,16 @@ export async function ensureSchemaUpgrades(prisma: PrismaClient): Promise<void> 
       SET "shiftType" = 'AFTERNOON',
           "checkInStartTime" = '12:00',
           "checkInDeadline" = '13:00',
-          "workEndTime" = '17:30',
           "studyClassInfo" = 'រៀនភាសាចិន ពេលព្រឹក (08:00 - 11:00)'
       WHERE "khmerName" LIKE '%ស្រីនាង%' OR "latinName" ILIKE '%SREYNEANG%'
          OR "khmerName" LIKE '%ហុីម វ៉ាន់%' OR "latinName" ILIKE '%HIM VANN%'
          OR "employeeCode" IN ('EMP-004', 'EMP-008');
+
+      -- Dynamically sync standard & afternoon employees workEndTime from CompanySettings if configured
+      UPDATE "Employee"
+      SET "workEndTime" = (SELECT "workEndTime" FROM "CompanySettings" WHERE "id" = 'default')
+      WHERE ("shiftType" = 'STANDARD' OR "shiftType" IS NULL OR "shiftType" = 'AFTERNOON')
+        AND EXISTS (SELECT 1 FROM "CompanySettings" WHERE "id" = 'default' AND "workEndTime" IS NOT NULL);
     `);
     console.log('✓ PostgreSQL schema verified and 07:30 shift schedule up-to-date');
   } catch (err) {

@@ -539,8 +539,11 @@ export class AttendanceService {
         };
       }
 
-      // Enforce Check-Out Time Rule: Cannot check out before scheduled shift end time (e.g. 17:30 / 5:30 PM)
-      const endTime = employee.workEndTime || settings.workEndTime || (scheduleDay && scheduleDay.endTime) || '17:30';
+      // Enforce Check-Out Time Rule: Cannot check out before scheduled shift end time (e.g. 15:00 / 3:00 PM)
+      const isCustomShift = employee.shiftType === 'CUSTOM' && Boolean(employee.workEndTime);
+      const endTime = isCustomShift
+        ? employee.workEndTime!
+        : (settings.workEndTime || (scheduleDay && scheduleDay.endTime) || employee.workEndTime || '17:30');
       const endMinutes = parseTimeToMinutes(endTime);
       const currentMinutes = parseTimeToMinutes(currentTimeStr);
       const earlyGrace = settings.earlyLeaveGraceMinutes ?? 0;
@@ -992,8 +995,11 @@ export class AttendanceService {
         }
       }
 
-      // Enforce Check-Out Time Rule: Cannot check out before scheduled shift end time (e.g. 17:30 / 5:30 PM)
-      const endTime = employee.workEndTime || settings.workEndTime || (scheduleDay && scheduleDay.endTime) || '17:30';
+      // Enforce Check-Out Time Rule: Cannot check out before scheduled shift end time (e.g. 15:00 / 3:00 PM)
+      const isCustomShift = employee.shiftType === 'CUSTOM' && Boolean(employee.workEndTime);
+      const endTime = isCustomShift
+        ? employee.workEndTime!
+        : (settings.workEndTime || (scheduleDay && scheduleDay.endTime) || employee.workEndTime || '17:30');
       const endMinutes = parseTimeToMinutes(endTime);
       const currentMinutes = parseTimeToMinutes(currentTimeStr);
       const earlyGrace = settings.earlyLeaveGraceMinutes ?? 0;

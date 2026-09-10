@@ -187,7 +187,8 @@ export const ScanPage: React.FC = () => {
       const res = await apiClient.get('/attendance/my-today');
       return res.data.data;
     },
-    staleTime: 10000,
+    staleTime: 5000,
+    refetchInterval: 10000,
   });
 
   const checkInMethod: 'ZONE_CLICK' | 'QR_SCAN' | 'BOTH' =
@@ -346,8 +347,18 @@ export const ScanPage: React.FC = () => {
   const officeName = companySettings?.companyName || 'Galaxy TV4K Main Office';
 
   // Working Shift Rules
-  const workStartTime = todayRecord?.duty?.checkInStartTime || companySettings?.workStartTime || '07:30';
-  const workEndTime = todayRecord?.duty?.workEndTime || companySettings?.workEndTime || '17:30';
+  const isCustomShift = todayRecord?.duty?.shiftType === 'CUSTOM';
+  const isAfternoonShift = todayRecord?.duty?.shiftType === 'AFTERNOON';
+
+  const workStartTime = isAfternoonShift
+    ? (todayRecord?.duty?.checkInStartTime || '12:00')
+    : (isCustomShift && todayRecord?.duty?.checkInStartTime
+        ? todayRecord.duty.checkInStartTime
+        : (companySettings?.workStartTime || todayRecord?.duty?.checkInStartTime || '07:30'));
+
+  const workEndTime = (isCustomShift && todayRecord?.duty?.workEndTime)
+    ? todayRecord.duty.workEndTime
+    : (companySettings?.workEndTime || todayRecord?.duty?.workEndTime || '17:30');
   const breakStartTime = companySettings?.breakStartTime || '11:30';
   const breakEndTime = companySettings?.breakEndTime || '13:00';
   const allowedBefore = companySettings?.checkInAllowedBeforeMinutes ?? 30;
