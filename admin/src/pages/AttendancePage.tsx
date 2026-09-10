@@ -94,6 +94,37 @@ const toKhmerNumber = (num: number | string) => {
   return String(num).replace(/[0-9]/g, (d) => khmerDigits[parseInt(d, 10)]);
 };
 
+export function parseDisplayNote(record: AttendanceRecord) {
+  const rawNote = record.notes || '';
+  const isChinese =
+    Boolean(record.employee?.studyClassInfo) ||
+    record.employee?.shiftType === 'AFTERNOON' ||
+    rawNote.includes('ចិន') ||
+    rawNote.toLowerCase().includes('chinese');
+
+  // Strip all automated 1-Click / Manual edit log chains and dummy digits
+  let cleaned = rawNote
+    .replace(/1-Click In-Zone Check-In/gi, '')
+    .replace(/1-Click Check-Out/gi, '')
+    .replace(/Manual edit:\s*/gi, '')
+    .replace(/Manual creation by admin:\s*(No reason provided)?/gi, '')
+    .replace(/No reason provided/gi, '')
+    .replace(/រៀនភាសាចិន\s*(\(Study Chinese\))?/gi, '')
+    .replace(/Study Chinese/gi, '')
+    .replace(/\|\s*\|/g, '')
+    .replace(/^[\s|]+|[\s|]+$/g, '')
+    .trim();
+
+  if (!cleaned || cleaned === '|' || /^\d+$/.test(cleaned)) {
+    cleaned = '';
+  }
+
+  return {
+    isChinese,
+    manualNote: cleaned || null,
+  };
+}
+
 export const AttendancePage: React.FC = () => {
   const { t, i18n } = useTranslation();
   const isKhmer = !i18n.language?.startsWith('en');
@@ -144,14 +175,16 @@ export const AttendancePage: React.FC = () => {
         ? `${selectedDate}T${payload.checkOutTime}:00+07:00`
         : null;
 
+      const trimmedReason = payload.reason?.trim() || null;
+
       return await apiClient.put(`/admin/attendance/${id}/manual-adjust`, {
         employeeId: selectedRecord?.employee.id,
         date: selectedDate,
         checkInAt,
         checkOutAt,
         status: payload.status,
-        reason: payload.reason,
-        notes: payload.reason,
+        reason: trimmedReason,
+        notes: trimmedReason,
       });
     },
     onSuccess: () => {
@@ -173,21 +206,13 @@ export const AttendancePage: React.FC = () => {
       return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
     };
 
-    const isChinese =
-      record.notes?.includes('ចិន') ||
-      record.notes?.toLowerCase().includes('chinese') ||
-      Boolean(record.employee.studyClassInfo) ||
-      record.employee.shiftType === 'AFTERNOON';
-
-    const defaultReason =
-      record.notes ||
-      (isChinese ? 'រៀនភាសាចិន (Study Chinese)' : '');
+    const { manualNote } = parseDisplayNote(record);
 
     setAdjustForm({
       checkInTime: getHHMM(record.checkInAt),
       checkOutTime: getHHMM(record.checkOutAt),
       status: record.status === 'NOT_CHECKED_IN' ? 'PRESENT' : record.status,
-      reason: defaultReason,
+      reason: manualNote || '',
     });
     setIsAdjustModalOpen(true);
   };
@@ -742,30 +767,27 @@ export const AttendancePage: React.FC = () => {
                         {/* Clean Note Column */}
                         <td className="py-3.5 px-4">
                           {(() => {
-                            const isChinese =
-                              r.notes?.includes('ចិន') ||
-                              r.notes?.toLowerCase().includes('chinese') ||
-                              Boolean(r.employee.studyClassInfo) ||
-                              r.employee.shiftType === 'AFTERNOON';
+                            const { isChinese, manualNote } = parseDisplayNote(r);
 
-                            if (isChinese) {
-                              return (
-                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800/70 shadow-2xs">
-                                  <BookOpen className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
-                                  <span>{isKhmer ? 'រៀនភាសាចិន (Study Chinese)' : 'Study Chinese'}</span>
-                                </span>
-                              );
+                            if (!isChinese && !manualNote) {
+                              return <span className="text-slate-400 text-[11px]">—</span>;
                             }
 
-                            if (r.notes) {
-                              return (
-                                <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-medium bg-slate-100 dark:bg-dark-elevated text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-dark-border">
-                                  {r.notes}
-                                </span>
-                              );
-                            }
-
-                            return <span className="text-slate-400 text-[11px]">—</span>;
+                            return (
+                              <div className="flex flex-wrap items-center gap-1.5">
+                                {isChinese && (
+                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800/70 shadow-2xs">
+                                    <BookOpen className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                                    <span>{isKhmer ? 'រៀនភាសាចិន (Study Chinese)' : 'Study Chinese'}</span>
+                                  </span>
+                                )}
+                                {manualNote && (
+                                  <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-medium bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60 shadow-2xs">
+                                    {manualNote}
+                                  </span>
+                                )}
+                              </div>
+                            );
                           })()}
                         </td>
 
@@ -894,36 +916,27 @@ export const AttendancePage: React.FC = () => {
 
                     {/* Mobile Note Display */}
                     {(() => {
-                      const isChinese =
-                        r.notes?.includes('ចិន') ||
-                        r.notes?.toLowerCase().includes('chinese') ||
-                        Boolean(r.employee.studyClassInfo) ||
-                        r.employee.shiftType === 'AFTERNOON';
+                      const { isChinese, manualNote } = parseDisplayNote(r);
+                      if (!isChinese && !manualNote) return null;
 
-                      if (isChinese) {
-                        return (
-                          <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-100 dark:border-dark-border">
-                            <span className="text-[11px] text-slate-500">{t('attendance.table.notes', 'ចំណាំ')}:</span>
-                            <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
-                              <BookOpen className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
-                              <span>{isKhmer ? 'រៀនភាសាចិន (Study Chinese)' : 'Study Chinese'}</span>
-                            </span>
+                      return (
+                        <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-100 dark:border-dark-border flex-wrap gap-1">
+                          <span className="text-[11px] text-slate-500">{t('attendance.table.notes', 'ចំណាំ')}:</span>
+                          <div className="flex flex-wrap items-center gap-1">
+                            {isChinese && (
+                              <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                                <BookOpen className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
+                                <span>{isKhmer ? 'រៀនភាសាចិន (Study Chinese)' : 'Study Chinese'}</span>
+                              </span>
+                            )}
+                            {manualNote && (
+                              <span className="text-[11px] font-medium text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 px-2 py-0.5 rounded">
+                                {manualNote}
+                              </span>
+                            )}
                           </div>
-                        );
-                      }
-
-                      if (r.notes) {
-                        return (
-                          <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-100 dark:border-dark-border">
-                            <span className="text-[11px] text-slate-500">{t('attendance.table.notes', 'ចំណាំ')}:</span>
-                            <span className="text-[11px] font-medium text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-dark-elevated px-2 py-0.5 rounded">
-                              {r.notes}
-                            </span>
-                          </div>
-                        );
-                      }
-
-                      return null;
+                        </div>
+                      );
                     })()}
 
                     <Button
@@ -1017,12 +1030,11 @@ export const AttendancePage: React.FC = () => {
 
           <div>
             <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-              {t('attendance.adjust.reason', 'មូលហេតុ / ចំណាំ (Reason / Notes)')} <span className="text-danger-500">*</span>
+              {t('attendance.adjust.reason', 'មូលហេតុ / ចំណាំ (Reason / Notes)')}
             </label>
             <textarea
-              required
               rows={3}
-              placeholder={t('attendance.adjust.reasonPlaceholder')}
+              placeholder={t('attendance.adjust.reasonPlaceholder', 'បញ្ចូលមូលហេតុ ឬកំណត់ចំណាំ (បើមាន)...')}
               value={adjustForm.reason}
               onChange={(e) => setAdjustForm({ ...adjustForm, reason: e.target.value })}
               className="w-full px-3 py-2 text-xs border border-slate-200 dark:border-dark-border bg-white dark:bg-dark-elevated rounded-xl focus:ring-2 focus:ring-brand-500 focus:outline-none"

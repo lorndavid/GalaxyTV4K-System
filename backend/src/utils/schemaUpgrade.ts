@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import { sanitizeAttendanceNote } from './noteUtils.js';
 
 /**
  * Ensures newly added columns exist in PostgreSQL without requiring table drops or manual migrations.
@@ -51,8 +52,66 @@ export async function ensureSchemaUpgrades(prisma: PrismaClient): Promise<void> 
       SET "workEndTime" = (SELECT "workEndTime" FROM "CompanySettings" WHERE "id" = 'default')
       WHERE ("shiftType" = 'STANDARD' OR "shiftType" IS NULL OR "shiftType" = 'AFTERNOON')
         AND EXISTS (SELECT 1 FROM "CompanySettings" WHERE "id" = 'default' AND "workEndTime" IS NOT NULL);
+
+      -- Clean up all automated/technical strings from Attendance.notes in PostgreSQL
+      UPDATE "Attendance"
+      SET "notes" = NULL
+      WHERE "notes" LIKE '%1-Click%'
+        AND "notes" NOT LIKE '%ចិន%'
+        AND "notes" NOT ILIKE '%chinese%'
+        AND (
+          "notes" LIKE '%Manual edit: 1-Click%'
+          OR "notes" = '1-Click In-Zone Check-In'
+          OR "notes" = '1-Click Check-Out'
+          OR "notes" = '1-Click In-Zone Check-In | 1-Click Check-Out'
+          OR "notes" LIKE '%1-Click In-Zone Check-In | 1-Click Check-Out%'
+          OR "notes" LIKE '%Manual edit: 7%'
+          OR "notes" = 'Manual creation by admin: No reason provided'
+        );
+
+      -- Restore Chinese study notes for employees with studyClassInfo or afternoon shift
+      UPDATE "Attendance" a
+      SET "notes" = 'រៀនភាសាចិន (Study Chinese)'
+      FROM "Employee" e
+      WHERE a."employeeId" = e."id"
+        AND (e."studyClassInfo" IS NOT NULL OR e."shiftType" = 'AFTERNOON' OR a."notes" LIKE '%ចិន%' OR a."notes" ILIKE '%chinese%')
+        AND (a."notes" IS NULL OR a."notes" LIKE '%1-Click%' OR a."notes" LIKE '%Manual edit:%');
     `);
-    console.log('✓ PostgreSQL schema verified and 07:30 shift schedule up-to-date');
+
+    // Programmatically clean any remaining notes with legacy technical boilerplates
+    const contaminated = await prisma.attendance.findMany({
+      where: {
+        OR: [
+          { notes: { contains: '1-Click' } },
+          { notes: { contains: 'Manual edit' } },
+          { notes: { contains: 'Manual creation by admin' } },
+        ],
+      },
+      include: {
+        employee: true,
+      },
+    });
+
+    for (const rec of contaminated) {
+      const isChinese =
+        Boolean(rec.employee?.studyClassInfo) ||
+        rec.employee?.shiftType === 'AFTERNOON' ||
+        (rec.notes?.includes('ចិន') ?? false) ||
+        (rec.notes?.toLowerCase().includes('chinese') ?? false);
+
+      const cleaned = sanitizeAttendanceNote(
+        rec.notes,
+        isChinese,
+        rec.employee?.shiftType === 'AFTERNOON'
+      );
+
+      await prisma.attendance.update({
+        where: { id: rec.id },
+        data: { notes: cleaned },
+      });
+    }
+
+    console.log('✓ PostgreSQL schema and clean attendance notes verified');
   } catch (err) {
     console.warn('⚠️ Schema upgrade check notice:', err);
   }

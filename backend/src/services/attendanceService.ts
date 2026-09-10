@@ -24,6 +24,7 @@ import { createAuditLog } from '../utils/audit.js';
 
 import { detectVpnOrProxy, detectFakeGps } from '../utils/security.js';
 import { TelegramService } from './telegramService.js';
+import { sanitizeAttendanceNote } from '../utils/noteUtils.js';
 
 // Active SSE client connections for real-time live attendance stream
 const attendanceSseClients = new Set<Response>();
@@ -891,7 +892,7 @@ export class AttendanceService {
 
         const attendanceNote = employee.studyClassInfo
           ? 'រៀនភាសាចិន (Study Chinese)'
-          : (employee.shiftType === 'AFTERNOON' ? 'វេនរសៀល (Afternoon Shift)' : '1-Click In-Zone Check-In');
+          : (employee.shiftType === 'AFTERNOON' ? 'វេនរសៀល (Afternoon Shift)' : null);
 
         const attendance = await tx.attendance.create({
           data: {
@@ -1061,9 +1062,7 @@ export class AttendanceService {
           status: finalStatus,
           earlyLeaveMinutes,
           workedMinutes,
-          notes: existingAttendance.notes
-            ? `${existingAttendance.notes} | 1-Click Check-Out`
-            : '1-Click Check-Out',
+          notes: existingAttendance.notes,
         },
       });
 
@@ -1171,6 +1170,23 @@ export class AttendanceService {
       let adjusted: any;
 
       if (existingRecord) {
+        const emp = existingRecord.employee;
+        const isChinese =
+          Boolean(emp?.studyClassInfo) ||
+          emp?.shiftType === 'AFTERNOON' ||
+          (existingRecord.notes?.includes('ចិន') ?? false) ||
+          (existingRecord.notes?.toLowerCase().includes('chinese') ?? false);
+
+        const trimmedNote = notes?.trim() || '';
+        let finalNote: string | null = null;
+        if (trimmedNote) {
+          finalNote = sanitizeAttendanceNote(trimmedNote, isChinese, emp?.shiftType === 'AFTERNOON');
+        } else if (isChinese) {
+          finalNote = 'រៀនភាសាចិន (Study Chinese)';
+        } else {
+          finalNote = null;
+        }
+
         adjusted = await tx.attendance.update({
           where: { id: existingRecord.id },
           data: {
@@ -1178,7 +1194,7 @@ export class AttendanceService {
             checkOutAt: checkOutAt !== undefined ? checkOutAt : existingRecord.checkOutAt,
             status,
             workedMinutes: workedMinutes || existingRecord.workedMinutes,
-            notes: notes ? `${existingRecord.notes ? existingRecord.notes + ' | ' : ''}Manual edit: ${notes}` : existingRecord.notes,
+            notes: finalNote,
           },
         });
 
@@ -1199,9 +1215,9 @@ export class AttendanceService {
                 checkInAt,
                 checkOutAt,
                 status,
-                notes,
+                notes: finalNote,
               },
-              reason: notes || 'Admin manual correction',
+              reason: finalNote || 'Admin manual correction',
             },
             ipAddress,
             userAgent,
@@ -1213,6 +1229,13 @@ export class AttendanceService {
           throw { code: 'INVALID_PARAMETERS', message: 'employeeId and date are required for new manual attendance record.', status: 400 };
         }
 
+        const emp = await tx.employee.findUnique({ where: { id: employeeId } });
+        const isChinese = Boolean(emp?.studyClassInfo) || emp?.shiftType === 'AFTERNOON';
+        const trimmedNote = notes?.trim() || '';
+        const finalNote = trimmedNote
+          ? sanitizeAttendanceNote(trimmedNote, isChinese, emp?.shiftType === 'AFTERNOON')
+          : (isChinese ? 'រៀនភាសាចិន (Study Chinese)' : null);
+
         adjusted = await tx.attendance.create({
           data: {
             employeeId,
@@ -1221,7 +1244,7 @@ export class AttendanceService {
             checkOutAt: checkOutAt || null,
             status,
             workedMinutes,
-            notes: `Manual creation by admin: ${notes || 'No reason provided'}`,
+            notes: finalNote,
           },
         });
 

@@ -5,6 +5,7 @@ import { AuthenticatedRequest } from '../middlewares/auth.js';
 import { AttendanceService } from '../services/attendanceService.js';
 import { TelegramService } from '../services/telegramService';
 import { AttendanceStatus } from '@prisma/client';
+import { sanitizeAttendanceNote } from '../utils/noteUtils.js';
 
 export class AttendanceController {
   /**
@@ -447,7 +448,17 @@ export class AttendanceController {
           ? 'ON_LEAVE'
           : 'NOT_CHECKED_IN';
 
-        const effectiveNote = att?.notes || (emp.studyClassInfo ? 'រៀនភាសាចិន (Study Chinese)' : (emp.shiftType === 'AFTERNOON' ? 'វេនរសៀល (Afternoon Shift)' : null));
+        const isChinese =
+          Boolean(emp.studyClassInfo) ||
+          emp.shiftType === 'AFTERNOON' ||
+          (att?.notes?.includes('ចិន') ?? false) ||
+          (att?.notes?.toLowerCase().includes('chinese') ?? false);
+
+        const effectiveNote = sanitizeAttendanceNote(
+          att?.notes,
+          isChinese,
+          emp.shiftType === 'AFTERNOON'
+        );
 
         return {
           id: att?.id || `virtual-${emp.id}-${targetDate}`,
@@ -540,7 +551,24 @@ export class AttendanceController {
       orderBy: [{ date: 'desc' }, { checkInAt: 'desc' }],
     });
 
-    return sendSuccess(res, records);
+    const sanitizedRecords = records.map((r) => {
+      const isChinese =
+        Boolean((r.employee as any)?.studyClassInfo) ||
+        (r.employee as any)?.shiftType === 'AFTERNOON' ||
+        (r.notes?.includes('ចិន') ?? false) ||
+        (r.notes?.toLowerCase().includes('chinese') ?? false);
+
+      return {
+        ...r,
+        notes: sanitizeAttendanceNote(
+          r.notes,
+          isChinese,
+          (r.employee as any)?.shiftType === 'AFTERNOON'
+        ),
+      };
+    });
+
+    return sendSuccess(res, sanitizedRecords);
   }
 
   /**

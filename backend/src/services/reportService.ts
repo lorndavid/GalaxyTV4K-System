@@ -1,6 +1,7 @@
 import { prisma } from '../utils/prisma.js';
 import { stringify } from 'csv-stringify/sync';
 import { AttendanceStatus } from '@prisma/client';
+import { sanitizeAttendanceNote } from '../utils/noteUtils.js';
 
 export class ReportService {
   static async getAttendanceReport({
@@ -185,7 +186,12 @@ export class ReportService {
       'Early Leave (Mins)': r.earlyLeaveMinutes,
       Status: r.status,
       'Check-in Distance (m)': r.checkInDistanceMeters !== null ? r.checkInDistanceMeters.toFixed(1) : '',
-      Notes: r.notes || '',
+      Notes:
+        sanitizeAttendanceNote(
+          r.notes,
+          Boolean((r.employee as any)?.studyClassInfo) || (r.employee as any)?.shiftType === 'AFTERNOON',
+          (r.employee as any)?.shiftType === 'AFTERNOON'
+        ) || '',
     }));
 
     return stringify(data, { header: true });

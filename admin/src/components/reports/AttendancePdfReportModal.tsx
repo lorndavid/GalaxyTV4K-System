@@ -1035,12 +1035,38 @@ export const AttendancePdfReportModal: React.FC<AttendancePdfReportModalProps> =
                               {statusKhmer}
                             </td>
                             <td className="border border-slate-300 p-1.5 text-[10px] text-slate-600">
-                              {rec.notes ||
-                                ((rec.employee as any).studyClassInfo
-                                  ? 'រៀនភាសាចិន (Study Chinese)'
-                                  : (rec.employee as any).shiftType === 'AFTERNOON'
-                                  ? 'វេនរសៀល'
-                                  : (rec.dutyLabel || (rec.dutyType === 'STUDY' ? 'ថ្ងៃសិក្សាប្រចាំសប្តាហ៍' : '—')))}
+                              {(() => {
+                                const raw = rec.notes || '';
+                                const isChinese =
+                                  Boolean((rec.employee as any)?.studyClassInfo) ||
+                                  (rec.employee as any)?.shiftType === 'AFTERNOON' ||
+                                  raw.includes('ចិន') ||
+                                  raw.toLowerCase().includes('chinese');
+
+                                let cleaned = raw
+                                  .replace(/1-Click In-Zone Check-In/gi, '')
+                                  .replace(/1-Click Check-Out/gi, '')
+                                  .replace(/Manual edit:\s*/gi, '')
+                                  .replace(/Manual creation by admin:\s*(No reason provided)?/gi, '')
+                                  .replace(/No reason provided/gi, '')
+                                  .replace(/រៀនភាសាចិន\s*(\(Study Chinese\))?/gi, '')
+                                  .replace(/Study Chinese/gi, '')
+                                  .replace(/\|\s*\|/g, '')
+                                  .replace(/^[\s|]+|[\s|]+$/g, '')
+                                  .trim();
+
+                                if (!cleaned || cleaned === '|' || /^\d+$/.test(cleaned)) {
+                                  cleaned = '';
+                                }
+
+                                if (isChinese) {
+                                  return cleaned
+                                    ? `រៀនភាសាចិន (Study Chinese) • ${cleaned}`
+                                    : 'រៀនភាសាចិន (Study Chinese)';
+                                }
+
+                                return cleaned || (rec.dutyType === 'STUDY' ? 'ថ្ងៃសិក្សាប្រចាំសប្តាហ៍' : '—');
+                              })()}
                             </td>
                           </tr>
                         );
