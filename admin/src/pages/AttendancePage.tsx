@@ -26,6 +26,7 @@ import {
   User,
   Printer,
   FileText,
+  BookOpen,
 } from 'lucide-react';
 import { AttendancePdfReportModal } from '../components/reports/AttendancePdfReportModal';
 
@@ -53,6 +54,11 @@ interface AttendanceRecord {
     khmerName?: string;
     latinName?: string;
     studyDay?: string;
+    shiftType?: string;
+    checkInStartTime?: string;
+    checkInDeadline?: string;
+    workEndTime?: string;
+    studyClassInfo?: string | null;
     profilePhoto?: string | null;
     department?: { name: string };
   };
@@ -167,11 +173,21 @@ export const AttendancePage: React.FC = () => {
       return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
     };
 
+    const isChinese =
+      record.notes?.includes('ចិន') ||
+      record.notes?.toLowerCase().includes('chinese') ||
+      Boolean(record.employee.studyClassInfo) ||
+      record.employee.shiftType === 'AFTERNOON';
+
+    const defaultReason =
+      record.notes ||
+      (isChinese ? 'រៀនភាសាចិន (Study Chinese)' : '');
+
     setAdjustForm({
       checkInTime: getHHMM(record.checkInAt),
       checkOutTime: getHHMM(record.checkOutAt),
       status: record.status === 'NOT_CHECKED_IN' ? 'PRESENT' : record.status,
-      reason: '',
+      reason: defaultReason,
     });
     setIsAdjustModalOpen(true);
   };
@@ -568,6 +584,7 @@ export const AttendancePage: React.FC = () => {
                     <th className="py-3.5 px-4">{t('attendance.table.worked')}</th>
                     <th className="py-3.5 px-4">{t('attendance.table.gps')}</th>
                     <th className="py-3.5 px-4">{t('attendance.table.status')}</th>
+                    <th className="py-3.5 px-4">{t('attendance.table.notes', 'ចំណាំ')}</th>
                     <th className="py-3.5 px-4 text-right">{t('attendance.table.actions')}</th>
                   </tr>
                 </thead>
@@ -722,6 +739,36 @@ export const AttendancePage: React.FC = () => {
                           )}
                         </td>
 
+                        {/* Clean Note Column */}
+                        <td className="py-3.5 px-4">
+                          {(() => {
+                            const isChinese =
+                              r.notes?.includes('ចិន') ||
+                              r.notes?.toLowerCase().includes('chinese') ||
+                              Boolean(r.employee.studyClassInfo) ||
+                              r.employee.shiftType === 'AFTERNOON';
+
+                            if (isChinese) {
+                              return (
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800/70 shadow-2xs">
+                                  <BookOpen className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                                  <span>{isKhmer ? 'រៀនភាសាចិន (Study Chinese)' : 'Study Chinese'}</span>
+                                </span>
+                              );
+                            }
+
+                            if (r.notes) {
+                              return (
+                                <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-medium bg-slate-100 dark:bg-dark-elevated text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-dark-border">
+                                  {r.notes}
+                                </span>
+                              );
+                            }
+
+                            return <span className="text-slate-400 text-[11px]">—</span>;
+                          })()}
+                        </td>
+
                         <td className="py-3.5 px-4 text-right">
                           <IconButton
                             icon={Edit3}
@@ -845,6 +892,40 @@ export const AttendancePage: React.FC = () => {
                       </div>
                     )}
 
+                    {/* Mobile Note Display */}
+                    {(() => {
+                      const isChinese =
+                        r.notes?.includes('ចិន') ||
+                        r.notes?.toLowerCase().includes('chinese') ||
+                        Boolean(r.employee.studyClassInfo) ||
+                        r.employee.shiftType === 'AFTERNOON';
+
+                      if (isChinese) {
+                        return (
+                          <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-100 dark:border-dark-border">
+                            <span className="text-[11px] text-slate-500">{t('attendance.table.notes', 'ចំណាំ')}:</span>
+                            <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                              <BookOpen className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
+                              <span>{isKhmer ? 'រៀនភាសាចិន (Study Chinese)' : 'Study Chinese'}</span>
+                            </span>
+                          </div>
+                        );
+                      }
+
+                      if (r.notes) {
+                        return (
+                          <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-100 dark:border-dark-border">
+                            <span className="text-[11px] text-slate-500">{t('attendance.table.notes', 'ចំណាំ')}:</span>
+                            <span className="text-[11px] font-medium text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-dark-elevated px-2 py-0.5 rounded">
+                              {r.notes}
+                            </span>
+                          </div>
+                        );
+                      }
+
+                      return null;
+                    })()}
+
                     <Button
                       variant="secondary"
                       size="sm"
@@ -936,7 +1017,7 @@ export const AttendancePage: React.FC = () => {
 
           <div>
             <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-              {t('attendance.adjust.reason')} <span className="text-danger-500">*</span>
+              {t('attendance.adjust.reason', 'មូលហេតុ / ចំណាំ (Reason / Notes)')} <span className="text-danger-500">*</span>
             </label>
             <textarea
               required

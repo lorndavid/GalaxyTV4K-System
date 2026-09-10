@@ -380,7 +380,7 @@ export class AttendanceService {
             const timeTag = earliestMinutes >= 720 ? 'ថ្ងៃត្រង់/រសៀល' : 'ព្រឹក';
             throw {
               code: 'CHECK_IN_NOT_OPEN_YET',
-              message: `ការកត់ត្រាវត្តមានចូលមិនទាន់បើកនៅឡើយទេ។ បើកចាប់ពីម៉ោង ${earliestTimeStr} ${timeTag}តទៅ (Check-in opens at ${earliestTimeStr}).`,
+              message: `មិនទាន់ដល់ម៉ោងចូលបំពេញការងារនៅឡើយទេ។ ការកត់ត្រាវត្តមានចូលបើកចាប់ពីម៉ោង ${earliestTimeStr} ${timeTag}តទៅ (Check-in opens at ${earliestTimeStr}).`,
               status: 400,
             };
           }
@@ -398,6 +398,10 @@ export class AttendanceService {
           attendanceStatus = AttendanceStatus.REST_DAY;
         }
 
+        const attendanceNote = employee.studyClassInfo
+          ? 'រៀនភាសាចិន (Study Chinese)'
+          : (employee.shiftType === 'AFTERNOON' ? 'វេនរសៀល (Afternoon Shift)' : null);
+
         const attendance = await tx.attendance.create({
           data: {
             employeeId: employee.id,
@@ -411,6 +415,7 @@ export class AttendanceService {
             checkInQrSessionId: qrSession.id,
             status: attendanceStatus,
             lateMinutes,
+            notes: attendanceNote,
             ipAddress,
             userAgent,
           },
@@ -864,7 +869,7 @@ export class AttendanceService {
             const timeTag = earliestMinutes >= 720 ? 'ថ្ងៃត្រង់/រសៀល' : 'ព្រឹក';
             throw {
               code: 'CHECK_IN_NOT_OPEN_YET',
-              message: `ការកត់ត្រាវត្តមានចូលមិនទាន់បើកនៅឡើយទេ។ បើកចាប់ពីម៉ោង ${earliestTimeStr} ${timeTag}តទៅ (Check-in opens at ${earliestTimeStr}).`,
+              message: `មិនទាន់ដល់ម៉ោងចូលបំពេញការងារនៅឡើយទេ។ ការកត់ត្រាវត្តមានចូលបើកចាប់ពីម៉ោង ${earliestTimeStr} ${timeTag}តទៅ (Check-in opens at ${earliestTimeStr}).`,
               status: 400,
             };
           }
@@ -881,6 +886,10 @@ export class AttendanceService {
           attendanceStatus = AttendanceStatus.REST_DAY;
         }
 
+        const attendanceNote = employee.studyClassInfo
+          ? 'រៀនភាសាចិន (Study Chinese)'
+          : (employee.shiftType === 'AFTERNOON' ? 'វេនរសៀល (Afternoon Shift)' : '1-Click In-Zone Check-In');
+
         const attendance = await tx.attendance.create({
           data: {
             employeeId: employee.id,
@@ -893,7 +902,7 @@ export class AttendanceService {
             checkInDistanceMeters: geo.distanceMeters,
             status: attendanceStatus,
             lateMinutes,
-            notes: '1-Click In-Zone Check-In',
+            notes: attendanceNote,
             ipAddress,
             userAgent,
           },

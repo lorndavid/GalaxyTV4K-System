@@ -35,6 +35,17 @@ export async function ensureSchemaUpgrades(prisma: PrismaClient): Promise<void> 
       UPDATE "Employee"
       SET "isLocationSharingActive" = TRUE
       WHERE "isLocationSharingActive" IS NULL OR "isLocationSharingActive" = FALSE;
+
+      -- Ensure afternoon shift and Chinese class info for តឿន ស្រីនាង & ហុីម វ៉ាន់
+      UPDATE "Employee"
+      SET "shiftType" = 'AFTERNOON',
+          "checkInStartTime" = '12:00',
+          "checkInDeadline" = '13:00',
+          "workEndTime" = '17:30',
+          "studyClassInfo" = 'រៀនភាសាចិន ពេលព្រឹក (08:00 - 11:00)'
+      WHERE "khmerName" LIKE '%ស្រីនាង%' OR "latinName" ILIKE '%SREYNEANG%'
+         OR "khmerName" LIKE '%ហុីម វ៉ាន់%' OR "latinName" ILIKE '%HIM VANN%'
+         OR "employeeCode" IN ('EMP-004', 'EMP-008');
     `);
     console.log('✓ PostgreSQL schema verified and 07:30 shift schedule up-to-date');
   } catch (err) {

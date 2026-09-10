@@ -1018,7 +1018,9 @@ export const AttendancePdfReportModal: React.FC<AttendancePdfReportModalProps> =
                             <td className="border border-slate-300 p-1.5 text-center text-[10px]">
                               {rec.dutyType === 'STUDY' || rec.isStudyDay
                                 ? 'រៀនសូត្រ'
-                                : '08:00 – 17:30'}
+                                : (rec.employee as any).shiftType === 'AFTERNOON' || (rec.employee as any).studyClassInfo
+                                ? '12:00 – 17:30'
+                                : '07:30 – 17:30'}
                             </td>
                             <td className="border border-slate-300 p-1.5 text-center font-mono">
                               {inTime}
@@ -1033,7 +1035,12 @@ export const AttendancePdfReportModal: React.FC<AttendancePdfReportModalProps> =
                               {statusKhmer}
                             </td>
                             <td className="border border-slate-300 p-1.5 text-[10px] text-slate-600">
-                              {rec.notes || rec.dutyLabel || (rec.dutyType === 'STUDY' ? 'ថ្ងៃសិក្សាប្រចាំសប្តាហ៍' : '—')}
+                              {rec.notes ||
+                                ((rec.employee as any).studyClassInfo
+                                  ? 'រៀនភាសាចិន (Study Chinese)'
+                                  : (rec.employee as any).shiftType === 'AFTERNOON'
+                                  ? 'វេនរសៀល'
+                                  : (rec.dutyLabel || (rec.dutyType === 'STUDY' ? 'ថ្ងៃសិក្សាប្រចាំសប្តាហ៍' : '—')))}
                             </td>
                           </tr>
                         );

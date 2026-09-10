@@ -130,5 +130,34 @@ describe('Custom Shift & Admin Manual Permission Tests', () => {
     expect(report).toContain('ម៉ោងអនុញ្ញាត');
     expect(emojiRegex.test(report)).toBe(false);
   });
+
+  it('formats Telegram check-in alert with Chinese study note', async () => {
+    const broadcastSpy = vi
+      .spyOn(TelegramService, 'broadcastMessage')
+      .mockResolvedValue(undefined);
+
+    await TelegramService.notifyCheckIn({
+      employeeName: 'តឿន ស្រីនាង',
+      employeeCode: 'EMP-008',
+      time: '12:15 PM',
+      isLate: false,
+      lateMinutes: 0,
+      isInsideOffice: true,
+      distanceMeters: 8,
+      accuracyMeters: 5,
+      note: 'រៀនភាសាចិន (Study Chinese)',
+      shiftType: 'AFTERNOON',
+      studyClassInfo: 'រៀនភាសាចិន ពេលព្រឹក (08:00 - 11:00)',
+    });
+
+    expect(broadcastSpy).toHaveBeenCalledTimes(1);
+    const [msg, category] = broadcastSpy.mock.calls[0];
+    expect(category).toBe('attendance');
+    expect(msg).toContain('Attendance Check-In');
+    expect(msg).toContain('តឿន ស្រីនាង');
+    expect(msg).toContain('Present (On Time)');
+    expect(msg).toContain('Note:');
+    expect(msg).toContain('រៀនភាសាចិន (Study Chinese)');
+  });
 });
 

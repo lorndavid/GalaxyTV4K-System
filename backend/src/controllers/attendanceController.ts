@@ -44,6 +44,7 @@ export class AttendanceController {
       const employee = await prisma.employee.findUnique({ where: { id: employeeId } });
       if (employee) {
         if (result.action === 'CHECK_IN') {
+          const noteText = result.attendance?.notes || (employee.studyClassInfo ? 'រៀនភាសាចិន (Study Chinese)' : (employee.shiftType === 'AFTERNOON' ? 'វេនរសៀល' : undefined));
           TelegramService.notifyCheckIn({
             employeeName: employee.displayName,
             employeeCode: employee.employeeCode,
@@ -57,6 +58,9 @@ export class AttendanceController {
             isInsideOffice: true,
             distanceMeters: result.details.distanceFromOfficeMeters,
             accuracyMeters: result.details.accuracyMeters,
+            note: noteText,
+            shiftType: employee.shiftType,
+            studyClassInfo: employee.studyClassInfo,
           }).catch((err) => console.error('[Telegram] Check-in notification error:', err));
         } else if (result.action === 'CHECK_OUT') {
           const hours = Math.floor(result.details.workedMinutes / 60);
@@ -119,6 +123,7 @@ export class AttendanceController {
       const employee = await prisma.employee.findUnique({ where: { id: employeeId } });
       if (employee) {
         if (result.action === 'CHECK_IN') {
+          const noteText = result.attendance?.notes || (employee.studyClassInfo ? 'រៀនភាសាចិន (Study Chinese)' : (employee.shiftType === 'AFTERNOON' ? 'វេនរសៀល' : undefined));
           TelegramService.notifyCheckIn({
             employeeName: employee.displayName,
             employeeCode: employee.employeeCode,
@@ -132,6 +137,9 @@ export class AttendanceController {
             isInsideOffice: true,
             distanceMeters: result.details.distanceFromOfficeMeters,
             accuracyMeters: result.details.accuracyMeters,
+            note: noteText,
+            shiftType: employee.shiftType,
+            studyClassInfo: employee.studyClassInfo,
           }).catch((err) => console.error('[Telegram] Check-in notification error:', err));
         } else if (result.action === 'CHECK_OUT') {
           const hours = Math.floor(result.details.workedMinutes / 60);
@@ -230,7 +238,7 @@ export class AttendanceController {
         canCheckIn = false;
         dutyTitle = 'រីករាយជាមួយការរៀនភាសាចិនពេលព្រឹក (Morning Chinese Class)';
         dutySubtitle = employee?.studyClassInfo || 'រៀនភាសាចិន ពេលព្រឹក (08:00 - 11:00)';
-        dutyMessage = 'ពេលព្រឹកនេះជាម៉ោងសិក្សាភាសាចិនរបស់អ្នក។ ម៉ោងស្កេនចូលធ្វើការនឹងបើកនៅម៉ោង ១២:០០ ថ្ងៃត្រង់។';
+        dutyMessage = 'មិនទាន់ដល់ម៉ោងចូលបំពេញការងារនៅឡើយទេ។ ពេលព្រឹកនេះជាម៉ោងសិក្សាភាសាចិនរបស់អ្នក (08:00 - 11:00)។ ម៉ោងស្កេនចូលធ្វើការនឹងបើកនៅម៉ោង ១២:០០ ថ្ងៃត្រង់។';
       } else {
         dutyType = 'WORK';
         canCheckIn = true;
@@ -416,6 +424,8 @@ export class AttendanceController {
           ? 'ON_LEAVE'
           : 'NOT_CHECKED_IN';
 
+        const effectiveNote = att?.notes || (emp.studyClassInfo ? 'រៀនភាសាចិន (Study Chinese)' : (emp.shiftType === 'AFTERNOON' ? 'វេនរសៀល (Afternoon Shift)' : null));
+
         return {
           id: att?.id || `virtual-${emp.id}-${targetDate}`,
           date: targetDate,
@@ -427,7 +437,7 @@ export class AttendanceController {
           workedMinutes: att?.workedMinutes || 0,
           checkInDistanceMeters: att?.checkInDistanceMeters || null,
           checkInAccuracy: att?.checkInAccuracy || null,
-          notes: att?.notes || null,
+          notes: effectiveNote,
           dutyType: determinedDuty,
           dutyLabel: determinedDutyLabel,
           isStudyDay: isStudy,
@@ -439,6 +449,11 @@ export class AttendanceController {
             khmerName: emp.khmerName || emp.displayName,
             latinName: emp.latinName || emp.displayName,
             studyDay: emp.studyDay,
+            shiftType: emp.shiftType,
+            checkInStartTime: emp.checkInStartTime,
+            checkInDeadline: emp.checkInDeadline,
+            workEndTime: emp.workEndTime,
+            studyClassInfo: emp.studyClassInfo,
             profilePhoto: emp.profilePhoto,
             department: emp.department ? { id: emp.department.id, name: emp.department.name } : undefined,
           },

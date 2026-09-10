@@ -171,6 +171,9 @@ export class TelegramService {
     isInsideOffice: boolean;
     distanceMeters: number;
     accuracyMeters: number;
+    note?: string | null;
+    shiftType?: string | null;
+    studyClassInfo?: string | null;
   }): Promise<void> {
     const statusText = data.isLate
       ? `<b>Late</b> (+${data.lateMinutes || 0} mins)`
@@ -180,15 +183,27 @@ export class TelegramService {
       ? `Inside Office (${Math.round(data.distanceMeters)}m)`
       : `Outside Office (${Math.round(data.distanceMeters)}m)`;
 
-    const msg = [
+    const lines = [
       `<b>Attendance Check-In</b>`,
       `--------------------------------------------------`,
       `<b>Employee:</b> ${data.employeeName}`,
       `<b>Time:</b> ${data.time}`,
       `<b>Status:</b> ${statusText}`,
-      `<b>Location:</b> ${locText}`,
-      `<b>GPS Accuracy:</b> ±${Math.round(data.accuracyMeters)}m`,
-    ].join('\n');
+    ];
+
+    if (data.note || data.studyClassInfo || data.shiftType === 'AFTERNOON') {
+      const noteStr =
+        data.note ||
+        (data.studyClassInfo
+          ? `${data.studyClassInfo} (Study Chinese)`
+          : 'វេនរសៀល (Afternoon Shift)');
+      lines.push(`<b>Note:</b> 📝 ${noteStr}`);
+    }
+
+    lines.push(`<b>Location:</b> ${locText}`);
+    lines.push(`<b>GPS Accuracy:</b> ±${Math.round(data.accuracyMeters)}m`);
+
+    const msg = lines.join('\n');
 
     await this.broadcastMessage(msg, 'attendance');
   }

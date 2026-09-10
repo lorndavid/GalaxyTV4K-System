@@ -34,6 +34,20 @@ describe('Time & Attendance Calculations', () => {
     it('returns 0 late minutes when checking in early (07:45)', () => {
       expect(calculateLateMinutes('07:45', scheduledStart, graceMinutes)).toBe(0);
     });
+
+    it('afternoon shift: check-in between 12:00 and 13:00 is NOT late against 13:00 deadline', () => {
+      const afternoonDeadline = '13:00';
+      expect(calculateLateMinutes('12:00', afternoonDeadline, 0)).toBe(0);
+      expect(calculateLateMinutes('12:30', afternoonDeadline, 0)).toBe(0);
+      expect(calculateLateMinutes('13:00', afternoonDeadline, 0)).toBe(0);
+    });
+
+    it('afternoon shift: check-in after 13:00 calculates late minutes relative to 13:00', () => {
+      const afternoonDeadline = '13:00';
+      expect(calculateLateMinutes('13:01', afternoonDeadline, 0)).toBe(1);
+      expect(calculateLateMinutes('13:15', afternoonDeadline, 0)).toBe(15);
+      expect(calculateLateMinutes('13:45', afternoonDeadline, 0)).toBe(45);
+    });
   });
 
   describe('Early leave calculation', () => {
