@@ -418,6 +418,21 @@ export const ScanPage: React.FC = () => {
   const dutyInfo = (todayRecord as any)?.duty;
   const canCheckIn = dutyInfo ? dutyInfo.canCheckIn : true;
 
+  const remainingCheckOutMinutes = useMemo(() => {
+    if (!hasCheckedIn || hasCheckedOut || isCheckOutAllowedNow) return 0;
+    return Math.max(0, earliestCheckOutMinutes - currentMinutes);
+  }, [hasCheckedIn, hasCheckedOut, isCheckOutAllowedNow, earliestCheckOutMinutes, currentMinutes]);
+
+  const remainingCheckOutText = useMemo(() => {
+    if (remainingCheckOutMinutes <= 0) return '';
+    const h = Math.floor(remainingCheckOutMinutes / 60);
+    const m = remainingCheckOutMinutes % 60;
+    if (h > 0) {
+      return isKhmer ? `នៅសល់ ${h} ម៉ោង ${m} នាទី` : `${h}h ${m}m remaining`;
+    }
+    return isKhmer ? `នៅសល់ ${m} នាទី` : `${m}m remaining`;
+  }, [remainingCheckOutMinutes, isKhmer]);
+
   // Manual GPS Permission / Activation Trigger
   const requestLocationAccess = () => {
     if (!navigator.geolocation) {
@@ -999,7 +1014,11 @@ export const ScanPage: React.FC = () => {
               }`}
             >
               <Fingerprint className="w-4 h-4" />
-              <span>{t('attendance.oneClickCheckIn', 'ចុច Check-In')}</span>
+              <span>
+                {hasCheckedIn && !hasCheckedOut
+                  ? (isCheckOutAllowedNow ? t('attendance.oneClickCheckOut', 'ចុច Check-Out') : `ចេញម៉ោង ${formattedEndTime}`)
+                  : t('attendance.oneClickCheckIn', 'ចុច Check-In')}
+              </span>
             </button>
             <button
               type="button"
@@ -1222,7 +1241,7 @@ export const ScanPage: React.FC = () => {
                         : hasCheckedIn && !hasCheckedOut && !isCheckOutAllowedNow
                         ? () =>
                             showToast(
-                              `មិនទាន់ដល់ម៉ោងចេញពីធ្វើការនៅឡើយទេ (ម៉ោងចេញគឺ ${formattedEndTime})!`,
+                              `មិនទាន់ដល់ម៉ោងចេញពីធ្វើការនៅឡើយទេ (${remainingCheckOutText})! ម៉ោងអនុញ្ញាតឱ្យចេញគឺចាប់ពីម៉ោង ${formattedEndTime} តទៅ។`,
                               'warning'
                             )
                         : handleZoneCheckIn
@@ -1269,9 +1288,12 @@ export const ScanPage: React.FC = () => {
                       </>
                     ) : hasCheckedIn && !isCheckOutAllowedNow ? (
                       <>
-                        <Lock className="w-12 h-12 text-amber-400" />
-                        <span className="text-[10px] font-black uppercase tracking-wider mt-1 text-center px-2">
-                          ចេញម៉ោង {formattedEndTime}
+                        <Lock className="w-10 h-10 text-amber-400 animate-pulse" />
+                        <span className="text-[11px] font-black uppercase tracking-wider mt-1 text-center px-2 text-amber-300 font-mono">
+                          {remainingCheckOutText || `ចេញម៉ោង ${formattedEndTime}`}
+                        </span>
+                        <span className="text-[9px] font-bold text-slate-400 mt-0.5 font-mono">
+                          គោលដៅ: {formattedEndTime}
                         </span>
                       </>
                     ) : (
@@ -1301,7 +1323,7 @@ export const ScanPage: React.FC = () => {
                     {!currentCoords
                       ? '⚠️ សូមបើក Location / GPS ដើម្បីកត់ត្រាវត្តមាន'
                       : hasCheckedIn && !isCheckOutAllowedNow
-                      ? `🔒 មិនទាន់ដល់ម៉ោងចេញទេ (ម៉ោងចេញគឺ ${formattedEndTime})`
+                      ? `🔒 មិនទាន់ដល់ម៉ោងចេញទេ (${remainingCheckOutText} • ម៉ោងចេញគឺ ${formattedEndTime})`
                       : hasCheckedIn
                       ? t('attendance.punchOutBtn', 'ចុច Check-Out ចេញពីធ្វើការ')
                       : !isOpenForCheckIn
@@ -1381,14 +1403,25 @@ export const ScanPage: React.FC = () => {
               )}
             </div>
 
-            <div className="text-center space-y-1">
-              <p className="text-sm font-semibold text-white tracking-wide">
-                {t('attendance.scanInstruction', 'Scan the attendance QR code')}
-              </p>
-              <p className="text-xs text-slate-400">
-                {t('attendance.autoDetected', 'Align inside frame • Scans automatically')}
-              </p>
-            </div>
+            {hasCheckedIn && !hasCheckedOut && !isCheckOutAllowedNow ? (
+              <div className="w-full bg-amber-500/15 border border-amber-500/30 rounded-2xl p-3 text-center flex items-center justify-center gap-2 text-xs font-semibold text-amber-300">
+                <Lock className="w-4 h-4 shrink-0 text-amber-400 animate-pulse" />
+                <span>
+                  មិនទាន់ដល់ម៉ោងចេញទេ ({remainingCheckOutText} • ម៉ោងចេញកំណត់គឺ {formattedEndTime})
+                </span>
+              </div>
+            ) : (
+              <div className="text-center space-y-1">
+                <p className="text-sm font-semibold text-white tracking-wide">
+                  {hasCheckedIn
+                    ? t('attendance.scanInstructionOut', 'ស្កេន QR Code ដើម្បីកត់ត្រាចេញពីធ្វើការ (Check-Out)')
+                    : t('attendance.scanInstruction', 'Scan the attendance QR code')}
+                </p>
+                <p className="text-xs text-slate-400">
+                  {t('attendance.autoDetected', 'Align inside frame • Scans automatically')}
+                </p>
+              </div>
+            )}
           </div>
         )}
 
