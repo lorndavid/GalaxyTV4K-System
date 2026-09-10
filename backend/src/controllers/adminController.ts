@@ -81,6 +81,11 @@ export class AdminController {
       hireDate,
       initialPassword,
       role = UserRole.EMPLOYEE,
+      shiftType,
+      checkInStartTime,
+      checkInDeadline,
+      workEndTime,
+      studyClassInfo,
     } = req.body;
 
     // Generate clean employee code if not provided
