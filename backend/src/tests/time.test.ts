@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   parseTimeToMinutes,
+  normalizeTimeString,
   calculateLateMinutes,
   calculateEarlyLeaveMinutes,
   calculateWorkedMinutes,
@@ -8,11 +9,27 @@ import {
 } from '../utils/time.js';
 
 describe('Time & Attendance Calculations', () => {
-  it('parses HH:mm into minutes accurately', () => {
+  it('parses HH:mm and 12h/PM formats into minutes accurately', () => {
     expect(parseTimeToMinutes('00:00')).toBe(0);
     expect(parseTimeToMinutes('08:00')).toBe(480);
     expect(parseTimeToMinutes('08:30')).toBe(510);
+    expect(parseTimeToMinutes('15:00')).toBe(900);
+    expect(parseTimeToMinutes('15:01')).toBe(901);
+    expect(parseTimeToMinutes('3:00 PM')).toBe(900);
+    expect(parseTimeToMinutes('3:01 PM')).toBe(901);
+    expect(parseTimeToMinutes('3 pm')).toBe(900);
+    expect(parseTimeToMinutes('3:00')).toBe(900);
     expect(parseTimeToMinutes('17:00')).toBe(1020);
+  });
+
+  it('normalizes various time formats to standard HH:mm', () => {
+    expect(normalizeTimeString('3 pm')).toBe('15:00');
+    expect(normalizeTimeString('3:00 PM')).toBe('15:00');
+    expect(normalizeTimeString('03:00 pm')).toBe('15:00');
+    expect(normalizeTimeString('15:00')).toBe('15:00');
+    expect(normalizeTimeString('3:00')).toBe('15:00');
+    expect(normalizeTimeString('07:30')).toBe('07:30');
+    expect(normalizeTimeString('7:30 AM')).toBe('07:30');
   });
 
   describe('Late calculation', () => {
@@ -63,6 +80,14 @@ describe('Time & Attendance Calculations', () => {
 
     it('returns 30 early minutes when leaving at 16:30', () => {
       expect(calculateEarlyLeaveMinutes('16:30', scheduledEnd, 0)).toBe(30);
+    });
+
+    it('when admin edits check-out time to 3:00 PM (15:00), employee can check-out at 3:01 PM without being early', () => {
+      const shiftEnd = '15:00';
+      expect(calculateEarlyLeaveMinutes('15:00', shiftEnd, 0)).toBe(0);
+      expect(calculateEarlyLeaveMinutes('15:01', shiftEnd, 0)).toBe(0);
+      expect(calculateEarlyLeaveMinutes('15:15', shiftEnd, 0)).toBe(0);
+      expect(calculateEarlyLeaveMinutes('14:59', shiftEnd, 0)).toBe(1);
     });
   });
 

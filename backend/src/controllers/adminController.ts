@@ -7,6 +7,7 @@ import { ReportService } from '../services/reportService.js';
 import { EmployeeStatus, UserRole, UserStatus, ActorType } from '@prisma/client';
 import { createAuditLog } from '../utils/audit.js';
 import { TelegramService } from '../services/telegramService.js';
+import { normalizeTimeString } from '../utils/time.js';
 
 export class AdminController {
   static async getDashboard(req: AuthenticatedRequest, res: Response) {
@@ -233,9 +234,9 @@ export class AdminController {
           skill: skill !== undefined ? (skill?.trim() || null) : undefined,
           studyDay: studyDay !== undefined ? (studyDay?.trim() || null) : undefined,
           shiftType: shiftType !== undefined ? (shiftType?.trim() || 'STANDARD') : undefined,
-          checkInStartTime: checkInStartTime !== undefined ? (checkInStartTime?.trim() || '07:30') : undefined,
-          checkInDeadline: checkInDeadline !== undefined ? (checkInDeadline?.trim() || '07:30') : undefined,
-          workEndTime: workEndTime !== undefined ? (workEndTime?.trim() || '17:30') : undefined,
+          checkInStartTime: checkInStartTime !== undefined ? (checkInStartTime ? normalizeTimeString(checkInStartTime) : '07:30') : undefined,
+          checkInDeadline: checkInDeadline !== undefined ? (checkInDeadline ? normalizeTimeString(checkInDeadline) : '07:30') : undefined,
+          workEndTime: workEndTime !== undefined ? (workEndTime ? normalizeTimeString(workEndTime) : '17:30') : undefined,
           studyClassInfo: studyClassInfo !== undefined ? (studyClassInfo?.trim() || null) : undefined,
           firstName: firstName !== undefined ? firstName : undefined,
           lastName: lastName !== undefined ? lastName : undefined,

@@ -255,6 +255,24 @@ export const HomePage: React.FC = () => {
     return isStudySchedule && !isAfternoonShift;
   }, [isStudySchedule, isAfternoonShift]);
 
+  const formattedWorkEndTime = useMemo(() => {
+    const raw = todayRecord?.duty?.workEndTime || user?.employee?.workEndTime || '17:30';
+    const cleaned = String(raw).replace(/[^\d:]/g, '');
+    const isPM = /pm/i.test(String(raw));
+    const isAM = /am/i.test(String(raw));
+    const parts = cleaned.split(':');
+    let h = parseInt(parts[0], 10) || 17;
+    const m = (parseInt(parts[1], 10) || 0).toString().padStart(2, '0');
+
+    if (isPM && h < 12) h += 12;
+    else if (isAM && h === 12) h = 0;
+    else if (!isPM && !isAM && h >= 1 && h <= 6) h += 12;
+
+    const period = h >= 12 ? 'PM' : 'AM';
+    const h12 = (h % 12 || 12).toString().padStart(2, '0');
+    return `${h12}:${m} ${period}`;
+  }, [todayRecord?.duty?.workEndTime, user?.employee?.workEndTime]);
+
   // Live worked duration calculation
   const [liveWorkedTime, setLiveWorkedTime] = useState<string>('0h 0m');
   const [workedPercentage, setWorkedPercentage] = useState<number>(0);
@@ -515,10 +533,10 @@ export const HomePage: React.FC = () => {
               {t('home.shiftSchedule', 'កាលវិភាគការងារថ្ងៃនេះ')}
             </h2>
           </div>
-          <span className="text-[11px] font-semibold text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-brand-950/60 px-2.5 py-0.5 rounded-full border border-brand-200/60 dark:border-brand-800/40">
+          <span className="text-[11px] font-semibold text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-brand-950/60 px-2.5 py-0.5 rounded-full border border-brand-200/60 dark:border-brand-800/40 font-mono">
             {isAfternoonShift
-              ? `${user?.employee?.checkInStartTime || '12:00'} – ${user?.employee?.workEndTime || '17:30'}`
-              : '07:30 – 17:30'}
+              ? `${todayRecord?.duty?.checkInStartTime || user?.employee?.checkInStartTime || '12:00'} – ${todayRecord?.duty?.workEndTime || user?.employee?.workEndTime || '17:30'}`
+              : `${todayRecord?.duty?.checkInStartTime || user?.employee?.checkInStartTime || '07:30'} – ${todayRecord?.duty?.workEndTime || user?.employee?.workEndTime || '17:30'}`}
           </span>
         </div>
 
@@ -532,7 +550,7 @@ export const HomePage: React.FC = () => {
                 : t('home.morningStart', 'ចូលពេលព្រឹក')}
             </span>
             <span className="font-bold text-slate-900 dark:text-slate-100 font-mono text-xs mt-1 block">
-              {isAfternoonShift ? '08:00 – 11:00' : '07:30 AM'}
+              {isAfternoonShift ? '08:00 – 11:00' : `${todayRecord?.duty?.checkInStartTime || user?.employee?.checkInStartTime || '07:30'} AM`}
             </span>
           </div>
 
@@ -554,7 +572,7 @@ export const HomePage: React.FC = () => {
               {t('home.shiftEnd', 'ចេញពេលល្ងាច')}
             </span>
             <span className="font-bold text-slate-900 dark:text-slate-100 font-mono text-xs mt-1 block">
-              05:30 PM
+              {formattedWorkEndTime}
             </span>
           </div>
         </div>

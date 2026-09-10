@@ -69,6 +69,27 @@ const isGeolocationNative = (): boolean => {
   }
 };
 
+const parseTimeToMinutes = (timeStr?: string | null): number => {
+  if (!timeStr) return 0;
+  const str = String(timeStr).trim();
+  const isPM = /pm/i.test(str);
+  const isAM = /am/i.test(str);
+  const cleaned = str.replace(/[^\d:]/g, '');
+  const parts = cleaned.split(':');
+  let hours = parseInt(parts[0], 10) || 0;
+  const minutes = parts.length > 1 ? parseInt(parts[1], 10) || 0 : 0;
+
+  if (isPM && hours < 12) {
+    hours += 12;
+  } else if (isAM && hours === 12) {
+    hours = 0;
+  } else if (!isPM && !isAM && hours >= 1 && hours <= 6) {
+    hours += 12;
+  }
+
+  return hours * 60 + minutes;
+};
+
 const acquireBestCoordinates = async (
   coordsRef: React.MutableRefObject<any>
 ): Promise<{ latitude: number; longitude: number; accuracy: number; isMocked: boolean } | null> => {
@@ -325,18 +346,15 @@ export const ScanPage: React.FC = () => {
   const officeName = companySettings?.companyName || 'Galaxy TV4K Main Office';
 
   // Working Shift Rules
-  const workStartTime = companySettings?.workStartTime || '08:00';
-  const workEndTime = companySettings?.workEndTime || '17:30';
+  const workStartTime = todayRecord?.duty?.checkInStartTime || companySettings?.workStartTime || '07:30';
+  const workEndTime = todayRecord?.duty?.workEndTime || companySettings?.workEndTime || '17:30';
   const breakStartTime = companySettings?.breakStartTime || '11:30';
   const breakEndTime = companySettings?.breakEndTime || '13:00';
-  const allowedBefore = companySettings?.checkInAllowedBeforeMinutes ?? 60;
+  const allowedBefore = companySettings?.checkInAllowedBeforeMinutes ?? 30;
   const lateGrace = companySettings?.lateGracePeriodMinutes ?? 0;
 
   const startMinutes = useMemo(() => {
-    const parts = (workStartTime || '08:00').split(':').map(Number);
-    const h = !isNaN(parts[0]) ? parts[0] : 8;
-    const m = !isNaN(parts[1]) ? parts[1] : 0;
-    return h * 60 + m;
+    return parseTimeToMinutes(workStartTime || '07:30');
   }, [workStartTime]);
 
   const openMinutes = useMemo(() => {
@@ -355,10 +373,7 @@ export const ScanPage: React.FC = () => {
   const lateMinutesNow = Math.max(0, currentMinutes - startMinutes);
 
   const endMinutes = useMemo(() => {
-    const parts = (workEndTime || '17:30').split(':').map(Number);
-    const h = !isNaN(parts[0]) ? parts[0] : 17;
-    const m = !isNaN(parts[1]) ? parts[1] : 0;
-    return h * 60 + m;
+    return parseTimeToMinutes(workEndTime || '17:30');
   }, [workEndTime]);
 
   const earlyLeaveGrace = companySettings?.earlyLeaveGraceMinutes ?? 0;
@@ -366,11 +381,11 @@ export const ScanPage: React.FC = () => {
   const isCheckOutAllowedNow = currentMinutes >= earliestCheckOutMinutes;
 
   const formattedEndTime = useMemo(() => {
-    const parts = (workEndTime || '17:30').split(':').map(Number);
-    const endH = !isNaN(parts[0]) ? parts[0] : 17;
-    const endM = (!isNaN(parts[1]) ? parts[1] : 0).toString().padStart(2, '0');
+    const totalMin = parseTimeToMinutes(workEndTime || '17:30');
+    const endH = Math.floor(totalMin / 60);
+    const endM = (totalMin % 60).toString().padStart(2, '0');
     const period = endH >= 12 ? 'PM' : 'AM';
-    const h12 = endH % 12 || 12;
+    const h12 = (endH % 12 || 12).toString().padStart(2, '0');
     return `${h12}:${endM} ${period}`;
   }, [workEndTime]);
 

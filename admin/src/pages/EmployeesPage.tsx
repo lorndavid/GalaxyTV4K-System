@@ -1253,8 +1253,8 @@ export const EmployeesPage: React.FC = () => {
                     setFormData({
                       ...formData,
                       shiftType: 'STANDARD',
-                      checkInStartTime: '08:00',
-                      checkInDeadline: '08:00',
+                      checkInStartTime: '07:30',
+                      checkInDeadline: '07:30',
                       workEndTime: '17:30',
                       studyClassInfo: '',
                     })
@@ -1265,8 +1265,8 @@ export const EmployeesPage: React.FC = () => {
                       : 'border-slate-200 dark:border-dark-border bg-white dark:bg-dark-surface text-slate-600 dark:text-slate-400'
                   }`}
                 >
-                  <div className="font-bold text-xs">☀️ វេនធម្មតា (08:00)</div>
-                  <div className="text-[10px] opacity-80">ចូល 08:00 - ចេញ 17:30</div>
+                  <div className="font-bold text-xs">☀️ វេនធម្មតា (07:30)</div>
+                  <div className="text-[10px] opacity-80">ចូល 07:30 - ចេញ 17:30</div>
                 </button>
 
                 <button
@@ -1311,10 +1311,10 @@ export const EmployeesPage: React.FC = () => {
               </div>
 
               {/* Time inputs */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
                 <div>
                   <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">
-                    ម៉ោងបើកឱ្យ Check-in (Open Time)
+                    ម៉ោងបើកឱ្យ Check-in (Open)
                   </label>
                   <input
                     type="time"
@@ -1326,12 +1326,24 @@ export const EmployeesPage: React.FC = () => {
 
                 <div>
                   <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">
-                    ម៉ោងកំណត់ត្រូវ Check-in / យឺត (Deadline)
+                    ម៉ោងកំណត់ Check-in (Deadline)
                   </label>
                   <input
                     type="time"
                     value={formData.checkInDeadline || '07:30'}
                     onChange={(e) => setFormData({ ...formData, checkInDeadline: e.target.value })}
+                    className="w-full px-3 py-1.5 bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-xl text-slate-900 dark:text-slate-100 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-brand-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">
+                    ម៉ោងចេញធ្វើការ (Check-Out)
+                  </label>
+                  <input
+                    type="time"
+                    value={formData.workEndTime || '17:30'}
+                    onChange={(e) => setFormData({ ...formData, workEndTime: e.target.value })}
                     className="w-full px-3 py-1.5 bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-xl text-slate-900 dark:text-slate-100 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-brand-500"
                   />
                 </div>

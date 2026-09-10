@@ -3,6 +3,7 @@ import { prisma } from '../utils/prisma.js';
 import { sendSuccess, sendError } from '../utils/apiResponse.js';
 import { AuthenticatedRequest } from '../middlewares/auth.js';
 import { createAuditLog } from '../utils/audit.js';
+import { normalizeTimeString } from '../utils/time.js';
 import { ActorType } from '@prisma/client';
 
 export class SettingsController {
@@ -65,6 +66,9 @@ export class SettingsController {
     const finalQrExp = qrExpirationSeconds !== undefined ? qrExpirationSeconds : qrExpiresInSeconds;
     const finalAccuracy = gpsAccuracyThresholdMeters !== undefined ? gpsAccuracyThresholdMeters : maxGpsAccuracyMeters;
 
+    const normalizedStart = workStartTime !== undefined ? normalizeTimeString(workStartTime) : undefined;
+    const normalizedEnd = workEndTime !== undefined ? normalizeTimeString(workEndTime) : undefined;
+
     const updated = await prisma.companySettings.upsert({
       where: { id: 'default' },
       update: {
@@ -76,8 +80,8 @@ export class SettingsController {
         allowedRadiusMeters: allowedRadiusMeters !== undefined ? parseFloat(allowedRadiusMeters) : undefined,
         gpsAccuracyThresholdMeters: finalAccuracy !== undefined ? parseFloat(finalAccuracy) : undefined,
         qrExpirationSeconds: finalQrExp !== undefined ? parseInt(finalQrExp, 10) : undefined,
-        workStartTime: workStartTime !== undefined ? String(workStartTime) : undefined,
-        workEndTime: workEndTime !== undefined ? String(workEndTime) : undefined,
+        workStartTime: normalizedStart,
+        workEndTime: normalizedEnd,
         breakStartTime: breakStartTime !== undefined ? (breakStartTime ? String(breakStartTime) : null) : undefined,
         breakEndTime: breakEndTime !== undefined ? (breakEndTime ? String(breakEndTime) : null) : undefined,
         lateGracePeriodMinutes:
@@ -100,8 +104,8 @@ export class SettingsController {
         allowedRadiusMeters: allowedRadiusMeters ? parseFloat(allowedRadiusMeters) : 100,
         gpsAccuracyThresholdMeters: finalAccuracy ? parseFloat(finalAccuracy) : 50,
         qrExpirationSeconds: finalQrExp ? parseInt(finalQrExp, 10) : 60,
-        workStartTime: workStartTime || '07:30',
-        workEndTime: workEndTime || '17:30',
+        workStartTime: normalizedStart || '07:30',
+        workEndTime: normalizedEnd || '17:30',
         breakStartTime: breakStartTime !== undefined ? breakStartTime : '11:30',
         breakEndTime: breakEndTime !== undefined ? breakEndTime : '13:00',
         checkInAllowedBeforeMinutes: checkInAllowedBeforeMinutes !== undefined ? parseInt(checkInAllowedBeforeMinutes, 10) : 30,
@@ -110,20 +114,43 @@ export class SettingsController {
       },
     });
 
-    // Synchronize all working schedule days across all schedules in real-time if work hours were updated
-    if (workStartTime || workEndTime || breakStartTime !== undefined || breakEndTime !== undefined) {
+    // Synchronize all working schedule days and standard employees in real-time if work hours were updated
+    if (normalizedStart || normalizedEnd || breakStartTime !== undefined || breakEndTime !== undefined) {
       try {
         await prisma.scheduleDay.updateMany({
           where: { isWorkingDay: true },
           data: {
-            startTime: workStartTime || undefined,
-            endTime: workEndTime || undefined,
+            startTime: normalizedStart || undefined,
+            endTime: normalizedEnd || undefined,
             breakStartTime: breakStartTime !== undefined ? (breakStartTime ? String(breakStartTime) : null) : undefined,
             breakEndTime: breakEndTime !== undefined ? (breakEndTime ? String(breakEndTime) : null) : undefined,
           },
         });
+
+        if (normalizedEnd) {
+          await prisma.employee.updateMany({
+            where: {
+              OR: [{ shiftType: 'STANDARD' }, { shiftType: null }],
+            },
+            data: {
+              workEndTime: normalizedEnd,
+            },
+          });
+        }
+
+        if (normalizedStart) {
+          await prisma.employee.updateMany({
+            where: {
+              OR: [{ shiftType: 'STANDARD' }, { shiftType: null }],
+            },
+            data: {
+              checkInStartTime: normalizedStart,
+              checkInDeadline: normalizedStart,
+            },
+          });
+        }
       } catch (scheduleSyncErr) {
-        console.warn('Failed to sync schedule days with company settings:', scheduleSyncErr);
+        console.warn('Failed to sync schedule days and employees with company settings:', scheduleSyncErr);
       }
     }
 
