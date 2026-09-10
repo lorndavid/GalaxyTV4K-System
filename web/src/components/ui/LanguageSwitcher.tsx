@@ -27,9 +27,9 @@ export const LanguageSwitcher: React.FC<{ className?: string; compact?: boolean 
         onClick={() => toggleLanguage(isEn ? 'km' : 'en')}
         title={isEn ? 'ប្តូរទៅភាសាខ្មែរ' : 'Switch to English'}
         aria-label="Switch Language"
-        className={`px-2.5 py-1.5 rounded-full border border-slate-200 dark:border-dark-border bg-white dark:bg-dark-surface text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-dark-elevated text-xs font-bold transition-all flex items-center gap-1.5 shadow-2xs active:scale-95 select-none ${className}`}
+        className={`px-3 py-2 rounded-2xl border-0 bg-white/80 dark:bg-dark-surface/80 backdrop-blur-md text-slate-700 dark:text-slate-200 hover:bg-white dark:hover:bg-dark-elevated text-xs font-bold transition-all flex items-center gap-2 shadow-xs active:scale-95 select-none focus:outline-none ${className}`}
       >
-        <Globe className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400" />
+        <Globe className="w-4 h-4 text-brand-600 dark:text-brand-400" />
         <span className="font-semibold tracking-wide">{isEn ? 'EN' : 'ខ្មែរ'}</span>
       </button>
     );

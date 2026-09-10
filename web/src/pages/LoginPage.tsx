@@ -55,9 +55,9 @@ export const LoginPage: React.FC = () => {
       </div>
 
       {/* Top Floating Controls */}
-      <header className="absolute top-4 right-4 sm:top-6 sm:right-6 flex items-center gap-2 z-20">
-        <LanguageSwitcher compact className="min-h-[44px] min-w-[44px] px-3.5 rounded-xl backdrop-blur-md bg-white/80 dark:bg-dark-surface/80 shadow-xs border border-slate-200/70 dark:border-dark-border" />
-        <ThemeToggle compact className="min-h-[44px] min-w-[44px] rounded-xl backdrop-blur-md bg-white/80 dark:bg-dark-surface/80 shadow-xs border border-slate-200/70 dark:border-dark-border" />
+      <header className="absolute top-4 right-4 sm:top-6 sm:right-6 flex items-center gap-2.5 z-20">
+        <LanguageSwitcher compact className="min-h-[42px] px-3.5 rounded-2xl backdrop-blur-xl bg-white/70 dark:bg-dark-surface/70 hover:bg-white/95 dark:hover:bg-dark-surface/95 shadow-sm border-0 text-slate-700 dark:text-slate-200 transition-all duration-200" />
+        <ThemeToggle compact className="min-h-[42px] min-w-[42px] rounded-2xl backdrop-blur-xl bg-white/70 dark:bg-dark-surface/70 hover:bg-white/95 dark:hover:bg-dark-surface/95 shadow-sm border-0 text-slate-700 dark:text-slate-200 transition-all duration-200 flex items-center justify-center" />
       </header>
 
       {/* Center Auth Container */}
