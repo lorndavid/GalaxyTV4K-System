@@ -25,7 +25,7 @@
     "checkIn": "Check-In"
   },
   "auth": {
-    "welcome": "Galaxy TV4K Portal",
+    "welcome": "Galaxy TV4K Attendance",
     "subtitle": "Sign in with your work credentials to record attendance and access HR features.",
     "emailLabel": "Work Email / Username",
     "passwordLabel": "Password",
@@ -217,7 +217,7 @@
     "sessionsModalDesc": "Review browsers and devices currently signed in to your account."
   },
   "auth": {
-    "welcome": "Galaxy TV4K Portal",
+    "welcome": "Galaxy TV4K Attendance",
     "subtitle": "Sign in with your work credentials to record attendance and access HR features.",
     "emailLabel": "Work Email",
     "passwordLabel": "Password",

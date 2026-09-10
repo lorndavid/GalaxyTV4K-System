@@ -25,7 +25,7 @@
     "checkIn": "វត្តមាន"
   },
   "auth": {
-    "welcome": "ប្រព័ន្ធ Galaxy TV4K",
+    "welcome": "Galaxy TV4K Attendance",
     "subtitle": "ចូលគណនីការងាររបស់អ្នកដើម្បីកត់ត្រាវត្តមាន និងប្រើប្រាស់មុខងារ HR។",
     "emailLabel": "អ៊ីមែលការងារ / ឈ្មោះចូលគណនី",
     "passwordLabel": "ពាក្យសម្ងាត់",
@@ -217,7 +217,7 @@
     "sessionsModalDesc": "បញ្ជីកម្មវិធីរុករក និងឧបករណ៍ដែលកំពុងចូលប្រើប្រាស់គណនីនេះ។"
   },
   "auth": {
-    "welcome": "ប្រព័ន្ធកត់ត្រាវត្តមាន Galaxy TV4K",
+    "welcome": "Galaxy TV4K Attendance",
     "subtitle": "ចូលដោយប្រើអ៊ីមែលការងាររបស់អ្នកដើម្បីកត់ត្រាវត្តមាន និងប្រើប្រាស់សេវាកម្មបុគ្គលិក។",
     "emailLabel": "អ៊ីមែលការងារ",
     "passwordLabel": "ពាក្យសម្ងាត់",

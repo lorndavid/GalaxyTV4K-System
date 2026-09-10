@@ -2,20 +2,20 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
-import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { ThemeToggle } from '../components/ui/ThemeToggle';
 import { LanguageSwitcher } from '../components/ui/LanguageSwitcher';
-import { Lock, Mail, AlertCircle, ShieldCheck, Check, Sparkles } from 'lucide-react';
+import { Lock, Mail, AlertCircle, Eye, EyeOff } from 'lucide-react';
 
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const { login } = useAuth();
   const { t } = useTranslation();
   const [email, setEmail] = useState(() => {
-    return localStorage.getItem('saved_login_email') || 'bunthoeun@galaxytv4k.com';
+    return localStorage.getItem('saved_login_email') || '';
   });
-  const [password, setPassword] = useState('galaxytv@@');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(() => {
     return localStorage.getItem('system_hr_remember_me') !== 'false';
   });
@@ -27,7 +27,6 @@ export const LoginPage: React.FC = () => {
     return null;
   });
   const [isLoading, setIsLoading] = useState(false);
-  const [justFilled, setJustFilled] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,56 +46,43 @@ export const LoginPage: React.FC = () => {
     }
   };
 
-  const handleAutofillDemo = () => {
-    setEmail('bunthoeun@galaxytv4k.com');
-    setPassword('galaxytv@@');
-    setRememberMe(true);
-    setJustFilled(true);
-    setTimeout(() => setJustFilled(false), 2000);
-  };
-
   return (
-    <div className="min-h-screen w-full bg-gradient-to-b from-slate-50 via-blue-50/30 to-slate-100 dark:from-dark-bg dark:via-[#0c1322] dark:to-[#080d1a] text-slate-900 dark:text-slate-100 flex flex-col justify-center items-center px-4 py-12 relative overflow-hidden transition-colors duration-200">
-      {/* Background Depth: Subtle Geometric Pattern & Ambient Radial Glow */}
+    <div className="min-h-screen w-full bg-gradient-to-b from-slate-50 via-blue-50/20 to-slate-100 dark:from-dark-bg dark:via-[#0c1322] dark:to-[#080d1a] text-slate-900 dark:text-slate-100 flex flex-col justify-center items-center px-4 py-10 sm:py-12 relative overflow-hidden transition-colors duration-200">
+      {/* Background Depth: Geometric Dot Grid & Subtle Ambient Radial Glow */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none select-none">
-        {/* Ambient Top Radial Glow */}
-        <div className="absolute -top-32 left-1/2 -translate-x-1/2 w-[540px] h-[420px] bg-gradient-to-tr from-brand-500/10 via-blue-400/10 to-indigo-500/10 rounded-full blur-3xl" />
-        {/* Subtle Geometric Dot Grid Pattern */}
+        <div className="absolute -top-32 left-1/2 -translate-x-1/2 w-[600px] h-[450px] bg-gradient-to-tr from-brand-500/15 via-blue-500/10 to-indigo-500/15 rounded-full blur-3xl" />
         <div className="absolute inset-0 bg-[radial-gradient(#94a3b8_1px,transparent_1px)] dark:bg-[radial-gradient(#334155_1px,transparent_1px)] [background-size:24px_24px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_40%,#000_70%,transparent_100%)] opacity-30 dark:opacity-20" />
       </div>
 
-      {/* Top Floating Controls with standard 44px mobile tap targets */}
+      {/* Top Floating Controls */}
       <header className="absolute top-4 right-4 sm:top-6 sm:right-6 flex items-center gap-2 z-20">
         <LanguageSwitcher compact className="min-h-[44px] min-w-[44px] px-3.5 rounded-xl backdrop-blur-md bg-white/80 dark:bg-dark-surface/80 shadow-xs border border-slate-200/70 dark:border-dark-border" />
         <ThemeToggle compact className="min-h-[44px] min-w-[44px] rounded-xl backdrop-blur-md bg-white/80 dark:bg-dark-surface/80 shadow-xs border border-slate-200/70 dark:border-dark-border" />
       </header>
 
       {/* Center Auth Container */}
-      <div className="max-w-[420px] w-full mx-auto space-y-6 relative z-10 animate-fade-in">
-        {/* Brand Anchor with Confident Glowing Icon */}
-        <div className="text-center space-y-2">
-          <div className="relative inline-block mb-1">
-            {/* Soft Ambient Brand Glow Behind Icon */}
-            <div className="absolute -inset-2 bg-gradient-to-tr from-brand-500/25 to-blue-400/25 rounded-3xl blur-md opacity-80" />
-            <div className="relative w-16 h-16 sm:w-18 sm:h-18 rounded-2xl p-3 bg-white dark:bg-dark-surface border border-slate-200/80 dark:border-dark-border flex items-center justify-center shadow-lg shadow-brand-500/10">
-              <img
-                src="/logo.png"
-                alt="Galaxy TV4K Logo"
-                className="w-full h-full object-contain filter drop-shadow-xs"
-              />
-            </div>
+      <div className="max-w-[400px] w-full mx-auto space-y-6 relative z-10 animate-fade-in">
+        {/* Brand Anchor with Clean Borderless Logo (+30% Larger) */}
+        <div className="text-center space-y-3">
+          <div className="relative inline-flex items-center justify-center">
+            {/* Subtle Ambient Radial Backlight Glow */}
+            <div className="absolute -inset-4 bg-gradient-to-tr from-brand-500/25 via-blue-400/20 to-indigo-500/25 rounded-full blur-2xl opacity-80 pointer-events-none" />
+            
+            {/* Borderless Logo: +30% Larger (h-24 sm:h-28) */}
+            <img
+              src="/logo.png"
+              alt="Galaxy TV4K Logo"
+              className="relative h-24 sm:h-28 w-auto object-contain filter drop-shadow-md transition-transform duration-300 hover:scale-105 select-none"
+            />
           </div>
 
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100 font-sans">
-            {t('auth.welcome', 'Galaxy TV4K Portal')}
+          <h1 className="text-2xl sm:text-[26px] font-bold tracking-tight text-slate-900 dark:text-slate-100 font-sans">
+            {t('auth.welcome', 'Galaxy TV4K Attendance')}
           </h1>
-          <p className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300 max-w-xs mx-auto leading-relaxed">
-            {t('auth.subtitle', 'Sign in with your work credentials to record attendance and access HR features.')}
-          </p>
         </div>
 
-        {/* Floating SaaS Login Card */}
-        <div className="bg-white/95 dark:bg-dark-surface/95 backdrop-blur-xl border border-slate-200/70 dark:border-dark-border rounded-[20px] shadow-[0_16px_40px_-12px_rgba(0,0,0,0.08),0_4px_16px_-2px_rgba(0,0,0,0.04)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.4)] p-6 sm:p-8 transition-colors duration-150">
+        {/* Clean, Modern SaaS Login Card */}
+        <div className="bg-white/95 dark:bg-dark-surface/95 backdrop-blur-2xl border border-slate-200/80 dark:border-dark-border/80 rounded-3xl shadow-[0_20px_50px_-12px_rgba(0,0,0,0.07)] dark:shadow-[0_25px_60px_rgba(0,0,0,0.45)] p-6 sm:p-8 transition-colors duration-150">
           <form className="space-y-4" onSubmit={handleSubmit}>
             {error && (
               <div className="p-3.5 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/60 rounded-xl flex items-start gap-2.5 text-xs text-rose-700 dark:text-rose-300 animate-slide-up">
@@ -108,7 +94,7 @@ export const LoginPage: React.FC = () => {
             {/* Email Field */}
             <div className="space-y-1.5">
               <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
-                {t('auth.emailLabel', 'Work Email')}
+                {t('auth.emailLabel', 'Work Email / Username')}
               </label>
               <div className="relative group">
                 <Mail className="w-4 h-4 text-slate-400 group-focus-within:text-brand-600 dark:group-focus-within:text-brand-400 transition-colors absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none stroke-[1.8]" />
@@ -118,12 +104,13 @@ export const LoginPage: React.FC = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full pl-11 pr-4 py-3 text-sm bg-slate-50/70 dark:bg-dark-elevated/60 border border-slate-200 dark:border-dark-border text-slate-900 dark:text-slate-100 rounded-xl focus:bg-white dark:focus:bg-dark-surface focus:border-brand-500 focus:ring-4 focus:ring-brand-500/15 dark:focus:ring-brand-500/20 focus:outline-none transition-all duration-150 font-normal placeholder:text-slate-400"
-                  placeholder="bunthoeun@galaxytv4k.com"
+                  placeholder="name@galaxytv4k.com"
+                  autoComplete="username"
                 />
               </div>
             </div>
 
-            {/* Password Field */}
+            {/* Password Field with Show/Hide Toggle */}
             <div className="space-y-1.5">
               <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
                 {t('auth.passwordLabel', 'Password')}
@@ -131,13 +118,26 @@ export const LoginPage: React.FC = () => {
               <div className="relative group">
                 <Lock className="w-4 h-4 text-slate-400 group-focus-within:text-brand-600 dark:group-focus-within:text-brand-400 transition-colors absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none stroke-[1.8]" />
                 <input
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-11 pr-4 py-3 text-sm bg-slate-50/70 dark:bg-dark-elevated/60 border border-slate-200 dark:border-dark-border text-slate-900 dark:text-slate-100 rounded-xl focus:bg-white dark:focus:bg-dark-surface focus:border-brand-500 focus:ring-4 focus:ring-brand-500/15 dark:focus:ring-brand-500/20 focus:outline-none transition-all duration-150 font-normal placeholder:text-slate-400"
-                  placeholder="galaxytv@@"
+                  className="w-full pl-11 pr-11 py-3 text-sm bg-slate-50/70 dark:bg-dark-elevated/60 border border-slate-200 dark:border-dark-border text-slate-900 dark:text-slate-100 rounded-xl focus:bg-white dark:focus:bg-dark-surface focus:border-brand-500 focus:ring-4 focus:ring-brand-500/15 dark:focus:ring-brand-500/20 focus:outline-none transition-all duration-150 font-normal placeholder:text-slate-400"
+                  placeholder="••••••••"
+                  autoComplete="current-password"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors p-1"
+                  tabIndex={-1}
+                >
+                  {showPassword ? (
+                    <EyeOff className="w-4 h-4" />
+                  ) : (
+                    <Eye className="w-4 h-4" />
+                  )}
+                </button>
               </div>
             </div>
 
@@ -155,7 +155,7 @@ export const LoginPage: React.FC = () => {
             </div>
 
             {/* Submit Action Button */}
-            <div className="pt-1">
+            <div className="pt-2">
               <Button
                 type="submit"
                 variant="primary"
@@ -167,45 +167,11 @@ export const LoginPage: React.FC = () => {
               </Button>
             </div>
           </form>
-
-          {/* Secondary Demo Credentials Box with One-Tap Autofill */}
-          <div className="mt-6 pt-5 border-t border-slate-100 dark:border-dark-border/80">
-            <div className="bg-slate-50/70 dark:bg-dark-elevated/40 border border-slate-200/60 dark:border-dark-border/60 rounded-xl p-3 text-xs space-y-1.5 transition-colors">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400 text-[11px] font-medium">
-                  <ShieldCheck className="w-3.5 h-3.5 text-slate-400" />
-                  <span>Sample Account</span>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={handleAutofillDemo}
-                  className="inline-flex items-center gap-1 text-[11px] font-semibold text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300 transition-colors active:scale-95"
-                >
-                  {justFilled ? (
-                    <>
-                      <Check className="w-3 h-3 text-emerald-500" />
-                      <span className="text-emerald-600 dark:text-emerald-400">Filled!</span>
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="w-3 h-3" />
-                      <span>Fill sample credentials</span>
-                    </>
-                  )}
-                </button>
-              </div>
-
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 font-mono tracking-tight select-all">
-                bunthoeun@galaxytv4k.com • galaxytv@@
-              </p>
-            </div>
-          </div>
         </div>
 
-        {/* Footer info */}
-        <p className="text-center text-[11px] text-slate-400 dark:text-slate-500 font-normal">
-          Galaxy TV4K HR Management System • v1.0
+        {/* Clean Professional Footer */}
+        <p className="text-center text-[11px] text-slate-400 dark:text-slate-500 font-normal tracking-wide">
+          Galaxy TV4K HR System • Attendance Portal
         </p>
       </div>
     </div>
