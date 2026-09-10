@@ -111,13 +111,12 @@ export function detectFakeGps(params: {
   }
 
   // 2. Physical GPS Hardware Accuracy Signature
-  // Real smartphone GNSS chipsets calculating satellite signals from space always have
-  // physical ionospheric/atmospheric errors (typical 3m - 45m).
-  // Fake GPS software (such as GPS JoyStick, Fake GPS location) defaults to exactly 0.0 or < 1.0 meter.
-  if (typeof accuracy === 'number' && accuracy < 1.0) {
+  // Fake GPS software defaults to 0.0 or negative values when not simulating variance.
+  // Modern dual-frequency (L1+L5) smartphones (e.g. Samsung Galaxy S21-S24) legitimately achieve sub-meter accuracy.
+  if (typeof accuracy === 'number' && accuracy <= 0.0) {
     return {
       isFakeGps: true,
-      reason: 'កម្រិត GPS Accuracy មិនប្រក្រតី (ទាបជាង 1 ម៉ែត្រ) ដែលជាសញ្ញានៃកម្មវិធី Fake GPS។ សូមប្រើប្រាស់ GPS ពិតប្រាកដ! (Unrealistic sub-meter accuracy detected; characteristic of Fake GPS mock software.)',
+      reason: 'កម្រិត GPS Accuracy មិនប្រក្រតី (0 ម៉ែត្រ) ដែលជាសញ្ញានៃកម្មវិធី Fake GPS។ សូមប្រើប្រាស់ GPS ពិតប្រាកដ! (Zero-meter accuracy detected; characteristic of uncalibrated mock software.)',
     };
   }
 

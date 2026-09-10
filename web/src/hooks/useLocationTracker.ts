@@ -57,7 +57,7 @@ export const useLocationTracker = (
       const isMock = Boolean(
         (coords as any).isMocked ||
         (coords as any).mocked ||
-        coords.accuracy < 1.0
+        coords.accuracy <= 0.0
       );
       await apiClient.post('/location/update', {
         latitude: coords.latitude,
@@ -99,31 +99,52 @@ export const useLocationTracker = (
       if (error.code === error.PERMISSION_DENIED) {
         setPermissionState('denied');
       }
+      // Do not clear currentCoords on TIMEOUT or POSITION_UNAVAILABLE
+      console.warn('[LocationTracker] Geolocation notice:', error.message);
     };
 
-    // 1. Immediate first location fix on app launch / mount
-    navigator.geolocation.getCurrentPosition(handleSuccess, handleError, {
-      enableHighAccuracy: true,
-      timeout: 10000,
-      maximumAge: 0,
-    });
+    // 1. Tier 1: Instant low-latency fused location lock for Samsung/Android (200ms - 1s)
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        handleSuccess(pos);
+        // 2. Tier 2: Immediately upgrade with high-accuracy GPS
+        navigator.geolocation.getCurrentPosition(handleSuccess, handleError, {
+          enableHighAccuracy: true,
+          timeout: 15000,
+          maximumAge: 10000,
+        });
+      },
+      () => {
+        // Fallback directly to high accuracy if low accuracy failed
+        navigator.geolocation.getCurrentPosition(handleSuccess, handleError, {
+          enableHighAccuracy: true,
+          timeout: 15000,
+          maximumAge: 30000,
+        });
+      },
+      {
+        enableHighAccuracy: false,
+        timeout: 6000,
+        maximumAge: 60000,
+      }
+    );
 
-    // 2. Continuous position watcher
+    // 3. Continuous resilient position watcher
     const watchId = navigator.geolocation.watchPosition(handleSuccess, handleError, {
       enableHighAccuracy: true,
-      timeout: 15000,
-      maximumAge: 5000,
+      timeout: 20000,
+      maximumAge: 10000,
     });
 
     watchIdRef.current = watchId;
 
-    // 3. Fallback periodic ping (every 30s) to keep status LIVE even when stationary
+    // 4. Periodic keep-alive ping (every 30s) to keep status LIVE
     const intervalId = setInterval(() => {
       if (navigator.onLine && 'geolocation' in navigator) {
         navigator.geolocation.getCurrentPosition(handleSuccess, handleError, {
           enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 10000,
+          timeout: 12000,
+          maximumAge: 15000,
         });
       }
     }, Math.max(intervalSeconds, 30) * 1000);
@@ -142,17 +163,24 @@ export const useLocationTracker = (
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         lastUpdateRef.current = 0; // Bypass throttle for manual sync
+        setCurrentCoords({
+          latitude: pos.coords.latitude,
+          longitude: pos.coords.longitude,
+          accuracy: pos.coords.accuracy,
+        });
+        setPermissionState('granted');
         sendLocationUpdate(pos.coords);
       },
       (err) => {
         if (err.code === err.PERMISSION_DENIED) setPermissionState('denied');
       },
-      { enableHighAccuracy: true, timeout: 10000 }
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
     );
   };
 
   return {
     currentCoords,
+    isGpsReady: Boolean(currentCoords),
     permissionState,
     lastSentAt,
     isSending,

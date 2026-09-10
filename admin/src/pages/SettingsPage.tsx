@@ -398,16 +398,17 @@ export const SettingsPage: React.FC = () => {
                 Check-In Opens (Before Shift Start)
               </label>
               <select
-                value={formData.checkInAllowedBeforeMinutes ?? 60}
+                value={formData.checkInAllowedBeforeMinutes ?? 30}
                 onChange={(e) =>
                   setFormData({ ...formData, checkInAllowedBeforeMinutes: parseInt(e.target.value) })
                 }
-                className="w-full px-3 py-2 text-sm bg-white dark:bg-dark-elevated border border-slate-200 dark:border-dark-border text-slate-900 dark:text-slate-100 rounded-xl focus:ring-2 focus:ring-brand-500 focus:outline-none"
+                className="w-full px-3 py-2 text-sm bg-white dark:bg-dark-elevated border border-slate-200 dark:border-dark-border text-slate-900 dark:text-slate-100 rounded-xl focus:ring-2 focus:ring-brand-500 focus:outline-none font-medium"
               >
-                <option value={30}>30 minutes before (07:30 AM)</option>
-                <option value={60}>60 minutes before (07:00 AM - Recommended)</option>
-                <option value={90}>90 minutes before (06:30 AM)</option>
-                <option value={120}>120 minutes before (06:00 AM)</option>
+                <option value={15}>15 minutes before (07:15 AM)</option>
+                <option value={30}>30 minutes before (07:00 AM - Recommended)</option>
+                <option value={60}>60 minutes before (06:30 AM)</option>
+                <option value={90}>90 minutes before (06:00 AM)</option>
+                <option value={120}>120 minutes before (05:30 AM)</option>
               </select>
               <p className="text-[11px] text-slate-400 mt-1">
                 Employees cannot punch in before this window opens.
@@ -422,13 +423,13 @@ export const SettingsPage: React.FC = () => {
               <input
                 type="text"
                 required
-                placeholder="08:00"
-                value={formData.workStartTime || '08:00'}
+                placeholder="07:30"
+                value={formData.workStartTime || '07:30'}
                 onChange={(e) => setFormData({ ...formData, workStartTime: e.target.value })}
                 className="w-full px-3 py-2 text-sm bg-white dark:bg-dark-elevated border border-slate-200 dark:border-dark-border text-slate-900 dark:text-slate-100 rounded-xl focus:ring-2 focus:ring-brand-500 focus:outline-none font-mono"
               />
               <p className="text-[11px] text-slate-400 mt-1">
-                Expected morning punch-in time (e.g. 08:00 AM).
+                Expected morning punch-in time (e.g. 07:30 AM).
               </p>
             </div>
 

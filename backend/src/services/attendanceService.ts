@@ -360,26 +360,27 @@ export class AttendanceService {
 
         if (scheduleDay && scheduleDay.isWorkingDay) {
           // Check if employee has a custom shift or check-in window
-          const openTime = employee.checkInStartTime || settings.workStartTime || (scheduleDay && scheduleDay.startTime) || '08:00';
-          const deadlineTime = employee.checkInDeadline || employee.checkInStartTime || settings.workStartTime || (scheduleDay && scheduleDay.startTime) || '08:00';
+          const openTime = employee.checkInStartTime || settings.workStartTime || (scheduleDay && scheduleDay.startTime) || '07:30';
+          const deadlineTime = employee.checkInDeadline || employee.checkInStartTime || settings.workStartTime || (scheduleDay && scheduleDay.startTime) || '07:30';
 
           const openMinutes = parseTimeToMinutes(openTime);
           const currentMinutes = parseTimeToMinutes(currentTimeStr);
 
           // For afternoon or custom shift, enforce check-in open from exact checkInStartTime (e.g. 12:00)
-          const allowedBefore = (employee.shiftType === 'AFTERNOON' || (employee.checkInStartTime && employee.checkInStartTime !== '08:00'))
+          const isSpecialShift = employee.shiftType === 'AFTERNOON' || (employee.checkInStartTime && employee.checkInStartTime !== '07:30' && employee.checkInStartTime !== '08:00');
+          const allowedBefore = isSpecialShift
             ? 0
-            : (settings.checkInAllowedBeforeMinutes ?? 60);
+            : (settings.checkInAllowedBeforeMinutes ?? 30);
           const earliestMinutes = Math.max(0, openMinutes - allowedBefore);
 
           if (currentMinutes < earliestMinutes) {
-            const openH = Math.floor(openMinutes / 60).toString().padStart(2, '0');
-            const openM = (openMinutes % 60).toString().padStart(2, '0');
-            const openTimeStr = `${openH}:${openM}`;
-            const timeTag = openMinutes >= 720 ? 'ថ្ងៃត្រង់/រសៀល' : 'ព្រឹក';
+            const earH = Math.floor(earliestMinutes / 60).toString().padStart(2, '0');
+            const earM = (earliestMinutes % 60).toString().padStart(2, '0');
+            const earliestTimeStr = `${earH}:${earM}`;
+            const timeTag = earliestMinutes >= 720 ? 'ថ្ងៃត្រង់/រសៀល' : 'ព្រឹក';
             throw {
               code: 'CHECK_IN_NOT_OPEN_YET',
-              message: `ការកត់ត្រាវត្តមានចូលមិនទាន់បើកនៅឡើយទេ។ បើកចាប់ពីម៉ោង ${openTimeStr} ${timeTag}តទៅ (Check-in opens at ${openTimeStr}).`,
+              message: `ការកត់ត្រាវត្តមានចូលមិនទាន់បើកនៅឡើយទេ។ បើកចាប់ពីម៉ោង ${earliestTimeStr} ${timeTag}តទៅ (Check-in opens at ${earliestTimeStr}).`,
               status: 400,
             };
           }
@@ -534,7 +535,7 @@ export class AttendanceService {
       }
 
       // Enforce Check-Out Time Rule: Cannot check out before scheduled shift end time (e.g. 17:30 / 5:30 PM)
-      const endTime = settings.workEndTime || (scheduleDay && scheduleDay.endTime) || '17:30';
+      const endTime = employee.workEndTime || settings.workEndTime || (scheduleDay && scheduleDay.endTime) || '17:30';
       const endMinutes = parseTimeToMinutes(endTime);
       const currentMinutes = parseTimeToMinutes(currentTimeStr);
       const earlyGrace = settings.earlyLeaveGraceMinutes ?? 0;
@@ -845,26 +846,32 @@ export class AttendanceService {
         let lateMinutes = 0;
 
         if (scheduleDay && scheduleDay.isWorkingDay) {
-          const startTime = settings.workStartTime || (scheduleDay && scheduleDay.startTime) || '08:00';
-          const startMinutes = parseTimeToMinutes(startTime);
+          const openTime = employee.checkInStartTime || settings.workStartTime || (scheduleDay && scheduleDay.startTime) || '07:30';
+          const deadlineTime = employee.checkInDeadline || employee.checkInStartTime || settings.workStartTime || (scheduleDay && scheduleDay.startTime) || '07:30';
+          const openMinutes = parseTimeToMinutes(openTime);
           const currentMinutes = parseTimeToMinutes(currentTimeStr);
-          const allowedBefore = settings.checkInAllowedBeforeMinutes ?? 60;
-          const earliestMinutes = Math.max(0, startMinutes - allowedBefore);
+
+          const isSpecialShift = employee.shiftType === 'AFTERNOON' || (employee.checkInStartTime && employee.checkInStartTime !== '07:30' && employee.checkInStartTime !== '08:00');
+          const allowedBefore = isSpecialShift
+            ? 0
+            : (settings.checkInAllowedBeforeMinutes ?? 30);
+          const earliestMinutes = Math.max(0, openMinutes - allowedBefore);
 
           if (currentMinutes < earliestMinutes) {
-            const openH = Math.floor(earliestMinutes / 60).toString().padStart(2, '0');
-            const openM = (earliestMinutes % 60).toString().padStart(2, '0');
-            const openTimeStr = `${openH}:${openM}`;
+            const earH = Math.floor(earliestMinutes / 60).toString().padStart(2, '0');
+            const earM = (earliestMinutes % 60).toString().padStart(2, '0');
+            const earliestTimeStr = `${earH}:${earM}`;
+            const timeTag = earliestMinutes >= 720 ? 'ថ្ងៃត្រង់/រសៀល' : 'ព្រឹក';
             throw {
               code: 'CHECK_IN_NOT_OPEN_YET',
-              message: `ការកត់ត្រាវត្តមានចូលមិនទាន់បើកនៅឡើយទេ។ បើកចាប់ពីម៉ោង ${openTimeStr} ព្រឹកតទៅ (Check-in opens at ${openTimeStr}).`,
+              message: `ការកត់ត្រាវត្តមានចូលមិនទាន់បើកនៅឡើយទេ។ បើកចាប់ពីម៉ោង ${earliestTimeStr} ${timeTag}តទៅ (Check-in opens at ${earliestTimeStr}).`,
               status: 400,
             };
           }
 
           lateMinutes = calculateLateMinutes(
             currentTimeStr,
-            startTime,
+            deadlineTime,
             settings.lateGracePeriodMinutes ?? 0
           );
           if (lateMinutes > 0) {
@@ -977,7 +984,7 @@ export class AttendanceService {
       }
 
       // Enforce Check-Out Time Rule: Cannot check out before scheduled shift end time (e.g. 17:30 / 5:30 PM)
-      const endTime = settings.workEndTime || (scheduleDay && scheduleDay.endTime) || '17:30';
+      const endTime = employee.workEndTime || settings.workEndTime || (scheduleDay && scheduleDay.endTime) || '17:30';
       const endMinutes = parseTimeToMinutes(endTime);
       const currentMinutes = parseTimeToMinutes(currentTimeStr);
       const earlyGrace = settings.earlyLeaveGraceMinutes ?? 0;

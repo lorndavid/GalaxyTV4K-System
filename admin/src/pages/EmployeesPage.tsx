@@ -235,8 +235,8 @@ export const EmployeesPage: React.FC = () => {
     password: 'Employee@123456',
     status: 'ACTIVE',
     shiftType: 'STANDARD',
-    checkInStartTime: '08:00',
-    checkInDeadline: '08:00',
+    checkInStartTime: '07:30',
+    checkInDeadline: '07:30',
     workEndTime: '17:30',
     studyClassInfo: '',
   });
@@ -353,8 +353,8 @@ export const EmployeesPage: React.FC = () => {
       password: 'Employee@123456',
       status: 'ACTIVE',
       shiftType: 'STANDARD',
-      checkInStartTime: '08:00',
-      checkInDeadline: '08:00',
+      checkInStartTime: '07:30',
+      checkInDeadline: '07:30',
       workEndTime: '17:30',
       studyClassInfo: '',
     });
@@ -377,8 +377,8 @@ export const EmployeesPage: React.FC = () => {
       password: '',
       status: emp.status || 'ACTIVE',
       shiftType: emp.shiftType || 'STANDARD',
-      checkInStartTime: emp.checkInStartTime || '08:00',
-      checkInDeadline: emp.checkInDeadline || '08:00',
+      checkInStartTime: emp.checkInStartTime || '07:30',
+      checkInDeadline: emp.checkInDeadline || '07:30',
       workEndTime: emp.workEndTime || '17:30',
       studyClassInfo: emp.studyClassInfo || '',
     });
@@ -1318,7 +1318,7 @@ export const EmployeesPage: React.FC = () => {
                   </label>
                   <input
                     type="time"
-                    value={formData.checkInStartTime || '08:00'}
+                    value={formData.checkInStartTime || '07:30'}
                     onChange={(e) => setFormData({ ...formData, checkInStartTime: e.target.value })}
                     className="w-full px-3 py-1.5 bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-xl text-slate-900 dark:text-slate-100 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-brand-500"
                   />
@@ -1330,7 +1330,7 @@ export const EmployeesPage: React.FC = () => {
                   </label>
                   <input
                     type="time"
-                    value={formData.checkInDeadline || '08:00'}
+                    value={formData.checkInDeadline || '07:30'}
                     onChange={(e) => setFormData({ ...formData, checkInDeadline: e.target.value })}
                     className="w-full px-3 py-1.5 bg-white dark:bg-dark-surface border border-slate-200 dark:border-dark-border rounded-xl text-slate-900 dark:text-slate-100 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-brand-500"
                   />

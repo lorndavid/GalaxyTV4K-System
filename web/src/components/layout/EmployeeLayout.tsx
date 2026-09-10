@@ -21,7 +21,7 @@ export const EmployeeLayout: React.FC = () => {
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
 
   // Automatically acquire and stream location in background when employee opens the app
-  const isLocationSharingActive = user?.employee?.isLocationSharingActive ?? true;
+  const isLocationSharingActive = user?.employee?.isLocationSharingActive !== false;
   useLocationTracker(isLocationSharingActive, 30);
 
   // App bootstrap loading state (branded splash)

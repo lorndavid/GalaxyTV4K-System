@@ -67,39 +67,58 @@ export const QrScannerModal: React.FC<QrScannerModalProps> = ({
 
     setLocationStatus('Acquiring location...');
 
+    const handleSuccess = (position: GeolocationPosition) => {
+      const isMock = Boolean(
+        (position.coords as any).isMocked ||
+        (position as any).mocked ||
+        (position.coords as any).mocked ||
+        position.coords.accuracy <= 0.0
+      );
+      const coords = {
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+        accuracy: position.coords.accuracy,
+        isMocked: isMock,
+      };
+      setGeoCoordinates(coords as any);
+      setLocationStatus(`Location acquired (±${Math.round(coords.accuracy)}m)`);
+      setStage('SCANNING');
+      startCamera();
+    };
+
+    const handleFailure = (err: GeolocationPositionError) => {
+      let msg = 'សូមបើក Location / GPS នៅលើទូរស័ព្ទដៃរបស់អ្នក និងចុច Allow Permission ដើម្បីកត់ត្រាវត្តមាន។ (Location permission is required to check in).';
+      if (err.code === 1) {
+        msg = 'អ្នកបានបដិសេធ Location Permission។ សូមបើក Permission ក្នុង Browser Settings ដើម្បីអាចស្កេនកត់ត្រាវត្តមានបាន។';
+      } else if (err.code === 2) {
+        msg = 'មិនអាចកំណត់ទីតាំង GPS បានទេ។ សូមពិនិត្យមើល Location / GPS នៅលើទូរស័ព្ទរបស់អ្នក។';
+      }
+      setErrorMessage(msg);
+      setStage('ERROR');
+    };
+
+    // Progressive acquisition for Samsung/Android
     navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const isMock = Boolean(
-          (position.coords as any).isMocked ||
-          (position as any).mocked ||
-          (position.coords as any).mocked ||
-          position.coords.accuracy < 1.0
-        );
-        const coords = {
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-          accuracy: position.coords.accuracy,
-          isMocked: isMock,
-        };
-        setGeoCoordinates(coords as any);
-        setLocationStatus(`Location acquired (±${Math.round(coords.accuracy)}m)`);
-        setStage('SCANNING');
-        startCamera();
+      (pos) => {
+        handleSuccess(pos);
+        // Attempt high accuracy refinement
+        navigator.geolocation.getCurrentPosition(handleSuccess, () => {}, {
+          enableHighAccuracy: true,
+          timeout: 15000,
+          maximumAge: 10000,
+        });
       },
-      (err) => {
-        let msg = 'សូមបើក Location / GPS នៅលើទូរស័ព្ទដៃរបស់អ្នក និងចុច Allow Permission ដើម្បីកត់ត្រាវត្តមាន។ (Location permission is required to check in).';
-        if (err.code === 1) {
-          msg = 'អ្នកបានបដិសេធ Location Permission។ សូមបើក Permission ក្នុង Browser Settings ដើម្បីអាចស្កេនកត់ត្រាវត្តមានបាន។';
-        } else if (err.code === 2) {
-          msg = 'មិនអាចកំណត់ទីតាំង GPS បានទេ។ សូមពិនិត្យមើល Location / GPS នៅលើទូរស័ព្ទរបស់អ្នក។';
-        }
-        setErrorMessage(msg);
-        setStage('ERROR');
+      () => {
+        navigator.geolocation.getCurrentPosition(handleSuccess, handleFailure, {
+          enableHighAccuracy: true,
+          timeout: 15000,
+          maximumAge: 30000,
+        });
       },
       {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0,
+        enableHighAccuracy: false,
+        timeout: 6000,
+        maximumAge: 60000,
       }
     );
   };

@@ -32,7 +32,7 @@ export class LocationController {
         return;
       }
 
-      if (parsed.data.isMocked || parsed.data.mocked || parsed.data.accuracy < 1.0) {
+      if (parsed.data.isMocked || parsed.data.mocked || parsed.data.accuracy <= 0.0) {
         res.status(403).json({
           success: false,
           error: {

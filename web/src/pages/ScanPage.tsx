@@ -74,7 +74,7 @@ const acquireBestCoordinates = async (
 ): Promise<{ latitude: number; longitude: number; accuracy: number; isMocked: boolean } | null> => {
   const isApiTampered = !isGeolocationNative();
 
-  // If already locked and valid (< 15s old), return immediately with 0ms delay
+  // If already locked and valid (< 30s old), return immediately with 0ms delay
   if (coordsRef.current && typeof coordsRef.current.latitude === 'number') {
     return {
       latitude: coordsRef.current.latitude,
@@ -86,13 +86,13 @@ const acquireBestCoordinates = async (
 
   if (!navigator.geolocation) return null;
 
-  // Stage 1: High Accuracy GPS (6-second window for satellite fix)
+  // Stage 1: High Accuracy GPS (10-second window for satellite fix)
   try {
     const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
       navigator.geolocation.getCurrentPosition(resolve, reject, {
         enableHighAccuracy: true,
-        timeout: 6000,
-        maximumAge: 10000,
+        timeout: 10000,
+        maximumAge: 15000,
       });
     });
 
@@ -101,7 +101,7 @@ const acquireBestCoordinates = async (
       (pos as any).mocked ||
       (pos.coords as any).mocked ||
       isApiTampered ||
-      pos.coords.accuracy < 1.0
+      pos.coords.accuracy <= 0.0
     );
 
     return {
@@ -111,13 +111,13 @@ const acquireBestCoordinates = async (
       isMocked: isMock,
     };
   } catch {
-    // Stage 2: Cellular Network / Tower fallback (4G/5G mobile data indoor acquisition)
+    // Stage 2: Cellular Network / Google Fused Location fallback (indoor Samsung acquisition)
     try {
       const fallbackPos = await new Promise<GeolocationPosition>((resolve, reject) => {
         navigator.geolocation.getCurrentPosition(resolve, reject, {
           enableHighAccuracy: false,
-          timeout: 5000,
-          maximumAge: 30000,
+          timeout: 6000,
+          maximumAge: 60000,
         });
       });
 
@@ -126,7 +126,7 @@ const acquireBestCoordinates = async (
         (fallbackPos as any).mocked ||
         (fallbackPos.coords as any).mocked ||
         isApiTampered ||
-        fallbackPos.coords.accuracy < 1.0
+        fallbackPos.coords.accuracy <= 0.0
       );
 
       return {
@@ -249,61 +249,61 @@ export const ScanPage: React.FC = () => {
     let isMounted = true;
 
     if (navigator.geolocation) {
+      const handlePositionSuccess = (pos: GeolocationPosition) => {
+        if (!isMounted) return;
+        const isMock = Boolean(
+          (pos.coords as any).isMocked ||
+          (pos as any).mocked ||
+          (pos.coords as any).mocked ||
+          !isGeolocationNative() ||
+          pos.coords.accuracy <= 0.0
+        );
+        const coords = {
+          latitude: pos.coords.latitude,
+          longitude: pos.coords.longitude,
+          accuracy: pos.coords.accuracy,
+          isMocked: isMock,
+        };
+        geoCoordsRef.current = coords;
+        setCurrentCoords(coords);
+        setIsGpsReady(true);
+        setLocationStatus(
+          t('attendance.gpsVerified', `GPS Verified (±${Math.round(pos.coords.accuracy)}m)`)
+        );
+      };
+
+      // 1. Tier 1: Fast fused location acquisition for Samsung/Android (200ms - 1s)
       navigator.geolocation.getCurrentPosition(
         (pos) => {
-          if (!isMounted) return;
-          const isMock = Boolean(
-            (pos.coords as any).isMocked ||
-            (pos as any).mocked ||
-            (pos.coords as any).mocked ||
-            !isGeolocationNative() ||
-            pos.coords.accuracy < 1.0
-          );
-          const coords = {
-            latitude: pos.coords.latitude,
-            longitude: pos.coords.longitude,
-            accuracy: pos.coords.accuracy,
-            isMocked: isMock,
-          };
-          geoCoordsRef.current = coords;
-          setCurrentCoords(coords);
-          setIsGpsReady(true);
-          setLocationStatus(
-            t('attendance.gpsVerified', `GPS Verified (±${Math.round(pos.coords.accuracy)}m)`)
+          handlePositionSuccess(pos);
+          // 2. Tier 2: Immediately attempt high-accuracy GPS upgrade
+          navigator.geolocation.getCurrentPosition(
+            handlePositionSuccess,
+            () => {
+              // High accuracy timeout; keep existing Tier 1 coordinates
+            },
+            { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
           );
         },
         () => {
-          if (!isMounted) return;
-          setLocationStatus(t('attendance.gpsReady', 'GPS ready'));
+          // If low-latency failed, attempt high-accuracy directly
+          navigator.geolocation.getCurrentPosition(
+            handlePositionSuccess,
+            () => {
+              if (!isMounted) return;
+              setLocationStatus(t('attendance.gpsReady', 'GPS ready'));
+            },
+            { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 }
+          );
         },
-        { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
+        { enableHighAccuracy: false, timeout: 6000, maximumAge: 60000 }
       );
 
+      // 3. Continuous resilient position watcher
       geoWatchIdRef.current = navigator.geolocation.watchPosition(
-        (pos) => {
-          if (!isMounted) return;
-          const isMock = Boolean(
-            (pos.coords as any).isMocked ||
-            (pos as any).mocked ||
-            (pos.coords as any).mocked ||
-            !isGeolocationNative() ||
-            pos.coords.accuracy < 1.0
-          );
-          const coords = {
-            latitude: pos.coords.latitude,
-            longitude: pos.coords.longitude,
-            accuracy: pos.coords.accuracy,
-            isMocked: isMock,
-          };
-          geoCoordsRef.current = coords;
-          setCurrentCoords(coords);
-          setIsGpsReady(true);
-          setLocationStatus(
-            t('attendance.gpsVerified', `GPS Verified (±${Math.round(pos.coords.accuracy)}m)`)
-          );
-        },
+        handlePositionSuccess,
         () => {},
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 5000 }
+        { enableHighAccuracy: true, timeout: 20000, maximumAge: 10000 }
       );
     }
 

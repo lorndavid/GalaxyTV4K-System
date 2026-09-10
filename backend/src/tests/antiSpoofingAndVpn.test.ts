@@ -130,15 +130,14 @@ describe('Dual-Network Security Engine: Anti-VPN & Anti-Fake-GPS Verification', 
       expect(result.reason).toContain('កម្រិត GPS Accuracy មិនប្រក្រតី');
     });
 
-    it('detects sub-meter accuracy (accuracy: 0.4m) as Fake GPS signature', () => {
+    it('accepts high-precision GNSS on modern smartphones (e.g. Samsung Galaxy L1+L5 dual-band ±0.8m)', () => {
       const result = detectFakeGps({
         latitude: phnomPenhOffice.latitude,
         longitude: phnomPenhOffice.longitude,
-        accuracy: 0.4,
+        accuracy: 0.8,
         isMocked: false,
       });
-      expect(result.isFakeGps).toBe(true);
-      expect(result.reason).toContain('កម្រិត GPS Accuracy មិនប្រក្រតី');
+      expect(result.isFakeGps).toBe(false);
     });
 
     it('detects impossible travel speed / teleportation spoofing (> 150 km/h in city)', () => {

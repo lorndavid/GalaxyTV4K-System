@@ -241,7 +241,9 @@ export const HomePage: React.FC = () => {
   const isAfternoonShift = useMemo(() => {
     return (
       user?.employee?.shiftType === 'AFTERNOON' ||
-      (Boolean(user?.employee?.checkInStartTime) && user?.employee?.checkInStartTime !== '08:00')
+      (Boolean(user?.employee?.checkInStartTime) &&
+        user?.employee?.checkInStartTime !== '07:30' &&
+        user?.employee?.checkInStartTime !== '08:00')
     );
   }, [user?.employee?.shiftType, user?.employee?.checkInStartTime]);
 
@@ -482,6 +484,15 @@ export const HomePage: React.FC = () => {
                 : 'Study Day (No Check-In Required)'}
             </span>
           </div>
+        ) : !isAfternoonShift && !isFullStudyDay && cambodiaHour < 7 ? (
+          <div className="w-full py-3.5 px-4 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 bg-amber-50/80 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800/60 shadow-xs">
+            <Clock3 className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+            <span>
+              {isKhmer
+                ? 'Check-In ពេលព្រឹក (បើកម៉ោង ០៧:០០ ព្រឹក)'
+                : 'Morning Check-In (Opens at 07:00 AM)'}
+            </span>
+          </div>
         ) : (
           <Link
             to="/scan"
@@ -507,7 +518,7 @@ export const HomePage: React.FC = () => {
           <span className="text-[11px] font-semibold text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-brand-950/60 px-2.5 py-0.5 rounded-full border border-brand-200/60 dark:border-brand-800/40">
             {isAfternoonShift
               ? `${user?.employee?.checkInStartTime || '12:00'} – ${user?.employee?.workEndTime || '17:30'}`
-              : '08:00 – 17:30'}
+              : '07:30 – 17:30'}
           </span>
         </div>
 
@@ -521,7 +532,7 @@ export const HomePage: React.FC = () => {
                 : t('home.morningStart', 'ចូលពេលព្រឹក')}
             </span>
             <span className="font-bold text-slate-900 dark:text-slate-100 font-mono text-xs mt-1 block">
-              {isAfternoonShift ? '08:00 – 11:00' : '08:00 AM'}
+              {isAfternoonShift ? '08:00 – 11:00' : '07:30 AM'}
             </span>
           </div>
 

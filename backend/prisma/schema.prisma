@@ -141,8 +141,8 @@ model Employee {
   hireDate                DateTime            @default(now())
   status                  EmployeeStatus      @default(ACTIVE)
   shiftType               String?             @default("STANDARD")
-  checkInStartTime        String?             @default("08:00")
-  checkInDeadline         String?             @default("08:00")
+  checkInStartTime        String?             @default("07:30")
+  checkInDeadline         String?             @default("07:30")
   workEndTime             String?             @default("17:30")
   studyClassInfo          String?
   department              Department?         @relation(fields: [departmentId], references: [id], onDelete: SetNull)
@@ -156,7 +156,7 @@ model Employee {
   outRequests             OutRequest[]
   locations               EmployeeLocation[]
   locationEvents          LocationEvent[]
-  isLocationSharingActive Boolean             @default(false)
+  isLocationSharingActive Boolean             @default(true)
   lastLocationStatus      LocationStatus?
   lastLocationAt          DateTime?
   lastLatitude            Float?
@@ -382,13 +382,13 @@ model CompanySettings {
   allowedRadiusMeters             Float    @default(100.0)
   gpsAccuracyThresholdMeters      Float    @default(50.0)
   qrExpirationSeconds             Int      @default(60)
-  workStartTime                   String   @default("08:00")
+  workStartTime                   String   @default("07:30")
   workEndTime                     String   @default("17:30")
   breakStartTime                  String?  @default("11:30")
   breakEndTime                    String?  @default("13:00")
   lateGracePeriodMinutes          Int      @default(0)
   earlyLeaveGraceMinutes          Int      @default(0)
-  checkInAllowedBeforeMinutes     Int      @default(60)
+  checkInAllowedBeforeMinutes     Int      @default(30)
   checkOutAllowedAfterMinutes     Int      @default(120)
   locationTrackingEnabled         Boolean  @default(true)
   locationUpdateIntervalSeconds   Int      @default(60)
